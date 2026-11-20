@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { addFolder, deleteDoc, listDocs, listFolders, saveDoc, type LocalDoc } from '../lib/store'
+import { addFolder, listDocs, listFolders, saveDoc, trashDoc, type LocalDoc } from '../lib/store'
+import { notifyOs } from '../lib/notify'
 import { useLang } from '../lib/i18n'
 
 interface Props {
@@ -51,8 +52,8 @@ export default function FileManager({ kind, currentName, getContent, onOpen }: P
   }
 
   const doDelete = async (doc: LocalDoc) => {
-    if (!window.confirm(`「${doc.name}」を削除しますか？`)) return
-    await deleteDoc(doc.id)
+    await trashDoc(doc.id)
+    notifyOs(`${doc.name}：${t('movedToTrash')}`)
     await refresh()
   }
 

@@ -8,11 +8,12 @@ import FilesWindow from './components/FilesWindow'
 import Settings, { type ThemeId } from './components/Settings'
 import { LangContext, translate, type Lang } from './lib/i18n'
 import YoutubeApp from './components/YoutubeApp'
+import TrashWindow from './components/TrashWindow'
 import { requestPersist } from './lib/store'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash'
 
 interface Win {
   id: WindowApp
@@ -34,8 +35,9 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   files: { icon: 'フ', cls: 'files' },
   settings: { icon: '設', cls: 'settings' },
   youtube: { icon: '▶', cls: 'youtube' },
+  trash: { icon: '🗑', cls: 'trash' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'calendar', 'browser', 'youtube', 'files', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'calendar', 'browser', 'youtube', 'files', 'trash', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>([])
@@ -44,6 +46,26 @@ export default function App() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [toast, setToast] = useState('')
   const [platform] = useState(detectPlatform)
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
+  const [notes, setNotes] = useState<{ id: number; text: string; time: string }[]>([])
+  const [notesOpen, setNotesOpen] = useState(false)
+  const [booted, setBooted] = useState(false)
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setBooted(true), 1100)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    const onNotify = (e: Event) => {
+      const text = (e as CustomEvent<string>).detail
+      setNotes((prev) => [{ id: Date.now() + Math.random(), text, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) }, ...prev].slice(0, 30))
+      showToast(text)
+    }
+    window.addEventListener('webx-notify', onNotify)
+    return () => window.removeEventListener('webx-notify', onNotify)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('ykr-lang') as Lang) || 'ja')
   const [theme, setTheme] = useState<ThemeId>(() => (localStorage.getItem('ykr-theme') as ThemeId) || 'light')
   const t = (key: string) => translate(lang, key)
@@ -168,7 +190,7 @@ export default function App() {
       }
       if (!isMod(e, platform)) return
       const key = e.key
-      if (/^[1-8]$/.test(key)) {
+      if (/^[1-9]$/.test(key)) {
         e.preventDefault()
         openApp(APP_ORDER[Number(key) - 1])
         return
@@ -228,6 +250,7 @@ export default function App() {
       case 'files': return <FilesWindow openApp={openApp} />
       case 'settings': return <Settings lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} />
       case 'youtube': return <YoutubeApp />
+      case 'trash': return <TrashWindow />
     }
   }
 
@@ -237,7 +260,15 @@ export default function App() {
   return (
     <LangContext.Provider value={lang}>
     <div className="os-root" data-theme={theme}>
-      <div className="os-desktop" ref={desktopRef} onClick={() => setStartOpen(false)}>
+      <div
+        className="os-desktop"
+        ref={desktopRef}
+        onClick={() => { setStartOpen(false); setCtxMenu(null); setNotesOpen(false) }}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          setCtxMenu({ x: e.clientX, y: e.clientY })
+        }}
+      >
         <div className="desktop-icons">
           {APP_ORDER.map((app) => (
             <button key={app} className="desktop-icon" onClick={(e) => { e.stopPropagation(); openApp(app) }}>
@@ -329,7 +360,7 @@ export default function App() {
           </p>
           <table className="shortcuts-table">
             <tbody>
-              <tr><td>{modLabel(platform)} + 1〜8</td><td>{t('scApps')}</td></tr>
+              <tr><td>{modLabel(platform)} + 1〜9</td><td>{t('scApps')}</td></tr>
               <tr><td>{modLabel(platform)} + Tab</td><td>{t('scNextWin')}</td></tr>
               <tr><td>{modLabel(platform)} + M</td><td>{t('scMin')}</td></tr>
               <tr><td>{modLabel(platform)} + Shift + M / {modLabel(platform)} + Enter</td><td>{t('scMax')}</td></tr>
@@ -340,6 +371,44 @@ export default function App() {
             </tbody>
           </table>
           <p className="shortcuts-note">アプリ内でも、ワードプロセッサでは {modLabel(platform)} + B（太字）など、メモ帳では自動保存、カレンダーでは ←/→（前月／次月）と T（今日）が使えます。</p>
+        </div>
+      )}
+
+      {ctxMenu && (
+        <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={(e) => e.stopPropagation()}>
+          {APP_ORDER.map((app) => (
+            <button key={app} onClick={() => { openApp(app); setCtxMenu(null) }}>
+              <span className={`app-icon tiny ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
+              {appName(app)}
+            </button>
+          ))}
+          <div className="ctx-sep" />
+          <button onClick={() => { setCtxMenu(null); setShortcutsOpen(true) }}>{t('shortcuts')}</button>
+        </div>
+      )}
+
+      {notesOpen && (
+        <div className="notes-panel" onClick={(e) => e.stopPropagation()}>
+          <div className="notes-head">
+            <h3>{t('notifications')}</h3>
+            {notes.length > 0 && <button onClick={() => setNotes([])}>{t('clearAll')}</button>}
+          </div>
+          {notes.length === 0 ? (
+            <p className="notes-empty">{t('noNotifications')}</p>
+          ) : (
+            <ul>
+              {notes.map((n) => (
+                <li key={n.id}><span>{n.text}</span><small>{n.time}</small></li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      {!booted && (
+        <div className="os-splash">
+          <div className="splash-logo">WebX</div>
+          <div className="splash-bar"><span /></div>
         </div>
       )}
 
@@ -361,6 +430,9 @@ export default function App() {
             </button>
           ))}
         </div>
+        <button className="task-bell" onClick={(e) => { e.stopPropagation(); setNotesOpen((v) => !v) }}>
+          🔔{notes.length > 0 && <span className="bell-badge">{notes.length}</span>}
+        </button>
         <div className="task-clock">
           <span>{clock}</span>
           <small>{dateLabel}</small>

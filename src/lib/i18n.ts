@@ -73,6 +73,10 @@ const ja: Dict = {
   ytPh: 'YouTube の URL または動画 ID', ytPlay: '再生', ytHistory: '最近再生した動画',
   ytNote: '通常の YouTube ページは埋め込みできないため、公式の埋め込みプレイヤーで再生します。',
   ytInvalid: 'URL から動画 ID を取り出せませんでした',
+  trash: 'ゴミ箱', restoreFile: '復元', deleteForever: '完全に削除', emptyTrash: 'ゴミ箱を空にする',
+  trashEmpty: 'ゴミ箱は空です', movedToTrash: 'ゴミ箱に移動しました', restoredMsg: '復元しました',
+  emptiedTrash: 'ゴミ箱を空にしました', trashNote: 'ゴミ箱のファイルは30日たつと自動で完全に削除されます。',
+  notifications: '通知', clearAll: 'すべて消す', noNotifications: '通知はありません', deletedAtLabel: '削除日',
 }
 
 const en: Dict = {
@@ -128,6 +132,10 @@ const en: Dict = {
   ytPh: 'YouTube URL or video ID', ytPlay: 'Play', ytHistory: 'Recently played',
   ytNote: 'Regular YouTube pages cannot be embedded, so videos play in the official embed player.',
   ytInvalid: 'Could not extract a video ID from that URL',
+  trash: 'Trash', restoreFile: 'Restore', deleteForever: 'Delete forever', emptyTrash: 'Empty trash',
+  trashEmpty: 'Trash is empty', movedToTrash: 'Moved to trash', restoredMsg: 'Restored',
+  emptiedTrash: 'Trash emptied', trashNote: 'Files in the trash are permanently deleted after 30 days.',
+  notifications: 'Notifications', clearAll: 'Clear all', noNotifications: 'No notifications', deletedAtLabel: 'Deleted',
 }
 
 const zh: Dict = {
@@ -182,6 +190,10 @@ const zh: Dict = {
   ytPh: 'YouTube URL 或视频 ID', ytPlay: '播放', ytHistory: '最近播放',
   ytNote: '普通 YouTube 页面无法嵌入，因此使用官方嵌入播放器播放。',
   ytInvalid: '无法从该 URL 中提取视频 ID',
+  trash: '回收站', restoreFile: '还原', deleteForever: '彻底删除', emptyTrash: '清空回收站',
+  trashEmpty: '回收站是空的', movedToTrash: '已移到回收站', restoredMsg: '已还原',
+  emptiedTrash: '已清空回收站', trashNote: '回收站中的文件将在30天后自动彻底删除。',
+  notifications: '通知', clearAll: '全部清除', noNotifications: '暂无通知', deletedAtLabel: '删除日期',
 }
 
 const ko: Dict = {
@@ -236,6 +248,10 @@ const ko: Dict = {
   ytPh: 'YouTube URL 또는 동영상 ID', ytPlay: '재생', ytHistory: '최근 재생',
   ytNote: '일반 YouTube 페이지는 임베드할 수 없어 공식 임베드 플레이어로 재생합니다.',
   ytInvalid: 'URL에서 동영상 ID를 가져올 수 없습니다',
+  trash: '휴지통', restoreFile: '복원', deleteForever: '영구 삭제', emptyTrash: '휴지통 비우기',
+  trashEmpty: '휴지통이 비어 있습니다', movedToTrash: '휴지통으로 이동했습니다', restoredMsg: '복원했습니다',
+  emptiedTrash: '휴지통을 비웠습니다', trashNote: '휴지통의 파일은 30일이 지나면 자동으로 영구 삭제됩니다.',
+  notifications: '알림', clearAll: '모두 지우기', noNotifications: '알림이 없습니다', deletedAtLabel: '삭제 날짜',
 }
 
 const th: Dict = {
@@ -290,6 +306,10 @@ const th: Dict = {
   ytPh: 'URL ของ YouTube หรือรหัสวิดีโอ', ytPlay: 'เล่น', ytHistory: 'เล่นล่าสุด',
   ytNote: 'หน้า YouTube ปกติฝังไม่ได้ จึงเล่นด้วยเครื่องเล่นฝังอย่างเป็นทางการ',
   ytInvalid: 'ดึงรหัสวิดีโอจาก URL นั้นไม่ได้',
+  trash: 'ถังขยะ', restoreFile: 'กู้คืน', deleteForever: 'ลบถาวร', emptyTrash: 'ล้างถังขยะ',
+  trashEmpty: 'ถังขยะว่างเปล่า', movedToTrash: 'ย้ายไปถังขยะแล้ว', restoredMsg: 'กู้คืนแล้ว',
+  emptiedTrash: 'ล้างถังขยะแล้ว', trashNote: 'ไฟล์ในถังขยะจะถูกลบถาวรโดยอัตโนมัติหลัง 30 วัน',
+  notifications: 'การแจ้งเตือน', clearAll: 'ล้างทั้งหมด', noNotifications: 'ไม่มีการแจ้งเตือน', deletedAtLabel: 'วันที่ลบ',
 }
 
 export const DICTS: Record<Lang, Dict> = { ja, en, zh, ko, th }

@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  deleteDoc, exportAll, importAll, listDocs, listEvents, listFolders,
+  exportAll, importAll, listDocs, listEvents, listFolders, purgeOldTrash, trashDoc,
   ownUsageBytes, requestPersist, storageInfo, type LocalDoc,
 } from '../lib/store'
 import { downloadText } from '../lib/files'
+import { notifyOs } from '../lib/notify'
 import type { AppId } from './Backstage'
 import { useLang } from '../lib/i18n'
 
@@ -33,6 +34,7 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
   const importRef = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(async () => {
+    await purgeOldTrash()
     const [d, f, e, i, own] = await Promise.all([listDocs(), listFolders(), listEvents(), storageInfo(), ownUsageBytes()])
     setDocs(d)
     setFolders(f)
@@ -57,8 +59,8 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
   }
 
   const remove = async (doc: LocalDoc) => {
-    if (!window.confirm(`「${doc.name}」を削除しますか？`)) return
-    await deleteDoc(doc.id)
+    await trashDoc(doc.id)
+    notifyOs(`${doc.name}：${t('movedToTrash')}`)
     await refresh()
   }
 

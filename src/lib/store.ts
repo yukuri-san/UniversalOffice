@@ -8,6 +8,7 @@ export interface LocalDoc {
   folder: string // '' = ルート
   content: string
   updatedAt: number
+  deletedAt?: number | null // ゴミ箱に入っている場合の日時
 }
 
 export interface CalEvent {
@@ -250,12 +251,47 @@ async function migrateIfNeeded(): Promise<void> {
 }
 
 /* ================= 文書 ================= */
-export async function listDocs(): Promise<LocalDoc[]> {
+async function listAllDocsRaw(): Promise<LocalDoc[]> {
   await migrateIfNeeded()
   const docs = (await useOpfs())
     ? ((await opfsReadAll('docs')) as LocalDoc[])
     : await idbAll<LocalDoc>(docsStore)
   return docs.sort((a, b) => b.updatedAt - a.updatedAt)
+}
+
+export async function listDocs(): Promise<LocalDoc[]> {
+  return (await listAllDocsRaw()).filter((d) => !d.deletedAt)
+}
+
+export async function listTrashedDocs(): Promise<LocalDoc[]> {
+  return (await listAllDocsRaw())
+    .filter((d) => !!d.deletedAt)
+    .sort((a, b) => (b.deletedAt ?? 0) - (a.deletedAt ?? 0))
+}
+
+async function writeDocRaw(doc: LocalDoc): Promise<void> {
+  if (await useOpfs()) await opfsWriteJson('docs', `${doc.id}.json`, doc)
+  else await set(doc.id, doc, docsStore)
+}
+
+export async function trashDoc(id: string): Promise<void> {
+  const doc = (await listAllDocsRaw()).find((d) => d.id === id)
+  if (!doc) return
+  await writeDocRaw({ ...doc, deletedAt: Date.now() })
+}
+
+export async function restoreDoc(id: string): Promise<void> {
+  const doc = (await listAllDocsRaw()).find((d) => d.id === id)
+  if (!doc) return
+  await writeDocRaw({ ...doc, deletedAt: null })
+}
+
+/** 30日以上ゴミ箱にあるものを完全に削除する */
+export async function purgeOldTrash(): Promise<number> {
+  const limit = Date.now() - 30 * 24 * 60 * 60 * 1000
+  const old = (await listTrashedDocs()).filter((d) => (d.deletedAt ?? 0) < limit)
+  for (const d of old) await deleteDoc(d.id)
+  return old.length
 }
 
 export async function saveDoc(input: Omit<LocalDoc, 'id' | 'updatedAt'> & { id?: string }): Promise<LocalDoc> {
@@ -336,7 +372,7 @@ export interface BackupData {
 }
 
 export async function exportAll(): Promise<BackupData> {
-  const [docs, events, folders] = await Promise.all([listDocs(), listEvents(), listFolders()])
+  const [docs, events, folders] = await Promise.all([listAllDocsRaw(), listEvents(), listFolders()])
   return { app: 'WebX', version: 1, exportedAt: new Date().toISOString(), docs, events, folders }
 }
 
