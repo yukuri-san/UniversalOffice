@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import Papa from 'papaparse'
 import { downloadText, escapeHtml, printHtml } from '../lib/files'
+import Backstage from './Backstage'
 
 const SAMPLE: string[][] = [
   ['名前', '個数', '単価', 'メモ'],
@@ -20,9 +21,10 @@ function colName(index: number): string {
   return name
 }
 
-export default function Spreadsheet() {
+export default function Spreadsheet({ onSwitch }: { onSwitch: (app: 'word' | 'sheet') => void }) {
   const [grid, setGrid] = useState<string[][]>(SAMPLE)
   const [filename, setFilename] = useState('sheet.csv')
+  const [homeOpen, setHomeOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const setCell = (r: number, c: number, value: string) => {
@@ -61,6 +63,23 @@ export default function Spreadsheet() {
 
   return (
     <section>
+      <Backstage
+        open={homeOpen}
+        onClose={() => setHomeOpen(false)}
+        current="sheet"
+        onSwitch={onSwitch}
+        actions={[
+          { label: '開く (.csv)', onClick: () => fileRef.current?.click() },
+          { label: '保存 (.csv)', onClick: saveCsv },
+          { label: '印刷 / PDF', onClick: printSheet },
+          { label: 'クリア', hint: 'すべてのセルを空にする', onClick: clear },
+        ]}
+      />
+      <div className="titlebar sheet-title">
+        <button className="home-btn" onClick={() => setHomeOpen(true)}>ホーム</button>
+        <input className="title-input" value={filename} onChange={(e) => setFilename(e.target.value)} aria-label="ファイル名" />
+        <span className="titlebar-app">スプレッドシート</span>
+      </div>
       <div className="toolbar">
         <button onClick={() => fileRef.current?.click()}>開く (.csv)</button>
         <input
@@ -81,10 +100,6 @@ export default function Spreadsheet() {
         <button onClick={addCol}>列を追加</button>
         <button onClick={removeCol}>列を削除</button>
         <button onClick={clear}>クリア</button>
-        <label className="filename">
-          ファイル名
-          <input value={filename} onChange={(e) => setFilename(e.target.value)} />
-        </label>
         <span className="meta">{grid.length} 行 × {grid[0]?.length ?? 0} 列</span>
       </div>
       <div className="sheet-wrap">
