@@ -95,8 +95,6 @@ table.sheet td input:focus { outline: 2px solid #217346; outline-offset: -2px; }
 /* Responsive */
 @media (max-width: 820px) {
   .app { padding: 6px 6px 8px; }
-  .page { width: 100% !important; min-height: auto !important; padding: 14mm 10mm !important; }
-  .ruler { display: none; }
   .page-scroll { padding: 10px 4px 16px; }
   .ribbon { padding: 0 6px 6px; }
   .rgroup { padding: 0 6px; }

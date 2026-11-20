@@ -62,9 +62,24 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
   const [showRuler, setShowRuler] = useState(true)
   const fileRef = useRef<HTMLInputElement>(null)
   const imageRef = useRef<HTMLInputElement>(null)
+  const pageScrollRef = useRef<HTMLDivElement>(null)
+  const [zoomManual, setZoomManual] = useState(false)
 
   const pageW = landscape ? paper.h : paper.w
   const pageH = landscape ? paper.w : paper.h
+
+  const fitZoom = () => {
+    const el = pageScrollRef.current
+    if (!el) return
+    const pagePx = pageW * 3.7795275591
+    const avail = el.clientWidth - 20
+    const fit = Math.min(100, Math.floor((avail / pagePx) * 100))
+    setZoom(Math.max(30, fit))
+  }
+  const manualZoom = (z: number) => {
+    setZoomManual(true)
+    setZoom(z)
+  }
 
   const editor = useEditor({
     extensions: [
@@ -106,6 +121,16 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
   useEffect(() => {
     localStorage.setItem(TITLE_KEY, title)
   }, [title])
+
+  useEffect(() => {
+    if (!zoomManual) fitZoom()
+    const onResize = () => {
+      if (!zoomManual) fitZoom()
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageW, zoomManual])
 
   if (!editor) return null
 
@@ -344,9 +369,10 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
             <div className="rgroup">
               <div className="rgroup-body">
                 {[50, 75, 100, 125, 150].map((z) => (
-                  <button key={z} className={zoom === z ? 'on' : ''} onClick={() => setZoom(z)}>{z}%</button>
+                  <button key={z} className={zoom === z ? 'on' : ''} onClick={() => manualZoom(z)}>{z}%</button>
                 ))}
-                <input type="range" min={50} max={150} step={5} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} aria-label="ズーム" />
+                <input type="range" min={30} max={150} step={5} value={zoom} onChange={(e) => manualZoom(Number(e.target.value))} aria-label="ズーム" />
+                <button onClick={() => { setZoomManual(false); fitZoom() }}>幅に合わせる</button>
               </div>
               <span className="rgroup-label">ズーム</span>
             </div>
@@ -363,7 +389,7 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
       <input ref={fileRef} type="file" accept=".docx,.md,.markdown,.html,.htm,.txt" hidden
         onChange={(e) => { const f = e.target.files?.[0]; if (f) void openFile(f); e.target.value = '' }} />
 
-      <div className="page-scroll">
+      <div className="page-scroll" ref={pageScrollRef}>
         {showRuler && (
           <div className="ruler" style={{ width: `${pageW}mm`, zoom: zoom / 100 } as React.CSSProperties} aria-hidden>
             {Array.from({ length: rulerCm + 1 }, (_, i) => (
@@ -372,6 +398,7 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
           </div>
         )}
         <div className="page"
+          onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus('end') }}
           style={{ width: `${pageW}mm`, minHeight: `${pageH}mm`, padding: `${margin.t}mm ${margin.r}mm ${margin.b}mm ${margin.l}mm`, zoom: zoom / 100 } as React.CSSProperties}>
           <EditorContent editor={editor} />
         </div>
@@ -382,7 +409,7 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
         <span>{stats.chars} 文字</span>
         <span>{paper.label}{landscape ? '（横）' : ''} / 余白 {margin.label}</span>
         <span className="zoomctl">
-          <input type="range" min={50} max={150} step={10} value={zoom} onChange={(e) => setZoom(Number(e.target.value))} aria-label="ズーム" />
+          <input type="range" min={30} max={150} step={5} value={zoom} onChange={(e) => manualZoom(Number(e.target.value))} aria-label="ズーム" />
           {zoom}%
         </span>
       </div>
