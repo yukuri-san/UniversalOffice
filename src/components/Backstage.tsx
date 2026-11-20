@@ -10,9 +10,10 @@ interface Props {
   current: 'word' | 'sheet'
   onSwitch: (app: 'word' | 'sheet') => void
   actions: BackstageAction[]
+  fileManager?: React.ReactNode
 }
 
-export default function Backstage({ open, onClose, current, onSwitch, actions }: Props) {
+export default function Backstage({ open, onClose, current, onSwitch, actions, fileManager }: Props) {
   if (!open) return null
   return (
     <div className="backstage" role="dialog" aria-label="ホーム">
@@ -54,6 +55,7 @@ export default function Backstage({ open, onClose, current, onSwitch, actions }:
           ))}
         </div>
         <p className="backstage-note">文書は自動でこのブラウザに保存されます。サーバーには送信されません。</p>
+        {fileManager}
       </div>
     </div>
   )

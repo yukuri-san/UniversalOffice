@@ -16,6 +16,8 @@ import * as mammoth from 'mammoth'
 import { asBlob as docxBlob } from 'html-docx-js-typescript'
 import { downloadText, escapeHtml } from '../lib/files'
 import Backstage from './Backstage'
+import FileManager from './FileManager'
+import { listDocs } from '../lib/store'
 
 const STORAGE_KEY = 'universal-office-doc-v2'
 const TITLE_KEY = 'universal-office-doc-title'
@@ -63,7 +65,9 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
   const fileRef = useRef<HTMLInputElement>(null)
   const imageRef = useRef<HTMLInputElement>(null)
   const pageScrollRef = useRef<HTMLDivElement>(null)
+  const pageRef = useRef<HTMLDivElement>(null)
   const [zoomManual, setZoomManual] = useState(false)
+  const [pagePx, setPagePx] = useState({ w: 794, h: 1123 })
 
   const pageW = landscape ? paper.h : paper.w
   const pageH = landscape ? paper.w : paper.h
@@ -121,6 +125,31 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
   useEffect(() => {
     localStorage.setItem(TITLE_KEY, title)
   }, [title])
+
+  useEffect(() => {
+    if (!editor) return
+    const pending = localStorage.getItem('uo-pending-open')
+    if (!pending) return
+    localStorage.removeItem('uo-pending-open')
+    void listDocs().then((docs) => {
+      const doc = docs.find((d) => d.id === pending)
+      if (doc && doc.kind === 'word') {
+        editor.commands.setContent(doc.content)
+        setTitle(doc.name)
+      }
+    })
+  }, [editor])
+
+  useEffect(() => {
+    const el = pageRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => {
+      setPagePx({ w: el.offsetWidth, h: el.offsetHeight })
+    })
+    ro.observe(el)
+    setPagePx({ w: el.offsetWidth, h: el.offsetHeight })
+    return () => ro.disconnect()
+  }, [paper, landscape, margin])
 
   useEffect(() => {
     if (!zoomManual) fitZoom()
@@ -241,6 +270,22 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
           { label: 'テキストとして保存 (.txt)', onClick: () => downloadText(`${title || 'document'}.txt`, editor.getText()) },
           { label: '印刷 / PDF', hint: '印刷画面から PDF として保存', onClick: printDoc },
         ]}
+        fileManager={
+          <FileManager
+            kind="word"
+            currentName={title}
+            getContent={() => editor.getHTML()}
+            onOpen={(doc) => {
+              if (doc.kind !== 'word') {
+                localStorage.setItem('uo-pending-open', doc.id)
+                onSwitch('sheet')
+                return
+              }
+              editor.commands.setContent(doc.content)
+              setTitle(doc.name)
+            }}
+          />
+        }
       />
 
       <div className="titlebar">
@@ -391,16 +436,20 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
 
       <div className="page-scroll" ref={pageScrollRef}>
         {showRuler && (
-          <div className="ruler" style={{ width: `${pageW}mm`, zoom: zoom / 100 } as React.CSSProperties} aria-hidden>
-            {Array.from({ length: rulerCm + 1 }, (_, i) => (
-              <span key={i} className="ruler-num" style={{ left: `${(i * 10 * 100) / pageW}%` }}>{i}</span>
-            ))}
+          <div className="ruler-scale" style={{ width: pagePx.w * (zoom / 100), height: 20 * (zoom / 100) }}>
+            <div className="ruler" style={{ width: `${pageW}mm`, transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }} aria-hidden>
+              {Array.from({ length: rulerCm + 1 }, (_, i) => (
+                <span key={i} className="ruler-num" style={{ left: `${(i * 10 * 100) / pageW}%` }}>{i}</span>
+              ))}
+            </div>
           </div>
         )}
-        <div className="page"
-          onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus('end') }}
-          style={{ width: `${pageW}mm`, minHeight: `${pageH}mm`, padding: `${margin.t}mm ${margin.r}mm ${margin.b}mm ${margin.l}mm`, zoom: zoom / 100 } as React.CSSProperties}>
-          <EditorContent editor={editor} />
+        <div className="page-scale" style={{ width: pagePx.w * (zoom / 100), height: pagePx.h * (zoom / 100) }}>
+          <div className="page" ref={pageRef}
+            onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus('end') }}
+            style={{ width: `${pageW}mm`, minHeight: `${pageH}mm`, padding: `${margin.t}mm ${margin.r}mm ${margin.b}mm ${margin.l}mm`, transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
+            <EditorContent editor={editor} />
+          </div>
         </div>
       </div>
 

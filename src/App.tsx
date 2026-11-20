@@ -15,7 +15,7 @@ export default function App() {
           : <Spreadsheet onSwitch={setMode} />}
       </main>
       <footer>
-        <small>UniversalOffice v0.3.2 — ファイルはブラウザから直接読み書きします（サーバーに送信されません）。</small>
+        <small>UniversalOffice v0.4 — ファイルはブラウザから直接読み書きします（サーバーに送信されません）。</small>
       </footer>
     </div>
   )

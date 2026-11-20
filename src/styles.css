@@ -62,7 +62,9 @@ footer { margin-top: 8px; color: #7a8798; }
 .word-app { display: flex; flex-direction: column; height: calc(100dvh - 52px); }
 .word-app .titlebar, .word-app .ribbon, .word-app .statusbar { flex-shrink: 0; }
 .page-scroll { flex: 1; min-height: 0; overflow: auto; background: #e8ecf2; border: 1px solid #dde3ec; border-radius: 10px; padding: 18px 12px 28px; }
-.ruler { position: relative; height: 20px; margin: 0 auto 8px; background: #fff; border: 1px solid #c6d0dd; background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(1cm - 1px), #b8c2d0 calc(1cm - 1px), #b8c2d0 1cm); font-size: 9px; color: #7a8798; }
+.ruler-scale { margin: 0 auto 8px; }
+.ruler { position: relative; height: 20px; background: #fff; border: 1px solid #c6d0dd; background-image: repeating-linear-gradient(to right, transparent 0, transparent calc(1cm - 1px), #b8c2d0 calc(1cm - 1px), #b8c2d0 1cm); font-size: 9px; color: #7a8798; }
+.page-scale { margin: 0 auto; }
 .ruler-num { position: absolute; top: 2px; transform: translateX(2px); }
 .page { margin: 0 auto; background: #fff; box-shadow: 0 2px 14px rgba(23,32,43,.22); }
 .page .tiptap { outline: none; line-height: 1.8; font-size: 12pt; min-height: 60vh; overflow-wrap: anywhere; }
@@ -79,7 +81,7 @@ footer { margin-top: 8px; color: #7a8798; }
 
 /* Spreadsheet */
 .sheet-app { display: flex; flex-direction: column; height: calc(100dvh - 52px); }
-.sheet-app .titlebar, .sheet-app .toolbar, .sheet-app .hint { flex-shrink: 0; }
+.sheet-app .titlebar, .sheet-app .toolbar, .sheet-app .formula-bar, .sheet-app .hint { flex-shrink: 0; }
 .sheet-app .sheet-wrap { flex: 1; min-height: 0; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px; margin-bottom: 12px; }
 .toolbar button { border: 1px solid #c6d0dd; background: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 14px; }
@@ -105,9 +107,41 @@ table.sheet td input:focus { outline: 2px solid #217346; outline-offset: -2px; }
   .titlebar-app { display: none; }
   .statusbar .zoomctl { margin-left: 0; }
 }
+/* File manager (on-device storage) */
+.file-manager { margin-top: 26px; border-top: 1px solid #dde3ec; padding-top: 16px; }
+.file-manager h3 { margin: 0 0 12px; }
+.fm-save { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.fm-save input, .fm-newfolder input { border: 1px solid #c6d0dd; border-radius: 6px; padding: 7px 9px; font-size: 14px; }
+.fm-save select { border: 1px solid #c6d0dd; border-radius: 6px; padding: 7px; font-size: 14px; background: #fff; }
+.fm-save button, .fm-newfolder button, .fm-list button { border: 1px solid #c6d0dd; background: #fff; border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 13px; }
+.fm-message { color: #217346; font-size: 13px; }
+.fm-folders { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 12px; }
+.chip { border: 1px solid #c6d0dd; background: #fff; border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+.chip.on { background: #2b579a; border-color: #2b579a; color: #fff; }
+.fm-newfolder { display: flex; gap: 6px; margin-left: auto; }
+.fm-empty { color: #7a8798; font-size: 14px; }
+.fm-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.fm-list li { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px 12px; }
+.fm-meta { flex: 1; min-width: 0; }
+.fm-meta strong { display: block; overflow-wrap: anywhere; }
+.fm-meta small { color: #7a8798; }
+.app-icon.small { width: 30px; height: 30px; font-size: 15px; border: 1px solid #dde3ec; }
+
+/* Spreadsheet extras */
+.formula-bar { display: flex; gap: 8px; align-items: center; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 8px 10px; margin-bottom: 10px; }
+.formula-bar .cell-addr { font-weight: 700; min-width: 44px; text-align: center; color: #217346; }
+.formula-bar .fx { color: #7a8798; font-style: italic; }
+.formula-bar input { flex: 1; border: 1px solid #c6d0dd; border-radius: 6px; padding: 7px 9px; font-size: 14px; min-width: 0; }
+.formula-bar .col-sum { font-size: 13px; color: #526173; white-space: nowrap; }
+.check-inline { display: flex; gap: 6px; align-items: center; font-size: 13px; }
+table.sheet td.sel-cell { outline: 2px solid #217346; outline-offset: -2px; }
+table.sheet thead th.sel-col, table.sheet tbody th.sel-row { background: #cdeeda; }
+table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
+
 @media print {
   .titlebar, .ribbon, .statusbar, footer, .toolbar, .hint { display: none !important; }
   .page-scroll { overflow: visible; background: #fff; border: 0; padding: 0; }
   .ruler { display: none; }
-  .page { box-shadow: none; width: auto !important; min-height: auto !important; padding: 0 !important; }
+  .page { box-shadow: none; width: auto !important; min-height: auto !important; padding: 0 !important; transform: none !important; }
+  .page-scale, .ruler-scale { width: auto !important; height: auto !important; }
 }
