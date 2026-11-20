@@ -28,6 +28,7 @@ interface Props {
   onCustom: (dataUrl: string) => void
   onUseCustom: () => void
   onRemoveCustom: () => void
+  openDocs: (doc: 'license' | 'readme' | 'changelog') => void
 }
 
 export const WALLPAPERS: { id: string; key: string }[] = [
@@ -62,7 +63,7 @@ async function fileToWallpaper(file: File): Promise<string> {
   }
 }
 
-export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom }: Props) {
+export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs }: Props) {
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
   const [ownBytes, setOwnBytes] = useState(0)
   const wpFileRef = useRef<HTMLInputElement>(null)
@@ -164,6 +165,11 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
       <section className="settings-section">
         <h3>{translate(lang, 'about')}</h3>
         <p className="settings-note">WebX / {translate(lang, 'versionLabel')} {APP_VERSION}</p>
+        <div className="settings-options" style={{ marginTop: 10 }}>
+          <button className="opt" onClick={() => openDocs('license')}>{translate(lang, 'viewLicense')}</button>
+          <button className="opt" onClick={() => openDocs('readme')}>{translate(lang, 'viewReadme')}</button>
+          <button className="opt" onClick={() => openDocs('changelog')}>{translate(lang, 'viewChangelog')}</button>
+        </div>
       </section>
     </div>
   )

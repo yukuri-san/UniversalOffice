@@ -9,12 +9,17 @@ import Settings, { type ThemeId } from './components/Settings'
 import { LangContext, translate, type Lang } from './lib/i18n'
 import YoutubeApp from './components/YoutubeApp'
 import TrashWindow from './components/TrashWindow'
+import DocsWindow, { type DocKind } from './components/DocsWindow'
+import Calculator from './components/Calculator'
+import ClockApp from './components/ClockApp'
+import Paint from './components/Paint'
+import Terminal from './components/Terminal'
 import { requestPersist } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs'
 
 interface Win {
   id: WindowApp
@@ -37,8 +42,13 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   settings: { icon: '設', cls: 'settings' },
   youtube: { icon: '▶', cls: 'youtube' },
   trash: { icon: '🗑', cls: 'trash' },
+  calculator: { icon: '電', cls: 'calculator' },
+  clock: { icon: '時', cls: 'clock' },
+  paint: { icon: '絵', cls: 'paint' },
+  terminal: { icon: '＞', cls: 'terminal' },
+  docs: { icon: '文', cls: 'docs' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'calendar', 'browser', 'youtube', 'files', 'trash', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>([])
@@ -81,6 +91,15 @@ export default function App() {
   }, [theme])
   useEffect(() => {
     void requestPersist()
+  }, [])
+  useEffect(() => {
+    const onWallpaper = (e: Event) => {
+      const dataUrl = (e as CustomEvent<string>).detail
+      setWpCustom(dataUrl)
+      setWpUseCustom(true)
+    }
+    window.addEventListener('webx-wallpaper', onWallpaper)
+    return () => window.removeEventListener('webx-wallpaper', onWallpaper)
   }, [])
   const [wpPreset, setWpPreset] = useState(() => localStorage.getItem('webx-wp-preset') || 'aurora')
   const [wpCustom, setWpCustom] = useState<string | null>(() => localStorage.getItem('webx-wp-custom'))
@@ -268,10 +287,19 @@ export default function App() {
           onCustom={(dataUrl) => { setWpCustom(dataUrl); setWpUseCustom(true) }}
           onUseCustom={() => setWpUseCustom(true)}
           onRemoveCustom={() => { setWpCustom(null); setWpUseCustom(false) }}
+          openDocs={(doc: DocKind) => {
+            localStorage.setItem('webx-docs-initial', doc)
+            openApp('docs')
+          }}
         />
       )
       case 'youtube': return <YoutubeApp />
       case 'trash': return <TrashWindow />
+      case 'calculator': return <Calculator />
+      case 'clock': return <ClockApp />
+      case 'paint': return <Paint />
+      case 'terminal': return <Terminal openApp={openApp} />
+      case 'docs': return <DocsWindow />
     }
   }
 

@@ -79,6 +79,11 @@ const ja: Dict = {
   notifications: '通知', clearAll: 'すべて消す', noNotifications: '通知はありません', deletedAtLabel: '削除日',
   wallpaper: '壁紙', chooseImage: '画像を選ぶ', removeCustom: 'カスタムを削除', about: 'このアプリについて', versionLabel: 'バージョン',
   wpAurora: 'オーロラ', wpSunset: '夕焼け', wpOcean: '海', wpForest: '森', wpSakura: '桜', wpMono: 'モノクローム',
+  docs: 'ドキュメント', viewLicense: 'ライセンスを表示', viewReadme: 'README を表示', viewChangelog: '変更履歴を表示',
+  calculator: '電卓', clockApp: '時計', paint: 'ペイント', terminal: 'ターミナル',
+  worldClock: '世界時計', stopwatch: 'ストップウォッチ', timer: 'タイマー', startBtn: 'スタート', stopBtn: 'ストップ',
+  resetBtn: 'リセット', lapBtn: 'ラップ', minutes: '分', downloadBtn: 'ダウンロード', setWallpaperBtn: '壁紙にする',
+  brush: 'ブラシ', eraser: '消しゴム',
 }
 
 const en: Dict = {
@@ -140,6 +145,11 @@ const en: Dict = {
   notifications: 'Notifications', clearAll: 'Clear all', noNotifications: 'No notifications', deletedAtLabel: 'Deleted',
   wallpaper: 'Wallpaper', chooseImage: 'Choose an image', removeCustom: 'Remove custom', about: 'About', versionLabel: 'Version',
   wpAurora: 'Aurora', wpSunset: 'Sunset', wpOcean: 'Ocean', wpForest: 'Forest', wpSakura: 'Sakura', wpMono: 'Monochrome',
+  docs: 'Documents', viewLicense: 'View license', viewReadme: 'View README', viewChangelog: 'View changelog',
+  calculator: 'Calculator', clockApp: 'Clock', paint: 'Paint', terminal: 'Terminal',
+  worldClock: 'World clock', stopwatch: 'Stopwatch', timer: 'Timer', startBtn: 'Start', stopBtn: 'Stop',
+  resetBtn: 'Reset', lapBtn: 'Lap', minutes: 'min', downloadBtn: 'Download', setWallpaperBtn: 'Set as wallpaper',
+  brush: 'Brush', eraser: 'Eraser',
 }
 
 const zh: Dict = {
@@ -200,6 +210,11 @@ const zh: Dict = {
   notifications: '通知', clearAll: '全部清除', noNotifications: '暂无通知', deletedAtLabel: '删除日期',
   wallpaper: '壁纸', chooseImage: '选择图片', removeCustom: '删除自定义', about: '关于', versionLabel: '版本',
   wpAurora: '极光', wpSunset: '晚霞', wpOcean: '海洋', wpForest: '森林', wpSakura: '樱花', wpMono: '黑白',
+  docs: '文档', viewLicense: '查看许可证', viewReadme: '查看 README', viewChangelog: '查看更新日志',
+  calculator: '计算器', clockApp: '时钟', paint: '画图', terminal: '终端',
+  worldClock: '世界时钟', stopwatch: '秒表', timer: '计时器', startBtn: '开始', stopBtn: '停止',
+  resetBtn: '重置', lapBtn: '计次', minutes: '分钟', downloadBtn: '下载', setWallpaperBtn: '设为壁纸',
+  brush: '画笔', eraser: '橡皮擦',
 }
 
 const ko: Dict = {
@@ -260,6 +275,11 @@ const ko: Dict = {
   notifications: '알림', clearAll: '모두 지우기', noNotifications: '알림이 없습니다', deletedAtLabel: '삭제 날짜',
   wallpaper: '배경화면', chooseImage: '이미지 선택', removeCustom: '사용자 지정 삭제', about: '정보', versionLabel: '버전',
   wpAurora: '오로라', wpSunset: '노을', wpOcean: '바다', wpForest: '숲', wpSakura: '벚꽃', wpMono: '모노크롬',
+  docs: '문서', viewLicense: '라이선스 보기', viewReadme: 'README 보기', viewChangelog: '변경 기록 보기',
+  calculator: '계산기', clockApp: '시계', paint: '그림판', terminal: '터미널',
+  worldClock: '세계 시계', stopwatch: '스톱워치', timer: '타이머', startBtn: '시작', stopBtn: '정지',
+  resetBtn: '리셋', lapBtn: '랩', minutes: '분', downloadBtn: '다운로드', setWallpaperBtn: '배경화면으로 설정',
+  brush: '브러시', eraser: '지우개',
 }
 
 const th: Dict = {
@@ -320,6 +340,11 @@ const th: Dict = {
   notifications: 'การแจ้งเตือน', clearAll: 'ล้างทั้งหมด', noNotifications: 'ไม่มีการแจ้งเตือน', deletedAtLabel: 'วันที่ลบ',
   wallpaper: 'วอลเปเปอร์', chooseImage: 'เลือกรูปภาพ', removeCustom: 'ลบแบบกำหนดเอง', about: 'เกี่ยวกับ', versionLabel: 'เวอร์ชัน',
   wpAurora: 'ออโรรา', wpSunset: 'พระอาทิตย์ตก', wpOcean: 'ทะเล', wpForest: 'ป่า', wpSakura: 'ซากุระ', wpMono: 'ขาวดำ',
+  docs: 'เอกสาร', viewLicense: 'ดูลิขสิทธิ์', viewReadme: 'ดู README', viewChangelog: 'ดูบันทึกการเปลี่ยนแปลง',
+  calculator: 'เครื่องคิดเลข', clockApp: 'นาฬิกา', paint: 'ระบายสี', terminal: 'เทอร์미널',
+  worldClock: 'นาฬิกาโลก', stopwatch: 'นาฬิกาจับเวลา', timer: 'ตัวจับเวลา', startBtn: 'เริ่ม', stopBtn: 'หยุด',
+  resetBtn: 'รีเซ็ต', lapBtn: 'รอบ', minutes: 'นาที', downloadBtn: 'ดาวน์โหลด', setWallpaperBtn: 'ตั้งเป็นวอลเปเปอร์',
+  brush: 'แปรง', eraser: 'ยางลบ',
 }
 
 export const DICTS: Record<Lang, Dict> = { ja, en, zh, ko, th }
