@@ -5,10 +5,13 @@ import Notepad from './components/Notepad'
 import Calendar from './components/Calendar'
 import BrowserPanel from './components/BrowserPanel'
 import FilesWindow from './components/FilesWindow'
+import Settings, { type ThemeId } from './components/Settings'
+import { translate, type Lang } from './lib/i18n'
+import { requestPersist } from './lib/store'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files'
+type WindowApp = AppId | 'browser' | 'files' | 'settings'
 
 interface Win {
   id: WindowApp
@@ -21,15 +24,16 @@ interface Win {
   h: number
 }
 
-const APP_META: Record<WindowApp, { name: string; icon: string; cls: string }> = {
-  word: { name: 'ワードプロセッサ', icon: 'W', cls: 'word' },
-  sheet: { name: 'スプレッドシート', icon: 'S', cls: 'sheet' },
-  note: { name: 'メモ帳', icon: 'メ', cls: 'note' },
-  calendar: { name: 'カレンダー', icon: 'カ', cls: 'calendar' },
-  browser: { name: 'ブラウザ', icon: 'ブ', cls: 'browser' },
-  files: { name: 'ファイル', icon: 'フ', cls: 'files' },
+const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
+  word: { icon: 'W', cls: 'word' },
+  sheet: { icon: 'S', cls: 'sheet' },
+  note: { icon: 'メ', cls: 'note' },
+  calendar: { icon: 'カ', cls: 'calendar' },
+  browser: { icon: 'ブ', cls: 'browser' },
+  files: { icon: 'フ', cls: 'files' },
+  settings: { icon: '設', cls: 'settings' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'calendar', 'browser', 'files']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'calendar', 'browser', 'files', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>([])
@@ -38,6 +42,21 @@ export default function App() {
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [toast, setToast] = useState('')
   const [platform] = useState(detectPlatform)
+  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('ykr-lang') as Lang) || 'ja')
+  const [theme, setTheme] = useState<ThemeId>(() => (localStorage.getItem('ykr-theme') as ThemeId) || 'light')
+  const t = (key: string) => translate(lang, key)
+  const appName = (app: WindowApp) => t(app)
+
+  useEffect(() => {
+    localStorage.setItem('ykr-lang', lang)
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : lang
+  }, [lang])
+  useEffect(() => {
+    localStorage.setItem('ykr-theme', theme)
+  }, [theme])
+  useEffect(() => {
+    void requestPersist()
+  }, [])
   const toastTimer = useRef<number | null>(null)
 
   const showToast = useCallback((msg: string) => {
@@ -117,33 +136,6 @@ export default function App() {
     focusWin(id)
   }
 
-  /** 広い画面で、アクティブなウィンドウともう1つを 5:3 で並べる */
-  const tile = (id: WindowApp) => {
-    if (!wide) return
-    setWindows((prev) => {
-      let other = [...prev].filter((w) => w.id !== id && !w.minimized).sort((a, b) => b.z - a.z)[0]
-      let list = prev
-      if (!other) {
-        const sub: Win = {
-          id: 'note', z: zRef.current + 1, minimized: false, maximized: false,
-          x: 0, y: 0, w: 400, h: 400,
-        }
-        other = sub
-        list = [...prev, sub]
-      }
-      const gap = 8
-      const mainW = Math.floor(((desktop.w - gap * 3) * 5) / 8)
-      const subW = desktop.w - gap * 3 - mainW
-      const fullH = desktop.h - gap * 2
-      return list.map((w) => {
-        if (w.id === id) return { ...w, maximized: false, minimized: false, x: gap, y: gap, w: mainW, h: fullH }
-        if (w.id === other.id) return { ...w, maximized: false, minimized: false, x: gap * 2 + mainW, y: gap, w: subW, h: fullH }
-        return w
-      })
-    })
-    focusWin(id)
-  }
-
   const onTitlePointerDown = (e: React.PointerEvent, win: Win) => {
     focusWin(win.id)
     if (win.maximized || !wide) return
@@ -174,7 +166,7 @@ export default function App() {
       }
       if (!isMod(e, platform)) return
       const key = e.key
-      if (/^[1-6]$/.test(key)) {
+      if (/^[1-7]$/.test(key)) {
         e.preventDefault()
         openApp(APP_ORDER[Number(key) - 1])
         return
@@ -232,6 +224,7 @@ export default function App() {
       case 'calendar': return <Calendar onSwitch={openApp} />
       case 'browser': return <BrowserPanel />
       case 'files': return <FilesWindow openApp={openApp} />
+      case 'settings': return <Settings lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} />
     }
   }
 
@@ -239,13 +232,13 @@ export default function App() {
   const dateLabel = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`
 
   return (
-    <div className="os-root">
+    <div className="os-root" data-theme={theme}>
       <div className="os-desktop" ref={desktopRef} onClick={() => setStartOpen(false)}>
         <div className="desktop-icons">
           {APP_ORDER.map((app) => (
             <button key={app} className="desktop-icon" onClick={(e) => { e.stopPropagation(); openApp(app) }}>
               <span className={`app-icon big ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
-              <span className="desktop-icon-label">{APP_META[app].name}</span>
+              <span className="desktop-icon-label">{appName(app)}</span>
             </button>
           ))}
         </div>
@@ -257,7 +250,7 @@ export default function App() {
         {windows.length === 0 && (
           <div className="desktop-welcome">
             <h1>YKR-OS</h1>
-            <p>アイコンをタップしてアプリを開いてください</p>
+            <p>{t('desktopHint')}</p>
           </div>
         )}
         {windows.map((win) => {
@@ -282,9 +275,8 @@ export default function App() {
                 onDoubleClick={() => wide && toggleMax(win.id)}
               >
                 <span className={`app-icon tiny ${meta.cls}`}>{meta.icon}</span>
-                <span className="os-title">{meta.name}</span>
+                <span className="os-title">{appName(win.id)}</span>
                 <div className="os-win-buttons" onPointerDown={(e) => e.stopPropagation()}>
-                  {wide && <button title="5:3 で並べる" onClick={() => tile(win.id)}>▦</button>}
                   <button title="最小化" onClick={() => setWindows((prev) => prev.map((w) => (w.id === win.id ? { ...w, minimized: true } : w)))}>―</button>
                   {wide && <button title={win.maximized ? '元に戻す' : '最大化'} onClick={() => toggleMax(win.id)}>{win.maximized ? '🗗' : '🗖'}</button>}
                   <button title="閉じる" className="close" onClick={() => closeWin(win.id)}>✕</button>
@@ -303,7 +295,7 @@ export default function App() {
             {APP_ORDER.map((app) => (
               <button key={app} className="start-app" onClick={() => openApp(app)}>
                 <span className={`app-icon ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
-                <span>{APP_META[app].name}</span>
+                <span>{appName(app)}</span>
               </button>
             ))}
           </div>
@@ -333,7 +325,7 @@ export default function App() {
           </p>
           <table className="shortcuts-table">
             <tbody>
-              <tr><td>{modLabel(platform)} + 1〜6</td><td>アプリを開く／切り替える（デスクトップの並び順）</td></tr>
+              <tr><td>{modLabel(platform)} + 1〜7</td><td>アプリを開く／切り替える（デスクトップの並び順）</td></tr>
               <tr><td>{modLabel(platform)} + Tab</td><td>次のウィンドウへ（+ Shift で前へ）。{modLabel(platform)} + ` でも可</td></tr>
               <tr><td>{modLabel(platform)} + M</td><td>ウィンドウを最小化</td></tr>
               <tr><td>{modLabel(platform)} + Shift + M / {modLabel(platform)} + Enter</td><td>最大化／元に戻す</td></tr>
@@ -351,7 +343,7 @@ export default function App() {
 
       <div className="os-taskbar">
         <button className={startOpen ? 'start-btn on' : 'start-btn'} onClick={() => setStartOpen((v) => !v)}>
-          YKR
+          {t('start')}
         </button>
         <div className="task-buttons">
           {windows.map((win) => (
@@ -361,7 +353,7 @@ export default function App() {
               onClick={() => (win.minimized || activeId !== win.id ? focusWin(win.id) : setWindows((prev) => prev.map((w) => (w.id === win.id ? { ...w, minimized: true } : w))))}
             >
               <span className={`app-icon tiny ${APP_META[win.id].cls}`}>{APP_META[win.id].icon}</span>
-              {APP_META[win.id].name}
+              {appName(win.id)}
             </button>
           ))}
         </div>
