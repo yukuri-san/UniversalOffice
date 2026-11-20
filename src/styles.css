@@ -498,3 +498,20 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .splash-bar span { display: block; height: 100%; width: 40%; border-radius: 999px; background: #fff; animation: splash-slide 1s ease-in-out infinite; }
 @keyframes splash-slide { 0% { transform: translateX(-100%);} 100% { transform: translateX(450%);} }
 @keyframes splash-fade { from { opacity: 0;} to { opacity: 1;} }
+
+/* Wallpapers (after themes so they win) */
+.os-root[data-wallpaper='sunset'] .os-desktop { background: radial-gradient(55% 45% at 80% 0%, rgba(255,183,77,.55), transparent 60%), linear-gradient(165deg, #2b1055, #7597de 55%, #ff9a76); }
+.os-root[data-wallpaper='ocean'] .os-desktop { background: radial-gradient(60% 50% at 15% 100%, rgba(45,212,191,.5), transparent 60%), linear-gradient(165deg, #082f49, #0369a1 55%, #38bdf8); }
+.os-root[data-wallpaper='forest'] .os-desktop { background: radial-gradient(55% 50% at 85% 100%, rgba(163,230,53,.35), transparent 60%), linear-gradient(165deg, #052e16, #166534 55%, #4ade80); }
+.os-root[data-wallpaper='sakura'] .os-desktop { background: radial-gradient(50% 45% at 20% 0%, rgba(255,255,255,.65), transparent 55%), linear-gradient(165deg, #fdf2f8, #fbcfe8 55%, #f472b6); }
+.os-root[data-wallpaper='sakura'] .desktop-welcome, .os-root[data-wallpaper='sakura'] .desktop-icon-label { color: #831843; text-shadow: 0 1px 6px rgba(255,255,255,.8); }
+.os-root[data-wallpaper='mono'] .os-desktop { background: linear-gradient(165deg, #111827, #374151 60%, #6b7280); }
+.theme-swatch.wp-aurora { background: radial-gradient(50% 50% at 20% 10%, rgba(94,234,212,.8), transparent 60%), linear-gradient(150deg, #0b1226, #274690); }
+.theme-swatch.wp-sunset { background: linear-gradient(165deg, #2b1055, #ff9a76); }
+.theme-swatch.wp-ocean { background: linear-gradient(165deg, #082f49, #38bdf8); }
+.theme-swatch.wp-forest { background: linear-gradient(165deg, #052e16, #4ade80); }
+.theme-swatch.wp-sakura { background: linear-gradient(165deg, #fdf2f8, #f472b6); }
+.theme-swatch.wp-mono { background: linear-gradient(165deg, #111827, #6b7280); }
+.theme-swatch.wp-custom { background: conic-gradient(from 40deg, #f87171, #fbbf24, #34d399, #60a5fa, #a78bfa, #f87171); }
+.start-version { text-align: center; color: #7a8798; font-size: 12px; margin: 10px 0 0; }
+.splash-version { color: rgba(255,255,255,.65); font-size: 13px; }

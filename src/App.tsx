@@ -10,6 +10,7 @@ import { LangContext, translate, type Lang } from './lib/i18n'
 import YoutubeApp from './components/YoutubeApp'
 import TrashWindow from './components/TrashWindow'
 import { requestPersist } from './lib/store'
+import { APP_VERSION } from './lib/version'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
@@ -81,6 +82,15 @@ export default function App() {
   useEffect(() => {
     void requestPersist()
   }, [])
+  const [wpPreset, setWpPreset] = useState(() => localStorage.getItem('webx-wp-preset') || 'aurora')
+  const [wpCustom, setWpCustom] = useState<string | null>(() => localStorage.getItem('webx-wp-custom'))
+  const [wpUseCustom, setWpUseCustom] = useState(() => localStorage.getItem('webx-wp-use') === 'custom')
+  useEffect(() => { localStorage.setItem('webx-wp-preset', wpPreset) }, [wpPreset])
+  useEffect(() => { localStorage.setItem('webx-wp-use', wpUseCustom ? 'custom' : 'preset') }, [wpUseCustom])
+  useEffect(() => {
+    if (wpCustom) localStorage.setItem('webx-wp-custom', wpCustom)
+    else localStorage.removeItem('webx-wp-custom')
+  }, [wpCustom])
   const toastTimer = useRef<number | null>(null)
 
   const showToast = useCallback((msg: string) => {
@@ -248,7 +258,18 @@ export default function App() {
       case 'calendar': return <Calendar onSwitch={openApp} />
       case 'browser': return <BrowserPanel />
       case 'files': return <FilesWindow openApp={openApp} />
-      case 'settings': return <Settings lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} />
+      case 'settings': return (
+        <Settings
+          lang={lang} setLang={setLang} theme={theme} setTheme={setTheme}
+          wpPreset={wpPreset}
+          onSelectPreset={(id) => { setWpPreset(id); setWpUseCustom(false) }}
+          hasCustom={!!wpCustom}
+          wpUseCustom={wpUseCustom}
+          onCustom={(dataUrl) => { setWpCustom(dataUrl); setWpUseCustom(true) }}
+          onUseCustom={() => setWpUseCustom(true)}
+          onRemoveCustom={() => { setWpCustom(null); setWpUseCustom(false) }}
+        />
+      )
       case 'youtube': return <YoutubeApp />
       case 'trash': return <TrashWindow />
     }
@@ -259,7 +280,7 @@ export default function App() {
 
   return (
     <LangContext.Provider value={lang}>
-    <div className="os-root" data-theme={theme}>
+    <div className="os-root" data-theme={theme} data-wallpaper={wpUseCustom ? 'custom' : wpPreset}>
       <div
         className="os-desktop"
         ref={desktopRef}
@@ -268,6 +289,7 @@ export default function App() {
           e.preventDefault()
           setCtxMenu({ x: e.clientX, y: e.clientY })
         }}
+        style={wpUseCustom && wpCustom ? { backgroundImage: `url(${wpCustom})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
         <div className="desktop-icons">
           {APP_ORDER.map((app) => (
@@ -338,6 +360,7 @@ export default function App() {
             あなたの環境：{platformLabel(platform)}（{modLabel(platform)} キー対応）<br />
             {t('dataLocal')}
           </p>
+          <p className="start-version">WebX v{APP_VERSION}</p>
           <button className="start-shortcuts" onClick={() => { setStartOpen(false); setShortcutsOpen(true) }}>
             {t('shortcuts')}（{modLabel(platform)} + /）
           </button>
@@ -409,6 +432,7 @@ export default function App() {
         <div className="os-splash">
           <div className="splash-logo">WebX</div>
           <div className="splash-bar"><span /></div>
+          <small className="splash-version">v{APP_VERSION}</small>
         </div>
       )}
 

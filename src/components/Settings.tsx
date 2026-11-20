@@ -1,6 +1,7 @@
 import { LANGUAGES, translate, type Lang } from '../lib/i18n'
 import { ownUsageBytes, requestPersist, storageInfo } from '../lib/store'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { APP_VERSION } from '../lib/version'
 
 export type ThemeId = 'light' | 'dark' | 'ipados' | 'macos' | 'win11' | 'win7' | 'winxp' | 'win95'
 
@@ -20,11 +21,51 @@ interface Props {
   setLang: (l: Lang) => void
   theme: ThemeId
   setTheme: (t: ThemeId) => void
+  wpPreset: string
+  onSelectPreset: (id: string) => void
+  hasCustom: boolean
+  wpUseCustom: boolean
+  onCustom: (dataUrl: string) => void
+  onUseCustom: () => void
+  onRemoveCustom: () => void
 }
 
-export default function Settings({ lang, setLang, theme, setTheme }: Props) {
+export const WALLPAPERS: { id: string; key: string }[] = [
+  { id: 'aurora', key: 'wpAurora' },
+  { id: 'sunset', key: 'wpSunset' },
+  { id: 'ocean', key: 'wpOcean' },
+  { id: 'forest', key: 'wpForest' },
+  { id: 'sakura', key: 'wpSakura' },
+  { id: 'mono', key: 'wpMono' },
+]
+
+async function fileToWallpaper(file: File): Promise<string> {
+  const url = URL.createObjectURL(file)
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image()
+      el.onload = () => resolve(el)
+      el.onerror = reject
+      el.src = url
+    })
+    const max = 1920
+    const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight))
+    const canvas = document.createElement('canvas')
+    canvas.width = Math.round(img.naturalWidth * scale)
+    canvas.height = Math.round(img.naturalHeight * scale)
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return ''
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+    return canvas.toDataURL('image/jpeg', 0.85)
+  } finally {
+    URL.revokeObjectURL(url)
+  }
+}
+
+export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom }: Props) {
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
   const [ownBytes, setOwnBytes] = useState(0)
+  const wpFileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     void storageInfo().then(setInfo)
@@ -63,6 +104,43 @@ export default function Settings({ lang, setLang, theme, setTheme }: Props) {
       </section>
 
       <section className="settings-section">
+        <h3>{translate(lang, 'wallpaper')}</h3>
+        <div className="settings-themes">
+          {WALLPAPERS.map((w) => (
+            <button
+              key={w.id}
+              className={!wpUseCustom && wpPreset === w.id ? 'theme-card on' : 'theme-card'}
+              onClick={() => onSelectPreset(w.id)}
+            >
+              <span className={`theme-swatch wp-${w.id}`} />
+              <strong>{translate(lang, w.key)}</strong>
+            </button>
+          ))}
+          {hasCustom && (
+            <button className={wpUseCustom ? 'theme-card on' : 'theme-card'} onClick={onUseCustom}>
+              <span className="theme-swatch wp-custom" />
+              <strong>Custom</strong>
+            </button>
+          )}
+        </div>
+        <div className="settings-options" style={{ marginTop: 10 }}>
+          <button className="opt" onClick={() => wpFileRef.current?.click()}>{translate(lang, 'chooseImage')}</button>
+          {hasCustom && <button className="opt" onClick={onRemoveCustom}>{translate(lang, 'removeCustom')}</button>}
+        </div>
+        <input
+          ref={wpFileRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) void fileToWallpaper(f).then((d) => { if (d) onCustom(d) })
+            e.target.value = ''
+          }}
+        />
+      </section>
+
+      <section className="settings-section">
         <h3>{translate(lang, 'storageSection')}</h3>
         {info ? (
           <p className="settings-note">
@@ -81,6 +159,11 @@ export default function Settings({ lang, setLang, theme, setTheme }: Props) {
           {translate(lang, 'persistRequest')}
         </button>
         <p className="settings-note">{translate(lang, 'settingsStorageNote')}</p>
+      </section>
+
+      <section className="settings-section">
+        <h3>{translate(lang, 'about')}</h3>
+        <p className="settings-note">WebX / {translate(lang, 'versionLabel')} {APP_VERSION}</p>
       </section>
     </div>
   )

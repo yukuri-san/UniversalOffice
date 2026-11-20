@@ -77,6 +77,8 @@ const ja: Dict = {
   trashEmpty: 'ゴミ箱は空です', movedToTrash: 'ゴミ箱に移動しました', restoredMsg: '復元しました',
   emptiedTrash: 'ゴミ箱を空にしました', trashNote: 'ゴミ箱のファイルは30日たつと自動で完全に削除されます。',
   notifications: '通知', clearAll: 'すべて消す', noNotifications: '通知はありません', deletedAtLabel: '削除日',
+  wallpaper: '壁紙', chooseImage: '画像を選ぶ', removeCustom: 'カスタムを削除', about: 'このアプリについて', versionLabel: 'バージョン',
+  wpAurora: 'オーロラ', wpSunset: '夕焼け', wpOcean: '海', wpForest: '森', wpSakura: '桜', wpMono: 'モノクローム',
 }
 
 const en: Dict = {
@@ -136,6 +138,8 @@ const en: Dict = {
   trashEmpty: 'Trash is empty', movedToTrash: 'Moved to trash', restoredMsg: 'Restored',
   emptiedTrash: 'Trash emptied', trashNote: 'Files in the trash are permanently deleted after 30 days.',
   notifications: 'Notifications', clearAll: 'Clear all', noNotifications: 'No notifications', deletedAtLabel: 'Deleted',
+  wallpaper: 'Wallpaper', chooseImage: 'Choose an image', removeCustom: 'Remove custom', about: 'About', versionLabel: 'Version',
+  wpAurora: 'Aurora', wpSunset: 'Sunset', wpOcean: 'Ocean', wpForest: 'Forest', wpSakura: 'Sakura', wpMono: 'Monochrome',
 }
 
 const zh: Dict = {
@@ -194,6 +198,8 @@ const zh: Dict = {
   trashEmpty: '回收站是空的', movedToTrash: '已移到回收站', restoredMsg: '已还原',
   emptiedTrash: '已清空回收站', trashNote: '回收站中的文件将在30天后自动彻底删除。',
   notifications: '通知', clearAll: '全部清除', noNotifications: '暂无通知', deletedAtLabel: '删除日期',
+  wallpaper: '壁纸', chooseImage: '选择图片', removeCustom: '删除自定义', about: '关于', versionLabel: '版本',
+  wpAurora: '极光', wpSunset: '晚霞', wpOcean: '海洋', wpForest: '森林', wpSakura: '樱花', wpMono: '黑白',
 }
 
 const ko: Dict = {
@@ -252,6 +258,8 @@ const ko: Dict = {
   trashEmpty: '휴지통이 비어 있습니다', movedToTrash: '휴지통으로 이동했습니다', restoredMsg: '복원했습니다',
   emptiedTrash: '휴지통을 비웠습니다', trashNote: '휴지통의 파일은 30일이 지나면 자동으로 영구 삭제됩니다.',
   notifications: '알림', clearAll: '모두 지우기', noNotifications: '알림이 없습니다', deletedAtLabel: '삭제 날짜',
+  wallpaper: '배경화면', chooseImage: '이미지 선택', removeCustom: '사용자 지정 삭제', about: '정보', versionLabel: '버전',
+  wpAurora: '오로라', wpSunset: '노을', wpOcean: '바다', wpForest: '숲', wpSakura: '벚꽃', wpMono: '모노크롬',
 }
 
 const th: Dict = {
@@ -310,6 +318,8 @@ const th: Dict = {
   trashEmpty: 'ถังขยะว่างเปล่า', movedToTrash: 'ย้ายไปถังขยะแล้ว', restoredMsg: 'กู้คืนแล้ว',
   emptiedTrash: 'ล้างถังขยะแล้ว', trashNote: 'ไฟล์ในถังขยะจะถูกลบถาวรโดยอัตโนมัติหลัง 30 วัน',
   notifications: 'การแจ้งเตือน', clearAll: 'ล้างทั้งหมด', noNotifications: 'ไม่มีการแจ้งเตือน', deletedAtLabel: 'วันที่ลบ',
+  wallpaper: 'วอลเปเปอร์', chooseImage: 'เลือกรูปภาพ', removeCustom: 'ลบแบบกำหนดเอง', about: 'เกี่ยวกับ', versionLabel: 'เวอร์ชัน',
+  wpAurora: 'ออโรรา', wpSunset: 'พระอาทิตย์ตก', wpOcean: 'ทะเล', wpForest: 'ป่า', wpSakura: 'ซากุระ', wpMono: 'ขาวดำ',
 }
 
 export const DICTS: Record<Lang, Dict> = { ja, en, zh, ko, th }
