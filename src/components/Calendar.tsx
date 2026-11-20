@@ -30,6 +30,31 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     void refresh()
   }, [refresh])
 
+  // キーボード：←/→ で前月・次月、T で今日（入力中は除く）
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement
+      if (target.closest('input, textarea, [contenteditable="true"]')) return
+      if (e.key === 'ArrowLeft') {
+        setView((v) => {
+          const d = new Date(v.y, v.m - 1, 1)
+          return { y: d.getFullYear(), m: d.getMonth() }
+        })
+      } else if (e.key === 'ArrowRight') {
+        setView((v) => {
+          const d = new Date(v.y, v.m + 1, 1)
+          return { y: d.getFullYear(), m: d.getMonth() }
+        })
+      } else if (e.key.toLowerCase() === 't') {
+        const t = new Date()
+        setView({ y: t.getFullYear(), m: t.getMonth() })
+        setSelected(todayStr())
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
+
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalEvent[]>()
     for (const e of events) {

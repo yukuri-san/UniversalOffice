@@ -6,6 +6,7 @@ import Calendar from './components/Calendar'
 import BrowserPanel from './components/BrowserPanel'
 import FilesWindow from './components/FilesWindow'
 import type { AppId } from './components/Backstage'
+import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
 type WindowApp = AppId | 'browser' | 'files'
 
@@ -34,6 +35,16 @@ export default function App() {
   const [windows, setWindows] = useState<Win[]>([])
   const [activeId, setActiveId] = useState<WindowApp | null>(null)
   const [startOpen, setStartOpen] = useState(false)
+  const [shortcutsOpen, setShortcutsOpen] = useState(false)
+  const [toast, setToast] = useState('')
+  const [platform] = useState(detectPlatform)
+  const toastTimer = useRef<number | null>(null)
+
+  const showToast = useCallback((msg: string) => {
+    setToast(msg)
+    if (toastTimer.current) window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => setToast(''), 2200)
+  }, [])
   const [now, setNow] = useState(new Date())
   const [wide, setWide] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
   const [desktop, setDesktop] = useState({ w: 1200, h: 700 })
@@ -154,6 +165,65 @@ export default function App() {
     dragRef.current = null
   }
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setStartOpen(false)
+        setShortcutsOpen(false)
+        return
+      }
+      if (!isMod(e, platform)) return
+      const key = e.key
+      if (/^[1-6]$/.test(key)) {
+        e.preventDefault()
+        openApp(APP_ORDER[Number(key) - 1])
+        return
+      }
+      if (key === 'Tab' || key === '`') {
+        e.preventDefault()
+        if (windows.length === 0) return
+        const sorted = [...windows].sort((a, b) => b.z - a.z)
+        const idx = sorted.findIndex((w) => w.id === activeId)
+        const delta = e.shiftKey ? -1 : 1
+        const target = sorted[(idx + delta + sorted.length) % sorted.length]
+        if (target) focusWin(target.id)
+        return
+      }
+      if (key === '/' || key === '?') {
+        e.preventDefault()
+        setShortcutsOpen((v) => !v)
+        return
+      }
+      if (key.toLowerCase() === 's') {
+        e.preventDefault()
+        showToast('データは自動で端末内に保存されています')
+        return
+      }
+      if (!activeId) return
+      if (key === 'Enter') {
+        e.preventDefault()
+        toggleMax(activeId)
+        return
+      }
+      switch (key.toLowerCase()) {
+        case 'm':
+          e.preventDefault()
+          if (e.shiftKey) toggleMax(activeId)
+          else setWindows((prev) => prev.map((w) => (w.id === activeId ? { ...w, minimized: true } : w)))
+          break
+        case 'w':
+          if (e.shiftKey) {
+            e.preventDefault()
+            closeWin(activeId)
+          }
+          break
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [windows, activeId, platform, openApp, focusWin])
+
   const renderContent = (app: WindowApp) => {
     switch (app) {
       case 'word': return <WordProcessor onSwitch={openApp} />
@@ -237,9 +307,47 @@ export default function App() {
               </button>
             ))}
           </div>
-          <p className="start-note">データはすべて端末内に保存されます</p>
+          <p className="start-note">
+            あなたの環境：{platformLabel(platform)}（{modLabel(platform)} キー対応）<br />
+            データはすべて端末内に保存されます
+          </p>
+          <button className="start-shortcuts" onClick={() => { setStartOpen(false); setShortcutsOpen(true) }}>
+            キーボードショートカット（{modLabel(platform)} + /）
+          </button>
         </div>
       )}
+
+      {shortcutsOpen && (
+        <div className="shortcuts-modal" role="dialog" aria-label="キーボードショートカット">
+          <div className="shortcuts-head">
+            <h3>キーボードショートカット</h3>
+            <button onClick={() => setShortcutsOpen(false)}>✕</button>
+          </div>
+          <p className="shortcuts-platform">
+            あなたの環境は <strong>{platformLabel(platform)}</strong> です。
+            {platform === 'windows' && ' Mod キーは Ctrl です。Win キーや Alt+Tab は Windows 側の操作になるため、YKR-OS 内では使いません。'}
+            {platform === 'mac' && ' Mod キーは ⌘（Command）です。'}
+            {platform === 'ipad' && ' Mod キーは ⌘（Command）です。外付けキーボードで使えます。タッチだけでも全機能使えます。'}
+            {platform === 'android' && ' Mod キーは Ctrl / ⌘ のどちらでも使えます。'}
+            {platform === 'other' && ' Mod キーは Ctrl / ⌘ のどちらでも使えます。'}
+          </p>
+          <table className="shortcuts-table">
+            <tbody>
+              <tr><td>{modLabel(platform)} + 1〜6</td><td>アプリを開く／切り替える（デスクトップの並び順）</td></tr>
+              <tr><td>{modLabel(platform)} + Tab</td><td>次のウィンドウへ（+ Shift で前へ）。{modLabel(platform)} + ` でも可</td></tr>
+              <tr><td>{modLabel(platform)} + M</td><td>ウィンドウを最小化</td></tr>
+              <tr><td>{modLabel(platform)} + Shift + M / {modLabel(platform)} + Enter</td><td>最大化／元に戻す</td></tr>
+              <tr><td>{modLabel(platform)} + Shift + W</td><td>ウィンドウを閉じる</td></tr>
+              <tr><td>{modLabel(platform)} + S</td><td>保存（データは自動保存されています）</td></tr>
+              <tr><td>{modLabel(platform)} + /</td><td>この一覧を開く／閉じる</td></tr>
+              <tr><td>Esc</td><td>メニューを閉じる</td></tr>
+            </tbody>
+          </table>
+          <p className="shortcuts-note">アプリ内でも、ワードプロセッサでは {modLabel(platform)} + B（太字）など、メモ帳では自動保存、カレンダーでは ←/→（前月／次月）と T（今日）が使えます。</p>
+        </div>
+      )}
+
+      {toast && <div className="os-toast">{toast}</div>}
 
       <div className="os-taskbar">
         <button className={startOpen ? 'start-btn on' : 'start-btn'} onClick={() => setStartOpen((v) => !v)}>
