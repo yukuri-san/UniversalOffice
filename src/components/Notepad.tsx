@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Backstage, { type AppId } from './Backstage'
+import { useLang } from '../lib/i18n'
 import { deleteDoc, listDocs, saveDoc, type LocalDoc } from '../lib/store'
 import { downloadText } from '../lib/files'
 
 export default function Notepad({ onSwitch }: { onSwitch: (app: AppId) => void }) {
+  const { t } = useLang()
   const [notes, setNotes] = useState<LocalDoc[]>([])
   const [currentId, setCurrentId] = useState<string | null>(null)
   const [title, setTitle] = useState('無題のメモ')
@@ -101,21 +103,21 @@ export default function Notepad({ onSwitch }: { onSwitch: (app: AppId) => void }
         current="note"
         onSwitch={onSwitch}
         actions={[
-          { label: '新規メモ', onClick: () => void newNote() },
+          { label: t('newNote'), onClick: () => void newNote() },
           { label: '.txt として保存', hint: 'ファイルとして書き出す', onClick: () => downloadText(`${title || 'memo'}.txt`, text) },
-          { label: 'このメモを削除', onClick: () => void removeNote() },
+          { label: t('deleteBtn'), onClick: () => void removeNote() },
         ]}
       />
       <div className="titlebar note-title">
-        <button className="home-btn" onClick={() => setHomeOpen(true)}>ホーム</button>
+        <button className="home-btn" onClick={() => setHomeOpen(true)}>{t('home')}</button>
         <input className="title-input" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="メモのタイトル" />
-        <span className="titlebar-app">メモ帳</span>
+        <span className="titlebar-app">{t('note')}</span>
       </div>
       <div className="note-body">
         <aside className="note-list">
-          <button className="note-new" onClick={() => void newNote()}>＋ 新規メモ</button>
+          <button className="note-new" onClick={() => void newNote()}>＋ {t('newNote')}</button>
           {notes.length === 0 ? (
-            <p className="note-empty">メモはまだありません</p>
+            <p className="note-empty">{t('noNotes')}</p>
           ) : (
             notes.map((n) => (
               <button key={n.id} className={n.id === currentId ? 'note-item active' : 'note-item'} onClick={() => void openNote(n)}>
@@ -129,11 +131,11 @@ export default function Notepad({ onSwitch }: { onSwitch: (app: AppId) => void }
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="メモを書いてください（自動で端末内に保存されます）"
+            placeholder={t('notePh')}
             aria-label="メモ本文"
           />
           <div className="note-status">
-            <span>{text.replace(/\s/g, '').length} 文字 / {text === '' ? 0 : text.split('\n').length} 行</span>
+            <span>{text.replace(/\s/g, '').length} {t('chars')} / {text === '' ? 0 : text.split('\n').length} {t('lines')}</span>
             <span>自動保存：オン（端末内）</span>
             <button onClick={() => void removeNote()}>このメモを削除</button>
             <button onClick={() => downloadText(`${title || 'memo'}.txt`, text)}>.txt で書き出し</button>

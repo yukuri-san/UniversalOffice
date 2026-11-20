@@ -5,6 +5,7 @@ import {
 } from '../lib/store'
 import { downloadText } from '../lib/files'
 import type { AppId } from './Backstage'
+import { useLang } from '../lib/i18n'
 
 const KIND_LABEL: Record<LocalDoc['kind'], string> = {
   word: 'ワードプロセッサ',
@@ -21,6 +22,7 @@ function formatBytes(n: number): string {
 }
 
 export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void }) {
+  const { t } = useLang()
   const [docs, setDocs] = useState<LocalDoc[]>([])
   const [folders, setFolders] = useState<string[]>([])
   const [eventCount, setEventCount] = useState(0)
@@ -63,7 +65,7 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
   const doExport = async () => {
     const data = await exportAll()
     downloadText(`ykr-os-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(data, null, 2), 'application/json;charset=utf-8')
-    setMsg('バックアップを書き出しました')
+    setMsg(t('exported'))
   }
 
   const doImport = async (file: File) => {
@@ -71,36 +73,36 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
       const data = JSON.parse(await file.text())
       if ((data?.app !== 'WebX' && data?.app !== 'YKR-OS') || !Array.isArray(data.docs)) throw new Error('bad format')
       await importAll(data)
-      setMsg('バックアップから復元しました')
+      setMsg(t('imported'))
       await refresh()
     } catch {
-      setMsg('復元できませんでした。WebX のバックアップファイルを選んでください')
+      setMsg(t('importFailed'))
     }
   }
 
   return (
     <div className="files-window">
       <section className="explorer-storage">
-        <h3>ストレージ</h3>
+        <h3>{t('storage')}</h3>
         {info ? (
           <>
             {info.quota > 0 && <div className="storage-bar"><span style={{ width: `${usagePct}%` }} /></div>}
             <p>
-              WebX の使用量 {formatBytes(ownBytes)}
+              {t('webxUsage')} {formatBytes(ownBytes)}
               {info.quota > 0
                 ? ` / 上限の目安 ${formatBytes(info.quota)}（${usagePct.toFixed(2)}%）`
-                : ' / 上限はこのブラウザでは取得できません'}
-              ／ 保存方式：{info.backend} ／ 永続化：{info.persisted ? '有効' : '未設定'}
+                : ` / ${t('quotaUnknown')}`}
+              ／ {t('backend')}：{info.backend} ／ {t('persisted')}：{info.persisted ? t('enabled') : t('notSet')}
             </p>
             <p>
-              ファイル {docs.length} 件（本文 {formatBytes(docsSize)}）／ フォルダ {folders.length} 個 ／ カレンダーの予定 {eventCount} 件
+              {t('filesCount')} {docs.length}（{t('bodySize')} {formatBytes(docsSize)}）／ {t('foldersCount')} {folders.length} ／ {t('eventsCount')} {eventCount}
             </p>
             <div className="explorer-actions">
               {!info.persisted && (
-                <button onClick={() => { void requestPersist().then(() => refresh()) }}>永続化をリクエスト</button>
+                <button onClick={() => { void requestPersist().then(() => refresh()) }}>{t('persistRequest')}</button>
               )}
-              <button onClick={() => void doExport()}>バックアップを書き出し</button>
-              <button onClick={() => importRef.current?.click()}>バックアップから復元</button>
+              <button onClick={() => void doExport()}>{t('exportBackup')}</button>
+              <button onClick={() => importRef.current?.click()}>{t('importBackup')}</button>
               <input
                 ref={importRef}
                 type="file"
@@ -114,26 +116,23 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
               />
               {msg && <span className="fm-message">{msg}</span>}
             </div>
-            <p className="explorer-note">
-              保存は OPFS（使える環境では大容量・高速）優先で、使えない環境では IndexedDB を使います。
-              容量が心配なときは、バックアップ書き出しで端末の外にも控えを残せます。
-            </p>
+            <p className="explorer-note">{t('storageNote')}</p>
           </>
         ) : (
-          <p>読み込み中…</p>
+          <p>{t('loading')}</p>
         )}
       </section>
 
       <div className="fm-folders">
-        <button className={filter === '__all__' ? 'chip on' : 'chip'} onClick={() => setFilter('__all__')}>すべて</button>
-        <button className={filter === '' ? 'chip on' : 'chip'} onClick={() => setFilter('')}>ルート</button>
+        <button className={filter === '__all__' ? 'chip on' : 'chip'} onClick={() => setFilter('__all__')}>{t('all')}</button>
+        <button className={filter === '' ? 'chip on' : 'chip'} onClick={() => setFilter('')}>{t('root')}</button>
         {folders.map((f) => (
           <button key={f} className={filter === f ? 'chip on' : 'chip'} onClick={() => setFilter(f)}>📁 {f}</button>
         ))}
-        <button className="chip" onClick={() => void refresh()}>更新</button>
+        <button className="chip" onClick={() => void refresh()}>{t('refresh')}</button>
       </div>
       {visible.length === 0 ? (
-        <p className="fm-empty">保存されたファイルはまだありません。各アプリの「ホーム」から保存できます。</p>
+        <p className="fm-empty">{t('noFiles')}</p>
       ) : (
         <ul className="fm-list">
           {visible.map((d) => (
@@ -143,8 +142,8 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
                 <strong>{d.name}</strong>
                 <small>{KIND_LABEL[d.kind]} / {d.folder || 'ルート'} / {new Date(d.updatedAt).toLocaleString('ja-JP')}</small>
               </span>
-              <button onClick={() => open(d)}>開く</button>
-              <button onClick={() => void remove(d)}>削除</button>
+              <button onClick={() => open(d)}>{t('openBtn')}</button>
+              <button onClick={() => void remove(d)}>{t('deleteBtn')}</button>
             </li>
           ))}
         </ul>

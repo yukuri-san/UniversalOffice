@@ -1,4 +1,4 @@
-import { LANGUAGES, type Lang } from '../lib/i18n'
+import { LANGUAGES, translate, type Lang } from '../lib/i18n'
 import { ownUsageBytes, requestPersist, storageInfo } from '../lib/store'
 import { useEffect, useState } from 'react'
 
@@ -35,10 +35,10 @@ export default function Settings({ lang, setLang, theme, setTheme }: Props) {
 
   return (
     <div className="settings-app">
-      <h2>設定</h2>
+      <h2>{translate(lang, 'settingsTitle')}</h2>
 
       <section className="settings-section">
-        <h3>言語 / Language</h3>
+        <h3>{translate(lang, 'language')} / Language</h3>
         <div className="settings-options">
           {LANGUAGES.map((l) => (
             <button key={l.id} className={lang === l.id ? 'opt on' : 'opt'} onClick={() => setLang(l.id)}>
@@ -46,11 +46,11 @@ export default function Settings({ lang, setLang, theme, setTheme }: Props) {
             </button>
           ))}
         </div>
-        <p className="settings-note">シェル（デスクトップ・スタート・タスクバー・アプリ名）が切り替わります。アプリ内部の細かい文言は順次対応中です。</p>
+        <p className="settings-note">{translate(lang, 'langNote')}</p>
       </section>
 
       <section className="settings-section">
-        <h3>テーマ</h3>
+        <h3>{translate(lang, 'theme')}</h3>
         <div className="settings-themes">
           {THEMES.map((t) => (
             <button key={t.id} className={theme === t.id ? 'theme-card on' : 'theme-card'} onClick={() => setTheme(t.id)}>
@@ -63,14 +63,14 @@ export default function Settings({ lang, setLang, theme, setTheme }: Props) {
       </section>
 
       <section className="settings-section">
-        <h3>ストレージ</h3>
+        <h3>{translate(lang, 'storageSection')}</h3>
         {info ? (
           <p className="settings-note">
-            保存方式：{info.backend} / WebX の使用量：{mb(ownBytes)} / 上限：{info.quota ? mb(info.quota) : 'このブラウザでは取得できません'} /
-            永続化：{info.persisted ? '有効（自動で消えにくい）' : '未設定'}
+            {translate(lang, 'backend')}：{info.backend} / {translate(lang, 'webxUsage')}：{mb(ownBytes)} / {info.quota ? mb(info.quota) : translate(lang, 'quotaUnknown')} /
+            {translate(lang, 'persisted')}：{info.persisted ? translate(lang, 'enabled') : translate(lang, 'notSet')}
           </p>
         ) : (
-          <p className="settings-note">読み込み中…</p>
+          <p className="settings-note">{translate(lang, 'loading')}</p>
         )}
         <button
           className="opt"
@@ -78,9 +78,9 @@ export default function Settings({ lang, setLang, theme, setTheme }: Props) {
             void requestPersist().then(() => storageInfo().then(setInfo))
           }}
         >
-          永続化をリクエスト
+          {translate(lang, 'persistRequest')}
         </button>
-        <p className="settings-note">詳しい容量とバックアップは「エクスプローラー」アプリで見られます。</p>
+        <p className="settings-note">{translate(lang, 'settingsStorageNote')}</p>
       </section>
     </div>
   )

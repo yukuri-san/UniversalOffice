@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { addFolder, deleteDoc, listDocs, listFolders, saveDoc, type LocalDoc } from '../lib/store'
+import { useLang } from '../lib/i18n'
 
 interface Props {
   kind: 'word' | 'sheet'
@@ -11,6 +12,7 @@ interface Props {
 const ROOT = ''
 
 export default function FileManager({ kind, currentName, getContent, onOpen }: Props) {
+  const { t } = useLang()
   const [docs, setDocs] = useState<LocalDoc[]>([])
   const [folders, setFolders] = useState<string[]>([])
   const [filter, setFilter] = useState<string>('__all__')
@@ -56,32 +58,32 @@ export default function FileManager({ kind, currentName, getContent, onOpen }: P
 
   return (
     <div className="file-manager">
-      <h3>端末内のファイル（この端末にだけ保存されます）</h3>
+      <h3>{t('sectionDocs')}</h3>
 
       <div className="fm-save">
-        <input value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder="ファイル名" aria-label="ファイル名" />
+        <input value={saveName} onChange={(e) => setSaveName(e.target.value)} placeholder={t('docName')} aria-label={t('docName')} />
         <select value={saveFolder} onChange={(e) => setSaveFolder(e.target.value)} aria-label="保存先フォルダ">
-          <option value={ROOT}>ルート</option>
+          <option value={ROOT}>{t('root')}</option>
           {folders.map((f) => <option key={f} value={f}>{f}</option>)}
         </select>
-        <button onClick={() => void doSave()}>この{kind === 'word' ? '文書' : 'シート'}を保存</button>
+        <button onClick={() => void doSave()}>{t('saveAs')}</button>
         {message && <span className="fm-message">{message}</span>}
       </div>
 
       <div className="fm-folders">
-        <button className={filter === '__all__' ? 'chip on' : 'chip'} onClick={() => setFilter('__all__')}>すべて</button>
-        <button className={filter === ROOT ? 'chip on' : 'chip'} onClick={() => setFilter(ROOT)}>ルート</button>
+        <button className={filter === '__all__' ? 'chip on' : 'chip'} onClick={() => setFilter('__all__')}>{t('all')}</button>
+        <button className={filter === ROOT ? 'chip on' : 'chip'} onClick={() => setFilter(ROOT)}>{t('root')}</button>
         {folders.map((f) => (
           <button key={f} className={filter === f ? 'chip on' : 'chip'} onClick={() => setFilter(f)}>📁 {f}</button>
         ))}
         <span className="fm-newfolder">
-          <input value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder="新しいフォルダ名" aria-label="新しいフォルダ名" />
-          <button onClick={() => void doAddFolder()}>フォルダを作る</button>
+          <input value={newFolder} onChange={(e) => setNewFolder(e.target.value)} placeholder={t('newFolderName')} aria-label={t('newFolderName')} />
+          <button onClick={() => void doAddFolder()}>{t('addFolder')}</button>
         </span>
       </div>
 
       {visible.length === 0 ? (
-        <p className="fm-empty">保存されたファイルはまだありません。</p>
+        <p className="fm-empty">{t('noDocs')}</p>
       ) : (
         <ul className="fm-list">
           {visible.map((d) => (
@@ -94,8 +96,8 @@ export default function FileManager({ kind, currentName, getContent, onOpen }: P
                   {new Date(d.updatedAt).toLocaleString('ja-JP')}
                 </small>
               </span>
-              <button onClick={() => onOpen(d)}>開く</button>
-              <button onClick={() => void doDelete(d)}>削除</button>
+              <button onClick={() => onOpen(d)}>{t('openBtn')}</button>
+              <button onClick={() => void doDelete(d)}>{t('deleteBtn')}</button>
             </li>
           ))}
         </ul>

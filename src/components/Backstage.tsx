@@ -1,3 +1,5 @@
+import { useLang, type Lang } from '../lib/i18n'
+
 export type AppId = 'word' | 'sheet' | 'note' | 'calendar'
 
 export interface BackstageAction {
@@ -15,21 +17,29 @@ interface Props {
   fileManager?: React.ReactNode
 }
 
-const APPS: { id: AppId; icon: string; cls: string; name: string; desc: string }[] = [
-  { id: 'word', icon: 'W', cls: 'word', name: 'ワードプロセッサ', desc: '文書を作る（Word 風）' },
-  { id: 'sheet', icon: 'S', cls: 'sheet', name: 'スプレッドシート', desc: '表と数式（CSV 対応）' },
-  { id: 'note', icon: 'メ', cls: 'note', name: 'メモ帳', desc: 'プレーンテキストのメモ' },
-  { id: 'calendar', icon: 'カ', cls: 'calendar', name: 'カレンダー', desc: '予定の管理' },
+const APPS: { id: AppId; icon: string; cls: string }[] = [
+  { id: 'word', icon: 'W', cls: 'word' },
+  { id: 'sheet', icon: 'S', cls: 'sheet' },
+  { id: 'note', icon: 'メ', cls: 'note' },
+  { id: 'calendar', icon: 'カ', cls: 'calendar' },
 ]
 
+const DESCS: Record<AppId, Record<Lang, string>> = {
+  word: { ja: '文書を作る（Word 風）', en: 'Documents, Word-style', zh: '制作文档（Word 风格）', ko: '문서 작성 (Word 스타일)', th: 'สร้างเอกสาร (สไตล์ Word)' },
+  sheet: { ja: '表と数式（CSV 対応）', en: 'Tables & formulas (CSV)', zh: '表格与公式（支持 CSV）', ko: '표와 수식 (CSV 지원)', th: 'ตารางและสูตร (รองรับ CSV)' },
+  note: { ja: 'プレーンテキストのメモ', en: 'Plain-text notes', zh: '纯文本笔记', ko: '일반 텍스트 메모', th: 'บันทึกข้อความธรรมดา' },
+  calendar: { ja: '予定の管理', en: 'Manage events', zh: '管理日程', ko: '일정 관리', th: 'จัดการกิจกรรม' },
+}
+
 export default function Backstage({ open, onClose, current, onSwitch, actions, fileManager }: Props) {
+  const { lang, t } = useLang()
   if (!open) return null
   return (
     <div className="backstage" role="dialog" aria-label="ホーム">
       <div className="backstage-side">
-        <button className="backstage-back" onClick={onClose}>← 戻る</button>
-        <h2>ホーム</h2>
-        <p className="backstage-sub">アプリの切り替えとファイル操作</p>
+        <button className="backstage-back" onClick={onClose}>←</button>
+        <h2>{t('home')}</h2>
+        
         <div className="backstage-apps">
           {APPS.map((app) => (
             <button
@@ -39,15 +49,15 @@ export default function Backstage({ open, onClose, current, onSwitch, actions, f
             >
               <span className={`app-icon ${app.cls}`}>{app.icon}</span>
               <span>
-                <strong>{app.name}</strong>
-                <small>{app.desc}</small>
+                <strong>{t(app.id)}</strong>
+                <small>{DESCS[app.id][lang]}</small>
               </span>
             </button>
           ))}
         </div>
       </div>
       <div className="backstage-main">
-        <h3>ファイル</h3>
+        <h3>{t('sectionFile')}</h3>
         <div className="backstage-actions">
           {actions.map((a) => (
             <button key={a.label} className="file-action" onClick={() => { a.onClick(); onClose() }}>
@@ -56,7 +66,7 @@ export default function Backstage({ open, onClose, current, onSwitch, actions, f
             </button>
           ))}
         </div>
-        <p className="backstage-note">データはすべて端末内に保存されます。サーバーには送信されません。</p>
+        <p className="backstage-note">{t('dataLocal')}</p>
         {fileManager}
       </div>
     </div>

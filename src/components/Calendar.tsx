@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Backstage, { type AppId } from './Backstage'
+import { LOCALES, useLang } from '../lib/i18n'
 import { deleteEvent, listEvents, saveEvent, type CalEvent } from '../lib/store'
 
-const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
+function weekdayNames(locale: string): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { weekday: 'short' })
+  return [0, 1, 2, 3, 4, 5, 6].map((i) => fmt.format(new Date(2023, 0, 1 + i)))
+}
 
 function ymd(y: number, m: number, d: number): string {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
@@ -14,6 +18,7 @@ function todayStr(): string {
 }
 
 export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void }) {
+  const { lang, t } = useLang()
   const now = new Date()
   const [view, setView] = useState({ y: now.getFullYear(), m: now.getMonth() })
   const [selected, setSelected] = useState(todayStr())
@@ -114,25 +119,25 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
         current="calendar"
         onSwitch={onSwitch}
         actions={[
-          { label: '今日へ移動', onClick: goToday },
+          { label: t('today'), onClick: goToday },
           { label: '今月の予定', hint: `${events.filter((e) => e.date.startsWith(ymd(view.y, view.m, 1).slice(0, 7))).length} 件`, onClick: () => {} },
         ]}
       />
       <div className="titlebar cal-title">
-        <button className="home-btn" onClick={() => setHomeOpen(true)}>ホーム</button>
-        <span className="title-input cal-heading">{view.y}年 {view.m + 1}月</span>
-        <span className="titlebar-app">カレンダー</span>
+        <button className="home-btn" onClick={() => setHomeOpen(true)}>{t('home')}</button>
+        <span className="title-input cal-heading">{new Intl.DateTimeFormat(LOCALES[lang], { year: 'numeric', month: 'long' }).format(new Date(view.y, view.m, 1))}</span>
+        <span className="titlebar-app">{t('calendar')}</span>
       </div>
       <div className="cal-toolbar">
-        <button onClick={() => moveMonth(-1)}>← 前月</button>
-        <button onClick={goToday}>今日</button>
-        <button onClick={() => moveMonth(1)}>次月 →</button>
+        <button onClick={() => moveMonth(-1)}>←</button>
+        <button onClick={goToday}>{t('today')}</button>
+        <button onClick={() => moveMonth(1)}>→</button>
         <span className="cal-count">今月の予定 {events.filter((e) => e.date.startsWith(ymd(view.y, view.m, 1).slice(0, 7))).length} 件</span>
       </div>
       <div className="cal-body">
         <div className="cal-grid-wrap">
           <div className="cal-week">
-            {WEEKDAYS.map((w, i) => <span key={w} className={i === 0 ? 'sun' : i === 6 ? 'sat' : ''}>{w}</span>)}
+            {weekdayNames(LOCALES[lang]).map((w, i) => <span key={i} className={i === 0 ? 'sun' : i === 6 ? 'sat' : ''}>{w}</span>)}
           </div>
           <div className="cal-grid">
             {cells.map((date, i) => {
@@ -151,9 +156,9 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
           </div>
         </div>
         <aside className="cal-side">
-          <h3>{selectedDate.getMonth() + 1}月{selectedDate.getDate()}日（{WEEKDAYS[selectedDate.getDay()]}）の予定</h3>
+          <h3>{new Intl.DateTimeFormat(LOCALES[lang], { month: 'long', day: 'numeric', weekday: 'short' }).format(selectedDate)}{t('eventsOn')}</h3>
           {selectedEvents.length === 0 ? (
-            <p className="cal-noevent">予定はありません</p>
+            <p className="cal-noevent">{t('noEvents')}</p>
           ) : (
             <ul className="cal-event-list">
               {selectedEvents.map((e) => (
@@ -162,15 +167,15 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                     <strong>{e.title}</strong>
                     {e.memo && <small>{e.memo}</small>}
                   </div>
-                  <button onClick={() => void removeEvent(e)}>削除</button>
+                  <button onClick={() => void removeEvent(e)}>{t('deleteBtn')}</button>
                 </li>
               ))}
             </ul>
           )}
           <div className="cal-form">
-            <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="予定のタイトル" aria-label="予定のタイトル" />
-            <input value={formMemo} onChange={(e) => setFormMemo(e.target.value)} placeholder="メモ（任意）" aria-label="予定のメモ" />
-            <button onClick={() => void addEvent()}>この日に追加</button>
+            <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder={t('eventTitle')} aria-label={t('eventTitle')} />
+            <input value={formMemo} onChange={(e) => setFormMemo(e.target.value)} placeholder={t('eventMemo')} aria-label={t('eventMemo')} />
+            <button onClick={() => void addEvent()}>{t('addEvent')}</button>
           </div>
         </aside>
       </div>

@@ -19,6 +19,7 @@ import * as mammoth from 'mammoth'
 import { asBlob as docxBlob } from 'html-docx-js-typescript'
 import { downloadText, escapeHtml } from '../lib/files'
 import Backstage, { type AppId } from './Backstage'
+import { useLang } from '../lib/i18n'
 import FileManager from './FileManager'
 import { listDocs } from '../lib/store'
 
@@ -55,6 +56,7 @@ const MARGINS = [
 type Tab = 'format' | 'insert' | 'layout' | 'view'
 
 export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => void }) {
+  const { t } = useLang()
   const [title, setTitle] = useState(() => localStorage.getItem(TITLE_KEY) || '無題の文書')
   const [zoom, setZoom] = useState(100)
   const [stats, setStats] = useState({ chars: 0, paragraphs: 0 })
@@ -304,13 +306,13 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
         current="word"
         onSwitch={onSwitch}
         actions={[
-          { label: '新規作成', hint: 'まっさらな文書にする', onClick: newDoc },
-          { label: '開く', hint: '.docx / .md / .html / .txt', onClick: () => fileRef.current?.click() },
+          { label: t('newDoc'), onClick: newDoc },
+          { label: t('openBtn'), hint: '.docx / .md / .html / .txt', onClick: () => fileRef.current?.click() },
           { label: 'Word として保存 (.docx)', onClick: () => void saveDocx() },
           { label: 'Markdown として保存 (.md)', onClick: saveMd },
           { label: 'HTML として保存 (.html)', onClick: saveHtml },
           { label: 'テキストとして保存 (.txt)', onClick: () => downloadText(`${title || 'document'}.txt`, editor.getText()) },
-          { label: '印刷 / PDF', hint: '印刷画面から PDF として保存', onClick: printDoc },
+          { label: t('printPdf'), onClick: printDoc },
         ]}
         fileManager={
           <FileManager
@@ -331,21 +333,21 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
       />
 
       <div className="titlebar">
-        <button className="home-btn" onClick={() => setHomeOpen(true)}>ホーム</button>
+        <button className="home-btn" onClick={() => setHomeOpen(true)}>{t('home')}</button>
         <div className="quick-access">
-          <button title="元に戻す" onClick={() => chain().undo().run()} disabled={!editor.can().undo()}>↩</button>
-          <button title="やり直し" onClick={() => chain().redo().run()} disabled={!editor.can().redo()}>↪</button>
+          <button title={t('undo')} onClick={() => chain().undo().run()} disabled={!editor.can().undo()}>↩</button>
+          <button title={t('redo')} onClick={() => chain().redo().run()} disabled={!editor.can().redo()}>↪</button>
         </div>
         <input className="title-input" value={title} onChange={(e) => setTitle(e.target.value)} aria-label="文書名" />
-        <span className="titlebar-app">ワードプロセッサ</span>
+        <span className="titlebar-app">{t('word')}</span>
       </div>
 
       <div className="ribbon">
         <div className="ribbon-tabs">
-          <button className={tab === 'format' ? 'rtab active' : 'rtab'} onClick={() => setTab('format')}>書式</button>
-          <button className={tab === 'insert' ? 'rtab active' : 'rtab'} onClick={() => setTab('insert')}>挿入</button>
-          <button className={tab === 'layout' ? 'rtab active' : 'rtab'} onClick={() => setTab('layout')}>レイアウト</button>
-          <button className={tab === 'view' ? 'rtab active' : 'rtab'} onClick={() => setTab('view')}>表示</button>
+          <button className={tab === 'format' ? 'rtab active' : 'rtab'} onClick={() => setTab('format')}>{t('tabFormat')}</button>
+          <button className={tab === 'insert' ? 'rtab active' : 'rtab'} onClick={() => setTab('insert')}>{t('tabInsert')}</button>
+          <button className={tab === 'layout' ? 'rtab active' : 'rtab'} onClick={() => setTab('layout')}>{t('tabLayout')}</button>
+          <button className={tab === 'view' ? 'rtab active' : 'rtab'} onClick={() => setTab('view')}>{t('tabView')}</button>
         </div>
 
         {tab === 'format' && (
@@ -353,14 +355,14 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
             <div className="rgroup">
               <div className="rgroup-body">
                 <select aria-label="スタイル" value={currentStyle()} onChange={(e) => applyStyle(e.target.value)}>
-                  <option value="p">標準</option>
-                  <option value="h1">見出し 1</option>
-                  <option value="h2">見出し 2</option>
-                  <option value="h3">見出し 3</option>
+                  <option value="p">{t('bodyText')}</option>
+                  <option value="h1">{t('heading')} 1</option>
+                  <option value="h2">{t('heading')} 2</option>
+                  <option value="h3">{t('heading')} 3</option>
                   <option value="quote">引用</option>
                 </select>
               </div>
-              <span className="rgroup-label">スタイル</span>
+              <span className="rgroup-label">{t('grpStyle')}</span>
             </div>
             <div className="rgroup">
               <div className="rgroup-body">
@@ -377,27 +379,27 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
                 <button className={active('superscript') ? 'on' : ''} onClick={() => chain().toggleSuperscript().run()}>x²</button>
                 <button className={active('subscript') ? 'on' : ''} onClick={() => chain().toggleSubscript().run()}>x₂</button>
                 <select aria-label="文字間隔" defaultValue="" onChange={(e) => { if (e.target.value) chain().setLetterSpacing(e.target.value).run(); else chain().unsetLetterSpacing().run() }}>
-                  <option value="">文字間隔：標準</option>
+                  <option value="">{t('letterSpacing')}</option>
                   <option value="-0.05em">狭い</option>
                   <option value="0.1em">広い</option>
                   <option value="0.2em">とても広い</option>
                 </select>
                 <label className="color-pick">A<input type="color" aria-label="文字色" onChange={(e) => chain().setColor(e.target.value).run()} /></label>
-                <label className="color-pick">蛍光<input type="color" aria-label="蛍光ペン" defaultValue="#fff59d" onChange={(e) => chain().toggleHighlight({ color: e.target.value }).run()} /></label>
-                <button onClick={() => chain().unsetAllMarks().clearNodes().run()}>書式クリア</button>
+                <label className="color-pick">✒<input type="color" aria-label="蛍光ペン" defaultValue="#fff59d" onChange={(e) => chain().toggleHighlight({ color: e.target.value }).run()} /></label>
+                <button onClick={() => chain().unsetAllMarks().clearNodes().run()}>{t('clearFormat')}</button>
               </div>
-              <span className="rgroup-label">フォント</span>
+              <span className="rgroup-label">{t('grpFont')}</span>
             </div>
             <div className="rgroup">
               <div className="rgroup-body">
-                <button className={alignActive('left') ? 'on' : ''} onClick={() => chain().setTextAlign('left').run()}>左揃え</button>
-                <button className={alignActive('center') ? 'on' : ''} onClick={() => chain().setTextAlign('center').run()}>中央</button>
-                <button className={alignActive('right') ? 'on' : ''} onClick={() => chain().setTextAlign('right').run()}>右揃え</button>
-                <button className={alignActive('justify') ? 'on' : ''} onClick={() => chain().setTextAlign('justify').run()}>両端</button>
-                <button className={active('bulletList') ? 'on' : ''} onClick={() => chain().toggleBulletList().run()}>箇条書き</button>
-                <button className={active('orderedList') ? 'on' : ''} onClick={() => chain().toggleOrderedList().run()}>番号付き</button>
+                <button className={alignActive('left') ? 'on' : ''} onClick={() => chain().setTextAlign('left').run()}>{t('alignLeft')}</button>
+                <button className={alignActive('center') ? 'on' : ''} onClick={() => chain().setTextAlign('center').run()}>{t('alignCenter')}</button>
+                <button className={alignActive('right') ? 'on' : ''} onClick={() => chain().setTextAlign('right').run()}>{t('alignRight')}</button>
+                <button className={alignActive('justify') ? 'on' : ''} onClick={() => chain().setTextAlign('justify').run()}>{t('alignJustify')}</button>
+                <button className={active('bulletList') ? 'on' : ''} onClick={() => chain().toggleBulletList().run()}>{t('bullets')}</button>
+                <button className={active('orderedList') ? 'on' : ''} onClick={() => chain().toggleOrderedList().run()}>{t('numbering')}</button>
                 <select aria-label="行間" defaultValue="" onChange={(e) => { if (e.target.value) chain().setLineHeight(e.target.value).run(); else chain().unsetLineHeight().run() }}>
-                  <option value="">行間</option>
+                  <option value="">{t('lineHeight')}</option>
                   <option value="1">1.0</option>
                   <option value="1.15">1.15</option>
                   <option value="1.5">1.5</option>
@@ -418,15 +420,15 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
                   onClick={() => {
                     const on = editor.getAttributes('paragraph').firstLineIndent || editor.getAttributes('heading').firstLineIndent
                     chain().setFirstLineIndent(on ? null : '1em').run()
-                  }}>字下げ</button>
+                  }}>{t('firstIndent')}</button>
               </div>
-              <span className="rgroup-label">段落</span>
+              <span className="rgroup-label">{t('grpPara')}</span>
             </div>
             <div className="rgroup">
               <div className="rgroup-body">
-                <button className={findOpen ? 'on' : ''} onClick={() => setFindOpen((v) => !v)}>検索・置換</button>
+                <button className={findOpen ? 'on' : ''} onClick={() => setFindOpen((v) => !v)}>{t('findReplace')}</button>
               </div>
-              <span className="rgroup-label">編集</span>
+              <span className="rgroup-label">{t('grpEdit')}</span>
             </div>
           </div>
         )}
@@ -435,27 +437,27 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
           <div className="ribbon-row">
             <div className="rgroup">
               <div className="rgroup-body">
-                <button onClick={() => imageRef.current?.click()}>画像（ファイル）</button>
+                <button onClick={() => imageRef.current?.click()}>{t('image')}</button>
                 <input ref={imageRef} type="file" accept="image/*" hidden
                   onChange={(e) => { const f = e.target.files?.[0]; if (f) void insertImageFile(f); e.target.value = '' }} />
-                <button onClick={insertImageUrl}>画像（URL）</button>
+                <button onClick={insertImageUrl}>{t('image')} (URL)</button>
               </div>
-              <span className="rgroup-label">画像</span>
+              <span className="rgroup-label">{t('image')}</span>
             </div>
             <div className="rgroup">
               <div className="rgroup-body">
-                <button onClick={() => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>表 3×3</button>
+                <button onClick={() => chain().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}>{t('tableBtn')} 3×3</button>
                 {active('table') && (
                   <>
-                    <button onClick={() => chain().addColumnAfter().run()}>列を追加</button>
-                    <button onClick={() => chain().addRowAfter().run()}>行を追加</button>
-                    <button onClick={() => chain().deleteColumn().run()}>列を削除</button>
-                    <button onClick={() => chain().deleteRow().run()}>行を削除</button>
-                    <button onClick={() => chain().deleteTable().run()}>表を削除</button>
+                    <button onClick={() => chain().addColumnAfter().run()}>{t('addCol')}</button>
+                    <button onClick={() => chain().addRowAfter().run()}>{t('addRow')}</button>
+                    <button onClick={() => chain().deleteColumn().run()}>{t('delCol')}</button>
+                    <button onClick={() => chain().deleteRow().run()}>{t('delRow')}</button>
+                    <button onClick={() => chain().deleteTable().run()}>{t('deleteBtn')}</button>
                   </>
                 )}
               </div>
-              <span className="rgroup-label">表</span>
+              <span className="rgroup-label">{t('grpTable')}</span>
             </div>
             <div className="rgroup">
               <div className="rgroup-body">
@@ -471,10 +473,10 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
                   if (url === null) return
                   if (url === '') { chain().extendMarkRange('link').unsetLink().run(); return }
                   chain().extendMarkRange('link').setLink({ href: url }).run()
-                }}>リンク</button>
-                <button onClick={() => chain().unsetLink().run()}>リンク解除</button>
+                }}>{t('link')}</button>
+                <button onClick={() => chain().unsetLink().run()}>{t('unlink')}</button>
               </div>
-              <span className="rgroup-label">リンク</span>
+              <span className="rgroup-label">{t('link')}</span>
             </div>
           </div>
         )}
@@ -488,15 +490,15 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
                   {PAPERS.map((p) => <option key={p.label} value={p.label}>{p.label}（{p.w}×{p.h}mm）</option>)}
                 </select>
                 <select aria-label="向き" value={landscape ? 'landscape' : 'portrait'} onChange={(e) => setLandscape(e.target.value === 'landscape')}>
-                  <option value="portrait">縦</option>
-                  <option value="landscape">横</option>
+                  <option value="portrait">{t('portrait')}</option>
+                  <option value="landscape">{t('landscape')}</option>
                 </select>
                 <select aria-label="余白" value={margin.label}
                   onChange={(e) => setMargin(MARGINS.find((m) => m.label === e.target.value) ?? MARGINS[0])}>
                   {MARGINS.map((m) => <option key={m.label} value={m.label}>{m.label}（上下 {m.t}mm）</option>)}
                 </select>
               </div>
-              <span className="rgroup-label">ページ設定</span>
+              <span className="rgroup-label">{t('grpPage')}</span>
             </div>
             <div className="rgroup">
               <div className="rgroup-body">
@@ -514,7 +516,7 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
                   <option value="2">行間 2.0</option>
                 </select>
               </div>
-              <span className="rgroup-label">文書の既定</span>
+              <span className="rgroup-label">{t('docDefaults')}</span>
             </div>
           </div>
         )}
@@ -527,16 +529,16 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
                   <button key={z} className={zoom === z ? 'on' : ''} onClick={() => manualZoom(z)}>{z}%</button>
                 ))}
                 <input type="range" min={30} max={150} step={5} value={zoom} onChange={(e) => manualZoom(Number(e.target.value))} aria-label="ズーム" />
-                <button onClick={() => { setZoomManual(false); fitZoom() }}>幅に合わせる</button>
+                <button onClick={() => { setZoomManual(false); fitZoom() }}>{t('fitWidth')}</button>
               </div>
-              <span className="rgroup-label">ズーム</span>
+              <span className="rgroup-label">{t('zoom')}</span>
             </div>
             <div className="rgroup">
               <div className="rgroup-body">
                 <label className="check"><input type="checkbox" checked={showRuler} onChange={(e) => setShowRuler(e.target.checked)} /> ルーラー</label>
-                <label className="check"><input type="checkbox" checked={showOutline} onChange={(e) => setShowOutline(e.target.checked)} /> アウトライン</label>
+                <label className="check"><input type="checkbox" checked={showOutline} onChange={(e) => setShowOutline(e.target.checked)} /> {t('outline')}</label>
               </div>
-              <span className="rgroup-label">表示</span>
+              <span className="rgroup-label">{t('grpView')}</span>
             </div>
           </div>
         )}
@@ -547,13 +549,13 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
 
       {findOpen && (
         <div className="find-panel">
-          <input value={findText} onChange={(e) => setFindText(e.target.value)} placeholder="検索する文字" aria-label="検索する文字" />
+          <input value={findText} onChange={(e) => setFindText(e.target.value)} placeholder={t('findPh')} aria-label={t('findPh')} />
           <button onClick={() => {
             if (!findText) return
             const found = (window as unknown as { find: (t: string) => boolean }).find(findText)
             setFindMsg(found ? '' : '見つかりませんでした')
           }}>次を検索</button>
-          <input value={replaceText} onChange={(e) => setReplaceText(e.target.value)} placeholder="置換後の文字" aria-label="置換後の文字" />
+          <input value={replaceText} onChange={(e) => setReplaceText(e.target.value)} placeholder={t('replacePh')} aria-label={t('replacePh')} />
           <button onClick={() => {
             if (!findText) return
             let count = 0
@@ -573,9 +575,9 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
             const newJson = walk(editor.getJSON() as JsonNode)
             if (count > 0) editor.commands.setContent(newJson)
             setFindMsg(count > 0 ? `${count} 件置換しました` : '見つかりませんでした')
-          }}>すべて置換</button>
+          }}>{t('replaceAllBtn')}</button>
           {findMsg && <span className="find-msg">{findMsg}</span>}
-          <button onClick={() => setFindOpen(false)}>閉じる</button>
+          <button onClick={() => setFindOpen(false)}>{t('close')}</button>
         </div>
       )}
 
@@ -583,7 +585,7 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
         <div className="page-flex">
         {showOutline && (
           <aside className="outline">
-            <h4>アウトライン</h4>
+            <h4>{t('outline')}</h4>
             {headings.length === 0 ? <p className="outline-empty">見出しがありません</p> : headings.map((h, i) => (
               <button key={i} className={`outline-item lv${h.level}`}
                 onClick={() => {
@@ -618,7 +620,7 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
 
       <div className="statusbar">
         <span>{stats.paragraphs} 段落</span>
-        <span>{stats.chars} 文字</span>
+        <span>{stats.chars} {t('chars')}</span>
         <span>{paper.label}{landscape ? '（横）' : ''} / 余白 {margin.label}</span>
         <span className="zoomctl">
           <input type="range" min={30} max={150} step={5} value={zoom} onChange={(e) => manualZoom(Number(e.target.value))} aria-label="ズーム" />

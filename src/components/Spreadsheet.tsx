@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Papa from 'papaparse'
 import { downloadText, escapeHtml, printHtml } from '../lib/files'
 import Backstage, { type AppId } from './Backstage'
+import { useLang } from '../lib/i18n'
 import FileManager from './FileManager'
 import { listDocs } from '../lib/store'
 
@@ -172,6 +173,7 @@ export function evaluateGrid(grid: string[][]): string[][] {
 }
 
 export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => void }) {
+  const { t } = useLang()
   const [grid, setGrid] = useState<string[][]>(() => {
     try {
       const saved = localStorage.getItem(GRID_KEY)
@@ -280,9 +282,9 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         current="sheet"
         onSwitch={onSwitch}
         actions={[
-          { label: '開く (.csv)', onClick: () => fileRef.current?.click() },
-          { label: '保存 (.csv)', hint: '計算結果の値で保存します', onClick: saveCsv },
-          { label: '印刷 / PDF', onClick: printSheet },
+          { label: `${t('openBtn')} (.csv)`, onClick: () => fileRef.current?.click() },
+          { label: t('csvDl'), onClick: saveCsv },
+          { label: t('printPdf'), onClick: printSheet },
           { label: 'クリア', hint: 'すべてのセルを空にする', onClick: clear },
         ]}
         fileManager={
@@ -305,12 +307,12 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         }
       />
       <div className="titlebar sheet-title">
-        <button className="home-btn" onClick={() => setHomeOpen(true)}>ホーム</button>
+        <button className="home-btn" onClick={() => setHomeOpen(true)}>{t('home')}</button>
         <input className="title-input" value={filename} onChange={(e) => setFilename(e.target.value)} aria-label="ファイル名" />
-        <span className="titlebar-app">スプレッドシート</span>
+        <span className="titlebar-app">{t('sheet')}</span>
       </div>
       <div className="toolbar">
-        <button onClick={() => fileRef.current?.click()}>開く (.csv)</button>
+        <button onClick={() => fileRef.current?.click()}>{t('openBtn')} (.csv)</button>
         <input
           ref={fileRef}
           type="file"
@@ -322,15 +324,15 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
             e.target.value = ''
           }}
         />
-        <button onClick={saveCsv}>保存 (.csv)</button>
-        <button onClick={printSheet}>PDF出力（印刷）</button>
-        <button onClick={addRow}>行を追加</button>
-        <button onClick={addCol}>列を追加</button>
-        <button onClick={deleteRow}>選択行を削除</button>
-        <button onClick={deleteCol}>選択列を削除</button>
-        <button onClick={() => sortByColumn(1)}>列で昇順</button>
+        <button onClick={saveCsv}>{t('csvDl')}</button>
+        <button onClick={printSheet}>{t('printPdf')}</button>
+        <button onClick={addRow}>{t('addRow')}</button>
+        <button onClick={addCol}>{t('addCol')}</button>
+        <button onClick={deleteRow}>{t('delRow')}</button>
+        <button onClick={deleteCol}>{t('delCol')}</button>
+        <button onClick={() => sortByColumn(1)}>{t('sortAsc')}</button>
         <button onClick={() => sortByColumn(-1)}>列で降順</button>
-        <label className="check-inline"><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> 先頭行を固定</label>
+        <label className="check-inline"><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> {t('freeze')}</label>
         <span className="meta">{grid.length} 行 × {grid[0]?.length ?? 0} 列</span>
       </div>
       <div className="formula-bar">
@@ -339,7 +341,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <input
           value={selectedRaw}
           onChange={(e) => setCell(selected.r, selected.c, e.target.value)}
-          placeholder="値、または =SUM(A1:A5) のような数式"
+          placeholder={t('formulaPh')}
           aria-label="数式バー"
         />
         {columnSum !== null && <span className="col-sum">{colName(selected.c)}列の合計：{Number(columnSum.toFixed(10))}</span>}

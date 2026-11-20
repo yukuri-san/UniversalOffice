@@ -6,12 +6,13 @@ import Calendar from './components/Calendar'
 import BrowserPanel from './components/BrowserPanel'
 import FilesWindow from './components/FilesWindow'
 import Settings, { type ThemeId } from './components/Settings'
-import { translate, type Lang } from './lib/i18n'
+import { LangContext, translate, type Lang } from './lib/i18n'
+import YoutubeApp from './components/YoutubeApp'
 import { requestPersist } from './lib/store'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube'
 
 interface Win {
   id: WindowApp
@@ -32,8 +33,9 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   browser: { icon: 'ブ', cls: 'browser' },
   files: { icon: 'フ', cls: 'files' },
   settings: { icon: '設', cls: 'settings' },
+  youtube: { icon: '▶', cls: 'youtube' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'calendar', 'browser', 'files', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'calendar', 'browser', 'youtube', 'files', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>([])
@@ -166,7 +168,7 @@ export default function App() {
       }
       if (!isMod(e, platform)) return
       const key = e.key
-      if (/^[1-7]$/.test(key)) {
+      if (/^[1-8]$/.test(key)) {
         e.preventDefault()
         openApp(APP_ORDER[Number(key) - 1])
         return
@@ -188,7 +190,7 @@ export default function App() {
       }
       if (key.toLowerCase() === 's') {
         e.preventDefault()
-        showToast('データは自動で端末内に保存されています')
+        showToast(t('savedToast'))
         return
       }
       if (!activeId) return
@@ -225,6 +227,7 @@ export default function App() {
       case 'browser': return <BrowserPanel />
       case 'files': return <FilesWindow openApp={openApp} />
       case 'settings': return <Settings lang={lang} setLang={setLang} theme={theme} setTheme={setTheme} />
+      case 'youtube': return <YoutubeApp />
     }
   }
 
@@ -232,6 +235,7 @@ export default function App() {
   const dateLabel = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`
 
   return (
+    <LangContext.Provider value={lang}>
     <div className="os-root" data-theme={theme}>
       <div className="os-desktop" ref={desktopRef} onClick={() => setStartOpen(false)}>
         <div className="desktop-icons">
@@ -301,10 +305,10 @@ export default function App() {
           </div>
           <p className="start-note">
             あなたの環境：{platformLabel(platform)}（{modLabel(platform)} キー対応）<br />
-            データはすべて端末内に保存されます
+            {t('dataLocal')}
           </p>
           <button className="start-shortcuts" onClick={() => { setStartOpen(false); setShortcutsOpen(true) }}>
-            キーボードショートカット（{modLabel(platform)} + /）
+            {t('shortcuts')}（{modLabel(platform)} + /）
           </button>
         </div>
       )}
@@ -312,7 +316,7 @@ export default function App() {
       {shortcutsOpen && (
         <div className="shortcuts-modal" role="dialog" aria-label="キーボードショートカット">
           <div className="shortcuts-head">
-            <h3>キーボードショートカット</h3>
+            <h3>{t('shortcuts')}</h3>
             <button onClick={() => setShortcutsOpen(false)}>✕</button>
           </div>
           <p className="shortcuts-platform">
@@ -325,14 +329,14 @@ export default function App() {
           </p>
           <table className="shortcuts-table">
             <tbody>
-              <tr><td>{modLabel(platform)} + 1〜7</td><td>アプリを開く／切り替える（デスクトップの並び順）</td></tr>
-              <tr><td>{modLabel(platform)} + Tab</td><td>次のウィンドウへ（+ Shift で前へ）。{modLabel(platform)} + ` でも可</td></tr>
-              <tr><td>{modLabel(platform)} + M</td><td>ウィンドウを最小化</td></tr>
-              <tr><td>{modLabel(platform)} + Shift + M / {modLabel(platform)} + Enter</td><td>最大化／元に戻す</td></tr>
-              <tr><td>{modLabel(platform)} + Shift + W</td><td>ウィンドウを閉じる</td></tr>
-              <tr><td>{modLabel(platform)} + S</td><td>保存（データは自動保存されています）</td></tr>
-              <tr><td>{modLabel(platform)} + /</td><td>この一覧を開く／閉じる</td></tr>
-              <tr><td>Esc</td><td>メニューを閉じる</td></tr>
+              <tr><td>{modLabel(platform)} + 1〜8</td><td>{t('scApps')}</td></tr>
+              <tr><td>{modLabel(platform)} + Tab</td><td>{t('scNextWin')}</td></tr>
+              <tr><td>{modLabel(platform)} + M</td><td>{t('scMin')}</td></tr>
+              <tr><td>{modLabel(platform)} + Shift + M / {modLabel(platform)} + Enter</td><td>{t('scMax')}</td></tr>
+              <tr><td>{modLabel(platform)} + Shift + W</td><td>{t('scClose')}</td></tr>
+              <tr><td>{modLabel(platform)} + S</td><td>{t('scSave')}</td></tr>
+              <tr><td>{modLabel(platform)} + /</td><td>{t('scList')}</td></tr>
+              <tr><td>Esc</td><td>{t('scEsc')}</td></tr>
             </tbody>
           </table>
           <p className="shortcuts-note">アプリ内でも、ワードプロセッサでは {modLabel(platform)} + B（太字）など、メモ帳では自動保存、カレンダーでは ←/→（前月／次月）と T（今日）が使えます。</p>
@@ -363,5 +367,6 @@ export default function App() {
         </div>
       </div>
     </div>
+    </LangContext.Provider>
   )
 }
