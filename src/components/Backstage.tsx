@@ -1,3 +1,5 @@
+export type AppId = 'word' | 'sheet' | 'note' | 'calendar'
+
 export interface BackstageAction {
   label: string
   hint?: string
@@ -7,11 +9,18 @@ export interface BackstageAction {
 interface Props {
   open: boolean
   onClose: () => void
-  current: 'word' | 'sheet'
-  onSwitch: (app: 'word' | 'sheet') => void
+  current: AppId
+  onSwitch: (app: AppId) => void
   actions: BackstageAction[]
   fileManager?: React.ReactNode
 }
+
+const APPS: { id: AppId; icon: string; cls: string; name: string; desc: string }[] = [
+  { id: 'word', icon: 'W', cls: 'word', name: 'ワードプロセッサ', desc: '文書を作る（Word 風）' },
+  { id: 'sheet', icon: 'S', cls: 'sheet', name: 'スプレッドシート', desc: '表と数式（CSV 対応）' },
+  { id: 'note', icon: 'メ', cls: 'note', name: 'メモ帳', desc: 'プレーンテキストのメモ' },
+  { id: 'calendar', icon: 'カ', cls: 'calendar', name: 'カレンダー', desc: '予定の管理' },
+]
 
 export default function Backstage({ open, onClose, current, onSwitch, actions, fileManager }: Props) {
   if (!open) return null
@@ -22,26 +31,19 @@ export default function Backstage({ open, onClose, current, onSwitch, actions, f
         <h2>ホーム</h2>
         <p className="backstage-sub">アプリの切り替えとファイル操作</p>
         <div className="backstage-apps">
-          <button
-            className={current === 'word' ? 'app-card active' : 'app-card'}
-            onClick={() => { onSwitch('word'); onClose() }}
-          >
-            <span className="app-icon word">W</span>
-            <span>
-              <strong>ワードプロセッサ</strong>
-              <small>文書を作る（Word 風）</small>
-            </span>
-          </button>
-          <button
-            className={current === 'sheet' ? 'app-card active' : 'app-card'}
-            onClick={() => { onSwitch('sheet'); onClose() }}
-          >
-            <span className="app-icon sheet">S</span>
-            <span>
-              <strong>スプレッドシート</strong>
-              <small>表を作る（CSV 対応）</small>
-            </span>
-          </button>
+          {APPS.map((app) => (
+            <button
+              key={app.id}
+              className={current === app.id ? 'app-card active' : 'app-card'}
+              onClick={() => { onSwitch(app.id); onClose() }}
+            >
+              <span className={`app-icon ${app.cls}`}>{app.icon}</span>
+              <span>
+                <strong>{app.name}</strong>
+                <small>{app.desc}</small>
+              </span>
+            </button>
+          ))}
         </div>
       </div>
       <div className="backstage-main">
@@ -54,7 +56,7 @@ export default function Backstage({ open, onClose, current, onSwitch, actions, f
             </button>
           ))}
         </div>
-        <p className="backstage-note">文書は自動でこのブラウザに保存されます。サーバーには送信されません。</p>
+        <p className="backstage-note">データはすべて端末内に保存されます。サーバーには送信されません。</p>
         {fileManager}
       </div>
     </div>

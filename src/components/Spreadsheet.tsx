@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Papa from 'papaparse'
 import { downloadText, escapeHtml, printHtml } from '../lib/files'
-import Backstage from './Backstage'
+import Backstage, { type AppId } from './Backstage'
 import FileManager from './FileManager'
 import { listDocs } from '../lib/store'
 
@@ -171,7 +171,7 @@ export function evaluateGrid(grid: string[][]): string[][] {
   )
 }
 
-export default function Spreadsheet({ onSwitch }: { onSwitch: (app: 'word' | 'sheet') => void }) {
+export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => void }) {
   const [grid, setGrid] = useState<string[][]>(() => {
     try {
       const saved = localStorage.getItem(GRID_KEY)
@@ -199,10 +199,10 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: 'word' | 'sh
   useEffect(() => {
     const pending = localStorage.getItem('uo-pending-open')
     if (!pending) return
-    localStorage.removeItem('uo-pending-open')
     void listDocs().then((docs) => {
       const doc = docs.find((d) => d.id === pending)
       if (doc && doc.kind === 'sheet') {
+        localStorage.removeItem('uo-pending-open')
         try {
           setGrid(JSON.parse(doc.content) as string[][])
           setFilename(doc.name.endsWith('.csv') ? doc.name : `${doc.name}.csv`)
@@ -293,7 +293,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: 'word' | 'sh
             onOpen={(doc) => {
               if (doc.kind !== 'sheet') {
                 localStorage.setItem('uo-pending-open', doc.id)
-                onSwitch('word')
+                onSwitch(doc.kind)
                 return
               }
               try {

@@ -1,1 +1,10 @@
-{"background_color":"#ffffff","description":"Webベースのワードプロセッサ＆スプレッドシート","display":"standalone","lang":"ja","name":"UniversalOffice","short_name":"UniversalOffice","start_url":"./","theme_color":"#2563eb"}
+{
+  "background_color": "#ffffff",
+  "description": "ブラウザで動くOS風スイート（ワープロ・表計算・メモ・カレンダー）",
+  "display": "standalone",
+  "lang": "ja",
+  "name": "YKR-OS",
+  "short_name": "YKR-OS",
+  "start_url": "./",
+  "theme_color": "#2563eb"
+}

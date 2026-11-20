@@ -86,11 +86,11 @@ export default function FileManager({ kind, currentName, getContent, onOpen }: P
         <ul className="fm-list">
           {visible.map((d) => (
             <li key={d.id}>
-              <span className={`app-icon small ${d.kind}`}>{d.kind === 'word' ? 'W' : 'S'}</span>
+              <span className={`app-icon small ${d.kind}`}>{d.kind === 'word' ? 'W' : d.kind === 'sheet' ? 'S' : 'メ'}</span>
               <span className="fm-meta">
                 <strong>{d.name}</strong>
                 <small>
-                  {d.kind === 'word' ? 'ワードプロセッサ' : 'スプレッドシート'} / {d.folder || 'ルート'} /{' '}
+                  {d.kind === 'word' ? 'ワードプロセッサ' : d.kind === 'sheet' ? 'スプレッドシート' : 'メモ帳'} / {d.folder || 'ルート'} /{' '}
                   {new Date(d.updatedAt).toLocaleString('ja-JP')}
                 </small>
               </span>

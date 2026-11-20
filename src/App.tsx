@@ -1,22 +1,267 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import WordProcessor from './components/WordProcessor'
 import Spreadsheet from './components/Spreadsheet'
+import Notepad from './components/Notepad'
+import Calendar from './components/Calendar'
+import BrowserPanel from './components/BrowserPanel'
+import FilesWindow from './components/FilesWindow'
+import type { AppId } from './components/Backstage'
 
-type Mode = 'word' | 'sheet'
+type WindowApp = AppId | 'browser' | 'files'
+
+interface Win {
+  id: WindowApp
+  z: number
+  minimized: boolean
+  maximized: boolean
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+const APP_META: Record<WindowApp, { name: string; icon: string; cls: string }> = {
+  word: { name: 'ワードプロセッサ', icon: 'W', cls: 'word' },
+  sheet: { name: 'スプレッドシート', icon: 'S', cls: 'sheet' },
+  note: { name: 'メモ帳', icon: 'メ', cls: 'note' },
+  calendar: { name: 'カレンダー', icon: 'カ', cls: 'calendar' },
+  browser: { name: 'ブラウザ', icon: 'ブ', cls: 'browser' },
+  files: { name: 'ファイル', icon: 'フ', cls: 'files' },
+}
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'calendar', 'browser', 'files']
 
 export default function App() {
-  const [mode, setMode] = useState<Mode>('word')
+  const [windows, setWindows] = useState<Win[]>([])
+  const [activeId, setActiveId] = useState<WindowApp | null>(null)
+  const [startOpen, setStartOpen] = useState(false)
+  const [now, setNow] = useState(new Date())
+  const [wide, setWide] = useState(() => window.matchMedia('(min-width: 1024px)').matches)
+  const [desktop, setDesktop] = useState({ w: 1200, h: 700 })
+  const desktopRef = useRef<HTMLDivElement>(null)
+  const zRef = useRef(10)
+  const dragRef = useRef<{ id: WindowApp; dx: number; dy: number } | null>(null)
+
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(new Date()), 1000)
+    return () => window.clearInterval(t)
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)')
+    const onChange = () => setWide(mq.matches)
+    mq.addEventListener('change', onChange)
+    return () => mq.removeEventListener('change', onChange)
+  }, [])
+
+  useEffect(() => {
+    const el = desktopRef.current
+    if (!el) return
+    const ro = new ResizeObserver(() => setDesktop({ w: el.clientWidth, h: el.clientHeight }))
+    ro.observe(el)
+    setDesktop({ w: el.clientWidth, h: el.clientHeight })
+    return () => ro.disconnect()
+  }, [])
+
+  const focusWin = useCallback((id: WindowApp) => {
+    zRef.current += 1
+    const z = zRef.current
+    setActiveId(id)
+    setWindows((prev) => prev.map((w) => (w.id === id ? { ...w, z, minimized: false } : w)))
+  }, [])
+
+  const openApp = useCallback((app: WindowApp) => {
+    setStartOpen(false)
+    setWindows((prev) => {
+      if (prev.some((w) => w.id === app)) return prev
+      const offset = (prev.length % 5) * 34
+      const w = Math.min(920, Math.max(560, desktop.w * 0.72))
+      const h = Math.min(640, Math.max(420, desktop.h * 0.78))
+      zRef.current += 1
+      return [
+        ...prev,
+        {
+          id: app,
+          z: zRef.current,
+          minimized: false,
+          maximized: !wide,
+          x: Math.max(6, (desktop.w - w) / 2 + offset - 60),
+          y: Math.max(6, (desktop.h - h) / 2 + offset - 30),
+          w,
+          h,
+        },
+      ]
+    })
+    zRef.current += 1
+    setActiveId(app)
+    setWindows((prev) => prev.map((w) => (w.id === app ? { ...w, z: zRef.current, minimized: false } : w)))
+  }, [desktop, wide])
+
+  const closeWin = (id: WindowApp) => {
+    setWindows((prev) => prev.filter((w) => w.id !== id))
+    if (activeId === id) setActiveId(null)
+  }
+
+  const toggleMax = (id: WindowApp) => {
+    setWindows((prev) => prev.map((w) => (w.id === id ? { ...w, maximized: !w.maximized } : w)))
+    focusWin(id)
+  }
+
+  /** 広い画面で、アクティブなウィンドウともう1つを 5:3 で並べる */
+  const tile = (id: WindowApp) => {
+    if (!wide) return
+    setWindows((prev) => {
+      let other = [...prev].filter((w) => w.id !== id && !w.minimized).sort((a, b) => b.z - a.z)[0]
+      let list = prev
+      if (!other) {
+        const sub: Win = {
+          id: 'note', z: zRef.current + 1, minimized: false, maximized: false,
+          x: 0, y: 0, w: 400, h: 400,
+        }
+        other = sub
+        list = [...prev, sub]
+      }
+      const gap = 8
+      const mainW = Math.floor(((desktop.w - gap * 3) * 5) / 8)
+      const subW = desktop.w - gap * 3 - mainW
+      const fullH = desktop.h - gap * 2
+      return list.map((w) => {
+        if (w.id === id) return { ...w, maximized: false, minimized: false, x: gap, y: gap, w: mainW, h: fullH }
+        if (w.id === other.id) return { ...w, maximized: false, minimized: false, x: gap * 2 + mainW, y: gap, w: subW, h: fullH }
+        return w
+      })
+    })
+    focusWin(id)
+  }
+
+  const onTitlePointerDown = (e: React.PointerEvent, win: Win) => {
+    focusWin(win.id)
+    if (win.maximized || !wide) return
+    dragRef.current = { id: win.id, dx: e.clientX - win.x, dy: e.clientY - win.y }
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+  const onTitlePointerMove = (e: React.PointerEvent) => {
+    const drag = dragRef.current
+    if (!drag) return
+    setWindows((prev) =>
+      prev.map((w) =>
+        w.id === drag.id
+          ? { ...w, x: Math.min(Math.max(e.clientX - drag.dx, -w.w + 120), desktop.w - 80), y: Math.min(Math.max(e.clientY - drag.dy, 0), desktop.h - 40) }
+          : w
+      )
+    )
+  }
+  const onTitlePointerUp = () => {
+    dragRef.current = null
+  }
+
+  const renderContent = (app: WindowApp) => {
+    switch (app) {
+      case 'word': return <WordProcessor onSwitch={openApp} />
+      case 'sheet': return <Spreadsheet onSwitch={openApp} />
+      case 'note': return <Notepad onSwitch={openApp} />
+      case 'calendar': return <Calendar onSwitch={openApp} />
+      case 'browser': return <BrowserPanel />
+      case 'files': return <FilesWindow openApp={openApp} />
+    }
+  }
+
+  const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const dateLabel = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`
 
   return (
-    <div className="app">
-      <main>
-        {mode === 'word'
-          ? <WordProcessor onSwitch={setMode} />
-          : <Spreadsheet onSwitch={setMode} />}
-      </main>
-      <footer>
-        <small>UniversalOffice v0.4 — ファイルはブラウザから直接読み書きします（サーバーに送信されません）。</small>
-      </footer>
+    <div className="os-root">
+      <div className="os-desktop" ref={desktopRef} onClick={() => setStartOpen(false)}>
+        <div className="desktop-icons">
+          {APP_ORDER.map((app) => (
+            <button key={app} className="desktop-icon" onClick={(e) => { e.stopPropagation(); openApp(app) }}>
+              <span className={`app-icon big ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
+              <span className="desktop-icon-label">{APP_META[app].name}</span>
+            </button>
+          ))}
+        </div>
+        <div className="desktop-widget">
+          <span className="widget-clock">{clock}</span>
+          <span className="widget-date">{now.getFullYear()}年{now.getMonth() + 1}月{now.getDate()}日（{'日月火水木金土'[now.getDay()]}）</span>
+          <span className="widget-brand">YKR-OS</span>
+        </div>
+        {windows.length === 0 && (
+          <div className="desktop-welcome">
+            <h1>YKR-OS</h1>
+            <p>アイコンをタップしてアプリを開いてください</p>
+          </div>
+        )}
+        {windows.map((win) => {
+          if (win.minimized) return null
+          const meta = APP_META[win.id]
+          const full = win.maximized || !wide
+          const style: React.CSSProperties = full
+            ? { inset: 0, width: '100%', height: '100%', zIndex: win.z }
+            : { left: win.x, top: win.y, width: win.w, height: win.h, zIndex: win.z }
+          return (
+            <section
+              key={win.id}
+              className={`os-window${activeId === win.id ? ' active' : ''}${full ? ' full' : ''}`}
+              style={style}
+              onPointerDown={() => focusWin(win.id)}
+            >
+              <div
+                className="os-titlebar"
+                onPointerDown={(e) => onTitlePointerDown(e, win)}
+                onPointerMove={onTitlePointerMove}
+                onPointerUp={onTitlePointerUp}
+                onDoubleClick={() => wide && toggleMax(win.id)}
+              >
+                <span className={`app-icon tiny ${meta.cls}`}>{meta.icon}</span>
+                <span className="os-title">{meta.name}</span>
+                <div className="os-win-buttons" onPointerDown={(e) => e.stopPropagation()}>
+                  {wide && <button title="5:3 で並べる" onClick={() => tile(win.id)}>▦</button>}
+                  <button title="最小化" onClick={() => setWindows((prev) => prev.map((w) => (w.id === win.id ? { ...w, minimized: true } : w)))}>―</button>
+                  {wide && <button title={win.maximized ? '元に戻す' : '最大化'} onClick={() => toggleMax(win.id)}>{win.maximized ? '🗗' : '🗖'}</button>}
+                  <button title="閉じる" className="close" onClick={() => closeWin(win.id)}>✕</button>
+                </div>
+              </div>
+              <div className="os-window-body">{renderContent(win.id)}</div>
+            </section>
+          )
+        })}
+      </div>
+
+      {startOpen && (
+        <div className="start-menu">
+          <h2>YKR-OS</h2>
+          <div className="start-apps">
+            {APP_ORDER.map((app) => (
+              <button key={app} className="start-app" onClick={() => openApp(app)}>
+                <span className={`app-icon ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
+                <span>{APP_META[app].name}</span>
+              </button>
+            ))}
+          </div>
+          <p className="start-note">データはすべて端末内に保存されます</p>
+        </div>
+      )}
+
+      <div className="os-taskbar">
+        <button className={startOpen ? 'start-btn on' : 'start-btn'} onClick={() => setStartOpen((v) => !v)}>
+          YKR
+        </button>
+        <div className="task-buttons">
+          {windows.map((win) => (
+            <button
+              key={win.id}
+              className={`task-btn${activeId === win.id && !win.minimized ? ' active' : ''}`}
+              onClick={() => (win.minimized || activeId !== win.id ? focusWin(win.id) : setWindows((prev) => prev.map((w) => (w.id === win.id ? { ...w, minimized: true } : w))))}
+            >
+              <span className={`app-icon tiny ${APP_META[win.id].cls}`}>{APP_META[win.id].icon}</span>
+              {APP_META[win.id].name}
+            </button>
+          ))}
+        </div>
+        <div className="task-clock">
+          <span>{clock}</span>
+          <small>{dateLabel}</small>
+        </div>
+      </div>
     </div>
   )
 }

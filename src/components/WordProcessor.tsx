@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { EditorContent, useEditor } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import { TextStyle, FontFamily, FontSize } from '@tiptap/extension-text-style'
+import { FontFamily, FontSize, LineHeight } from '@tiptap/extension-text-style'
+import Superscript from '@tiptap/extension-superscript'
+import Subscript from '@tiptap/extension-subscript'
+import { ParagraphProps, TextStyleWithSpacing } from '../lib/paragraphProps'
 import Color from '@tiptap/extension-color'
 import Highlight from '@tiptap/extension-highlight'
 import TextAlign from '@tiptap/extension-text-align'
@@ -15,7 +18,7 @@ import TurndownService from 'turndown'
 import * as mammoth from 'mammoth'
 import { asBlob as docxBlob } from 'html-docx-js-typescript'
 import { downloadText, escapeHtml } from '../lib/files'
-import Backstage from './Backstage'
+import Backstage, { type AppId } from './Backstage'
 import FileManager from './FileManager'
 import { listDocs } from '../lib/store'
 
@@ -51,7 +54,7 @@ const MARGINS = [
 
 type Tab = 'format' | 'insert' | 'layout' | 'view'
 
-export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | 'sheet') => void }) {
+export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => void }) {
   const [title, setTitle] = useState(() => localStorage.getItem(TITLE_KEY) || '無題の文書')
   const [zoom, setZoom] = useState(100)
   const [stats, setStats] = useState({ chars: 0, paragraphs: 0 })
@@ -62,6 +65,19 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
   const [landscape, setLandscape] = useState(false)
   const [margin, setMargin] = useState(MARGINS[0])
   const [showRuler, setShowRuler] = useState(true)
+  const [docDefaults, setDocDefaults] = useState(() => {
+    try {
+      const saved = localStorage.getItem('uo-doc-defaults')
+      if (saved) return JSON.parse(saved) as { font: string; size: string; lineHeight: string }
+    } catch { /* ignore */ }
+    return { font: FONTS[0].value, size: '12', lineHeight: '1.8' }
+  })
+  const [findOpen, setFindOpen] = useState(false)
+  const [findText, setFindText] = useState('')
+  const [replaceText, setReplaceText] = useState('')
+  const [findMsg, setFindMsg] = useState('')
+  const [showOutline, setShowOutline] = useState(false)
+  const [headings, setHeadings] = useState<{ level: number; text: string; pos: number }[]>([])
   const fileRef = useRef<HTMLInputElement>(null)
   const imageRef = useRef<HTMLInputElement>(null)
   const pageScrollRef = useRef<HTMLDivElement>(null)
@@ -88,9 +104,13 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
   const editor = useEditor({
     extensions: [
       StarterKit,
-      TextStyle,
+      TextStyleWithSpacing,
       FontFamily,
       FontSize,
+      LineHeight,
+      ParagraphProps,
+      Superscript,
+      Subscript,
       Color,
       Highlight.configure({ multicolor: true }),
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
@@ -127,13 +147,35 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
   }, [title])
 
   useEffect(() => {
+    localStorage.setItem('uo-doc-defaults', JSON.stringify(docDefaults))
+  }, [docDefaults])
+
+  useEffect(() => {
+    if (!editor) return
+    const collect = () => {
+      const list: { level: number; text: string; pos: number }[] = []
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'heading') {
+          list.push({ level: (node.attrs.level as number) ?? 1, text: node.textContent, pos })
+        }
+      })
+      setHeadings(list)
+    }
+    collect()
+    editor.on('transaction', collect)
+    return () => {
+      editor.off('transaction', collect)
+    }
+  }, [editor])
+
+  useEffect(() => {
     if (!editor) return
     const pending = localStorage.getItem('uo-pending-open')
     if (!pending) return
-    localStorage.removeItem('uo-pending-open')
     void listDocs().then((docs) => {
       const doc = docs.find((d) => d.id === pending)
       if (doc && doc.kind === 'word') {
+        localStorage.removeItem('uo-pending-open')
         editor.commands.setContent(doc.content)
         setTitle(doc.name)
       }
@@ -278,7 +320,7 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
             onOpen={(doc) => {
               if (doc.kind !== 'word') {
                 localStorage.setItem('uo-pending-open', doc.id)
-                onSwitch('sheet')
+                onSwitch(doc.kind)
                 return
               }
               editor.commands.setContent(doc.content)
@@ -332,6 +374,14 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
                 <button className={active('italic') ? 'on' : ''} onClick={() => chain().toggleItalic().run()}><i>I</i></button>
                 <button className={active('underline') ? 'on' : ''} onClick={() => chain().toggleUnderline().run()}><u>U</u></button>
                 <button className={active('strike') ? 'on' : ''} onClick={() => chain().toggleStrike().run()}><s>S</s></button>
+                <button className={active('superscript') ? 'on' : ''} onClick={() => chain().toggleSuperscript().run()}>x²</button>
+                <button className={active('subscript') ? 'on' : ''} onClick={() => chain().toggleSubscript().run()}>x₂</button>
+                <select aria-label="文字間隔" defaultValue="" onChange={(e) => { if (e.target.value) chain().setLetterSpacing(e.target.value).run(); else chain().unsetLetterSpacing().run() }}>
+                  <option value="">文字間隔：標準</option>
+                  <option value="-0.05em">狭い</option>
+                  <option value="0.1em">広い</option>
+                  <option value="0.2em">とても広い</option>
+                </select>
                 <label className="color-pick">A<input type="color" aria-label="文字色" onChange={(e) => chain().setColor(e.target.value).run()} /></label>
                 <label className="color-pick">蛍光<input type="color" aria-label="蛍光ペン" defaultValue="#fff59d" onChange={(e) => chain().toggleHighlight({ color: e.target.value }).run()} /></label>
                 <button onClick={() => chain().unsetAllMarks().clearNodes().run()}>書式クリア</button>
@@ -346,8 +396,37 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
                 <button className={alignActive('justify') ? 'on' : ''} onClick={() => chain().setTextAlign('justify').run()}>両端</button>
                 <button className={active('bulletList') ? 'on' : ''} onClick={() => chain().toggleBulletList().run()}>箇条書き</button>
                 <button className={active('orderedList') ? 'on' : ''} onClick={() => chain().toggleOrderedList().run()}>番号付き</button>
+                <select aria-label="行間" defaultValue="" onChange={(e) => { if (e.target.value) chain().setLineHeight(e.target.value).run(); else chain().unsetLineHeight().run() }}>
+                  <option value="">行間</option>
+                  <option value="1">1.0</option>
+                  <option value="1.15">1.15</option>
+                  <option value="1.5">1.5</option>
+                  <option value="2">2.0</option>
+                </select>
+                <select aria-label="段落前の間隔" defaultValue="" onChange={(e) => chain().setSpaceBefore(e.target.value || null).run()}>
+                  <option value="">前：なし</option>
+                  <option value="6pt">前：6pt</option>
+                  <option value="12pt">前：12pt</option>
+                </select>
+                <select aria-label="段落後の間隔" defaultValue="6pt" onChange={(e) => chain().setSpaceAfter(e.target.value || null).run()}>
+                  <option value="">後：なし</option>
+                  <option value="6pt">後：6pt</option>
+                  <option value="12pt">後：12pt</option>
+                  <option value="18pt">後：18pt</option>
+                </select>
+                <button className={(editor.getAttributes('paragraph').firstLineIndent || editor.getAttributes('heading').firstLineIndent) ? 'on' : ''}
+                  onClick={() => {
+                    const on = editor.getAttributes('paragraph').firstLineIndent || editor.getAttributes('heading').firstLineIndent
+                    chain().setFirstLineIndent(on ? null : '1em').run()
+                  }}>字下げ</button>
               </div>
               <span className="rgroup-label">段落</span>
+            </div>
+            <div className="rgroup">
+              <div className="rgroup-body">
+                <button className={findOpen ? 'on' : ''} onClick={() => setFindOpen((v) => !v)}>検索・置換</button>
+              </div>
+              <span className="rgroup-label">編集</span>
             </div>
           </div>
         )}
@@ -384,6 +463,19 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
               </div>
               <span className="rgroup-label">区切り</span>
             </div>
+            <div className="rgroup">
+              <div className="rgroup-body">
+                <button onClick={() => {
+                  const prev = editor.getAttributes('link').href as string | undefined
+                  const url = window.prompt('リンク先URL', prev ?? 'https://')
+                  if (url === null) return
+                  if (url === '') { chain().extendMarkRange('link').unsetLink().run(); return }
+                  chain().extendMarkRange('link').setLink({ href: url }).run()
+                }}>リンク</button>
+                <button onClick={() => chain().unsetLink().run()}>リンク解除</button>
+              </div>
+              <span className="rgroup-label">リンク</span>
+            </div>
           </div>
         )}
 
@@ -406,6 +498,24 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
               </div>
               <span className="rgroup-label">ページ設定</span>
             </div>
+            <div className="rgroup">
+              <div className="rgroup-body">
+                <select aria-label="既定フォント" value={docDefaults.font} onChange={(e) => setDocDefaults((d) => ({ ...d, font: e.target.value }))}>
+                  {FONTS.map((f) => <option key={f.label} value={f.value}>{f.label}</option>)}
+                </select>
+                <select aria-label="既定サイズ" value={docDefaults.size} onChange={(e) => setDocDefaults((d) => ({ ...d, size: e.target.value }))}>
+                  {SIZES.map((sz) => <option key={sz} value={sz}>{sz}pt</option>)}
+                </select>
+                <select aria-label="既定の行間" value={docDefaults.lineHeight} onChange={(e) => setDocDefaults((d) => ({ ...d, lineHeight: e.target.value }))}>
+                  <option value="1">行間 1.0</option>
+                  <option value="1.15">行間 1.15</option>
+                  <option value="1.5">行間 1.5</option>
+                  <option value="1.8">行間 1.8</option>
+                  <option value="2">行間 2.0</option>
+                </select>
+              </div>
+              <span className="rgroup-label">文書の既定</span>
+            </div>
           </div>
         )}
 
@@ -424,6 +534,7 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
             <div className="rgroup">
               <div className="rgroup-body">
                 <label className="check"><input type="checkbox" checked={showRuler} onChange={(e) => setShowRuler(e.target.checked)} /> ルーラー</label>
+                <label className="check"><input type="checkbox" checked={showOutline} onChange={(e) => setShowOutline(e.target.checked)} /> アウトライン</label>
               </div>
               <span className="rgroup-label">表示</span>
             </div>
@@ -434,7 +545,57 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
       <input ref={fileRef} type="file" accept=".docx,.md,.markdown,.html,.htm,.txt" hidden
         onChange={(e) => { const f = e.target.files?.[0]; if (f) void openFile(f); e.target.value = '' }} />
 
+      {findOpen && (
+        <div className="find-panel">
+          <input value={findText} onChange={(e) => setFindText(e.target.value)} placeholder="検索する文字" aria-label="検索する文字" />
+          <button onClick={() => {
+            if (!findText) return
+            const found = (window as unknown as { find: (t: string) => boolean }).find(findText)
+            setFindMsg(found ? '' : '見つかりませんでした')
+          }}>次を検索</button>
+          <input value={replaceText} onChange={(e) => setReplaceText(e.target.value)} placeholder="置換後の文字" aria-label="置換後の文字" />
+          <button onClick={() => {
+            if (!findText) return
+            let count = 0
+            type JsonNode = { type?: string; text?: string; content?: JsonNode[]; [key: string]: unknown }
+            const walk = (node: JsonNode): JsonNode => {
+              if (node.type === 'text' && typeof node.text === 'string') {
+                const parts = node.text.split(findText)
+                if (parts.length > 1) {
+                  count += parts.length - 1
+                  return { ...node, text: parts.join(replaceText) }
+                }
+                return node
+              }
+              if (node.content) return { ...node, content: node.content.map(walk) }
+              return node
+            }
+            const newJson = walk(editor.getJSON() as JsonNode)
+            if (count > 0) editor.commands.setContent(newJson)
+            setFindMsg(count > 0 ? `${count} 件置換しました` : '見つかりませんでした')
+          }}>すべて置換</button>
+          {findMsg && <span className="find-msg">{findMsg}</span>}
+          <button onClick={() => setFindOpen(false)}>閉じる</button>
+        </div>
+      )}
+
       <div className="page-scroll" ref={pageScrollRef}>
+        <div className="page-flex">
+        {showOutline && (
+          <aside className="outline">
+            <h4>アウトライン</h4>
+            {headings.length === 0 ? <p className="outline-empty">見出しがありません</p> : headings.map((h, i) => (
+              <button key={i} className={`outline-item lv${h.level}`}
+                onClick={() => {
+                  editor.commands.setTextSelection(h.pos + 1)
+                  editor.commands.focus()
+                  const dom = editor.view.nodeDOM(h.pos) as HTMLElement | null
+                  dom?.scrollIntoView({ block: 'center' })
+                }}>{h.text || '（無題の見出し）'}</button>
+            ))}
+          </aside>
+        )}
+        <div className="page-main">
         {showRuler && (
           <div className="ruler-scale" style={{ width: pagePx.w * (zoom / 100), height: 20 * (zoom / 100) }}>
             <div className="ruler" style={{ width: `${pageW}mm`, transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }} aria-hidden>
@@ -447,9 +608,11 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: 'word' | '
         <div className="page-scale" style={{ width: pagePx.w * (zoom / 100), height: pagePx.h * (zoom / 100) }}>
           <div className="page" ref={pageRef}
             onClick={(e) => { if (e.target === e.currentTarget) editor.commands.focus('end') }}
-            style={{ width: `${pageW}mm`, minHeight: `${pageH}mm`, padding: `${margin.t}mm ${margin.r}mm ${margin.b}mm ${margin.l}mm`, transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
+            style={{ width: `${pageW}mm`, minHeight: `${pageH}mm`, padding: `${margin.t}mm ${margin.r}mm ${margin.b}mm ${margin.l}mm`, transform: `scale(${zoom / 100})`, transformOrigin: 'top left', fontFamily: docDefaults.font, fontSize: `${docDefaults.size}pt`, lineHeight: docDefaults.lineHeight }}>
             <EditorContent editor={editor} />
           </div>
+        </div>
+        </div>
         </div>
       </div>
 
