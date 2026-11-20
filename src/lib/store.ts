@@ -1,4 +1,5 @@
 import { createStore, get, set, del, keys } from 'idb-keyval'
+import OpfsWorkerCtor from '../workers/opfs.worker.ts?worker'
 
 export interface LocalDoc {
   id: string
@@ -29,7 +30,14 @@ const eventsStore = createStore('universal-office-db', 'events')
 export const HAS_OPFS =
   typeof navigator !== 'undefined' && !!navigator.storage && 'getDirectory' in navigator.storage
 
+type Backend = 'worker' | 'main' | 'idb'
+let backendPromise: Promise<Backend> | null = null
+let resolvedBackend: Backend | null = null
+
 export function storageBackendName(): string {
+  if (resolvedBackend === 'worker') return 'OPFS（Worker経由）'
+  if (resolvedBackend === 'main') return 'OPFS'
+  if (resolvedBackend === 'idb') return 'IndexedDB'
   return HAS_OPFS ? 'OPFS' : 'IndexedDB'
 }
 
@@ -39,6 +47,7 @@ export async function storageInfo(): Promise<{
   persisted: boolean
   backend: string
 }> {
+  await ensureBackend()
   let usage = 0
   let quota = 0
   let persisted = false
@@ -60,7 +69,7 @@ export async function requestPersist(): Promise<boolean> {
   return false
 }
 
-/* ---------- OPFS 実装 ---------- */
+/* ---------- OPFS 実装（メインスレッド版：予備） ---------- */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyHandle = any
 
@@ -71,7 +80,7 @@ async function opfsDir(name: string): Promise<AnyHandle> {
   return app.getDirectoryHandle(name, { create: true })
 }
 
-async function opfsWriteJson(dirName: string, fileName: string, obj: unknown): Promise<void> {
+async function opfsMainWriteJson(dirName: string, fileName: string, obj: unknown): Promise<void> {
   const dir = await opfsDir(dirName)
   const fh = await dir.getFileHandle(fileName, { create: true })
   const writable = await fh.createWritable()
@@ -79,7 +88,7 @@ async function opfsWriteJson(dirName: string, fileName: string, obj: unknown): P
   await writable.close()
 }
 
-async function opfsReadJson(dirName: string, fileName: string): Promise<unknown | null> {
+async function opfsMainReadJson(dirName: string, fileName: string): Promise<unknown | null> {
   try {
     const dir = await opfsDir(dirName)
     const fh = await dir.getFileHandle(fileName)
@@ -90,7 +99,7 @@ async function opfsReadJson(dirName: string, fileName: string): Promise<unknown 
   }
 }
 
-async function opfsReadAll(dirName: string): Promise<unknown[]> {
+async function opfsMainReadAll(dirName: string): Promise<unknown[]> {
   try {
     const dir = await opfsDir(dirName)
     const out: unknown[] = []
@@ -106,11 +115,108 @@ async function opfsReadAll(dirName: string): Promise<unknown[]> {
   }
 }
 
-async function opfsDelete(dirName: string, fileName: string): Promise<void> {
+async function opfsMainDelete(dirName: string, fileName: string): Promise<void> {
   try {
     const dir = await opfsDir(dirName)
     await dir.removeEntry(fileName)
   } catch { /* ignore */ }
+}
+
+/* ---------- OPFS 実装（Worker 経由） ---------- */
+let worker: Worker | null = null
+let workerSeq = 0
+const workerPending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
+
+function getWorker(): Worker {
+  if (!worker) {
+    worker = new (OpfsWorkerCtor as new () => Worker)()
+    worker.onmessage = (e: MessageEvent<{ id: number; ok: boolean; result?: unknown; error?: string }>) => {
+      const pending = workerPending.get(e.data.id)
+      if (!pending) return
+      workerPending.delete(e.data.id)
+      if (e.data.ok) pending.resolve(e.data.result ?? null)
+      else pending.reject(new Error(e.data.error ?? 'worker error'))
+    }
+    worker.onerror = () => {
+      for (const pending of workerPending.values()) pending.reject(new Error('worker crashed'))
+      workerPending.clear()
+    }
+  }
+  return worker
+}
+
+function workerCall(op: string, dir: string, name?: string, text?: string): Promise<unknown> {
+  const id = ++workerSeq
+  return new Promise((resolve, reject) => {
+    workerPending.set(id, { resolve, reject })
+    getWorker().postMessage({ id, op, dir, name, text })
+  })
+}
+
+/* ---------- バックエンド決定（Worker → メインスレッド → IndexedDB） ---------- */
+function ensureBackend(): Promise<Backend> {
+  if (!backendPromise) {
+    backendPromise = (async () => {
+      if (!HAS_OPFS) {
+        resolvedBackend = 'idb'
+        return resolvedBackend
+      }
+      try {
+        await workerCall('probe', '')
+        resolvedBackend = 'worker'
+        return resolvedBackend
+      } catch { /* Worker がダメならメインスレッドを試す */ }
+      try {
+        await opfsMainWriteJson('', '__probe__.json', { ok: true })
+        const probe = (await opfsMainReadJson('', '__probe__.json')) as { ok?: boolean } | null
+        await opfsMainDelete('', '__probe__.json')
+        if (probe?.ok) {
+          resolvedBackend = 'main'
+          return resolvedBackend
+        }
+      } catch { /* fallthrough */ }
+      resolvedBackend = 'idb'
+      return resolvedBackend
+    })()
+  }
+  return backendPromise
+}
+
+async function useOpfs(): Promise<boolean> {
+  return (await ensureBackend()) !== 'idb'
+}
+
+/* ---------- OPFS ディスパッチ ---------- */
+async function opfsWriteJson(dirName: string, fileName: string, obj: unknown): Promise<void> {
+  if (resolvedBackend === 'worker') {
+    await workerCall('write', dirName, fileName, JSON.stringify(obj))
+    return
+  }
+  await opfsMainWriteJson(dirName, fileName, obj)
+}
+
+async function opfsReadJson(dirName: string, fileName: string): Promise<unknown | null> {
+  if (resolvedBackend === 'worker') {
+    const text = (await workerCall('read', dirName, fileName)) as string | null
+    return text ? JSON.parse(text) : null
+  }
+  return opfsMainReadJson(dirName, fileName)
+}
+
+async function opfsReadAll(dirName: string): Promise<unknown[]> {
+  if (resolvedBackend === 'worker') {
+    const texts = (await workerCall('readAll', dirName)) as string[]
+    return texts.map((t) => JSON.parse(t))
+  }
+  return opfsMainReadAll(dirName)
+}
+
+async function opfsDelete(dirName: string, fileName: string): Promise<void> {
+  if (resolvedBackend === 'worker') {
+    await workerCall('delete', dirName, fileName)
+    return
+  }
+  await opfsMainDelete(dirName, fileName)
 }
 
 /* ---------- IndexedDB 実装（予備） ---------- */
@@ -123,7 +229,11 @@ async function idbAll<T>(store: ReturnType<typeof createStore>): Promise<T[]> {
 /* ---------- 移行（IndexedDB → OPFS、初回だけ） ---------- */
 let migrationDone = false
 async function migrateIfNeeded(): Promise<void> {
-  if (!HAS_OPFS || migrationDone) return
+  if (migrationDone) return
+  if ((await ensureBackend()) === 'idb') {
+    migrationDone = true
+    return
+  }
   migrationDone = true
   try {
     if (localStorage.getItem('ykr-storage-migrated') === '1') return
@@ -142,7 +252,7 @@ async function migrateIfNeeded(): Promise<void> {
 /* ================= 文書 ================= */
 export async function listDocs(): Promise<LocalDoc[]> {
   await migrateIfNeeded()
-  const docs = HAS_OPFS
+  const docs = (await useOpfs())
     ? ((await opfsReadAll('docs')) as LocalDoc[])
     : await idbAll<LocalDoc>(docsStore)
   return docs.sort((a, b) => b.updatedAt - a.updatedAt)
@@ -157,21 +267,21 @@ export async function saveDoc(input: Omit<LocalDoc, 'id' | 'updatedAt'> & { id?:
     id = existing?.id ?? crypto.randomUUID()
   }
   const doc: LocalDoc = { ...input, id, updatedAt: Date.now() }
-  if (HAS_OPFS) await opfsWriteJson('docs', `${id}.json`, doc)
+  if (await useOpfs()) await opfsWriteJson('docs', `${id}.json`, doc)
   else await set(id, doc, docsStore)
   return doc
 }
 
 export async function deleteDoc(id: string): Promise<void> {
   await migrateIfNeeded()
-  if (HAS_OPFS) await opfsDelete('docs', `${id}.json`)
+  if (await useOpfs()) await opfsDelete('docs', `${id}.json`)
   else await del(id, docsStore)
 }
 
 /* ================= フォルダ ================= */
 export async function listFolders(): Promise<string[]> {
   await migrateIfNeeded()
-  if (HAS_OPFS) {
+  if (await useOpfs()) {
     const data = (await opfsReadJson('', 'folders.json')) as { names?: string[] } | null
     return (data?.names ?? []).sort()
   }
@@ -182,7 +292,7 @@ export async function addFolder(name: string): Promise<void> {
   const trimmed = name.trim()
   if (!trimmed) return
   await migrateIfNeeded()
-  if (HAS_OPFS) {
+  if (await useOpfs()) {
     const current = await listFolders()
     if (!current.includes(trimmed)) {
       await opfsWriteJson('', 'folders.json', { names: [...current, trimmed] })
@@ -195,7 +305,7 @@ export async function addFolder(name: string): Promise<void> {
 /* ================= カレンダー予定 ================= */
 export async function listEvents(): Promise<CalEvent[]> {
   await migrateIfNeeded()
-  const events = HAS_OPFS
+  const events = (await useOpfs())
     ? ((await opfsReadAll('events')) as CalEvent[])
     : await idbAll<CalEvent>(eventsStore)
   return events.sort((a, b) => a.date.localeCompare(b.date) || a.createdAt - b.createdAt)
@@ -204,20 +314,20 @@ export async function listEvents(): Promise<CalEvent[]> {
 export async function saveEvent(input: Omit<CalEvent, 'id' | 'createdAt'> & { id?: string }): Promise<CalEvent> {
   await migrateIfNeeded()
   const event: CalEvent = { ...input, id: input.id ?? crypto.randomUUID(), createdAt: Date.now() }
-  if (HAS_OPFS) await opfsWriteJson('events', `${event.id}.json`, event)
+  if (await useOpfs()) await opfsWriteJson('events', `${event.id}.json`, event)
   else await set(event.id, event, eventsStore)
   return event
 }
 
 export async function deleteEvent(id: string): Promise<void> {
   await migrateIfNeeded()
-  if (HAS_OPFS) await opfsDelete('events', `${id}.json`)
+  if (await useOpfs()) await opfsDelete('events', `${id}.json`)
   else await del(id, eventsStore)
 }
 
 /* ================= バックアップ ================= */
 export interface BackupData {
-  app: 'YKR-OS'
+  app: 'WebX'
   version: 1
   exportedAt: string
   docs: LocalDoc[]
@@ -227,17 +337,17 @@ export interface BackupData {
 
 export async function exportAll(): Promise<BackupData> {
   const [docs, events, folders] = await Promise.all([listDocs(), listEvents(), listFolders()])
-  return { app: 'YKR-OS', version: 1, exportedAt: new Date().toISOString(), docs, events, folders }
+  return { app: 'WebX', version: 1, exportedAt: new Date().toISOString(), docs, events, folders }
 }
 
 export async function importAll(data: BackupData): Promise<void> {
   for (const f of data.folders ?? []) await addFolder(f)
   for (const d of data.docs ?? []) {
-    if (HAS_OPFS) await opfsWriteJson('docs', `${d.id}.json`, d)
+    if (await useOpfs()) await opfsWriteJson('docs', `${d.id}.json`, d)
     else await set(d.id, d, docsStore)
   }
   for (const e of data.events ?? []) {
-    if (HAS_OPFS) await opfsWriteJson('events', `${e.id}.json`, e)
+    if (await useOpfs()) await opfsWriteJson('events', `${e.id}.json`, e)
     else await set(e.id, e, eventsStore)
   }
 }

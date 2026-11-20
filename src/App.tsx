@@ -245,11 +245,11 @@ export default function App() {
         <div className="desktop-widget">
           <span className="widget-clock">{clock}</span>
           <span className="widget-date">{now.getFullYear()}年{now.getMonth() + 1}月{now.getDate()}日（{'日月火水木金土'[now.getDay()]}）</span>
-          <span className="widget-brand">YKR-OS</span>
+          <span className="widget-brand">WebX</span>
         </div>
         {windows.length === 0 && (
           <div className="desktop-welcome">
-            <h1>YKR-OS</h1>
+            <h1>WebX</h1>
             <p>{t('desktopHint')}</p>
           </div>
         )}
@@ -290,7 +290,7 @@ export default function App() {
 
       {startOpen && (
         <div className="start-menu">
-          <h2>YKR-OS</h2>
+          <h2>WebX</h2>
           <div className="start-apps">
             {APP_ORDER.map((app) => (
               <button key={app} className="start-app" onClick={() => openApp(app)}>
@@ -317,7 +317,7 @@ export default function App() {
           </div>
           <p className="shortcuts-platform">
             あなたの環境は <strong>{platformLabel(platform)}</strong> です。
-            {platform === 'windows' && ' Mod キーは Ctrl です。Win キーや Alt+Tab は Windows 側の操作になるため、YKR-OS 内では使いません。'}
+            {platform === 'windows' && ' Mod キーは Ctrl です。Win キーや Alt+Tab は Windows 側の操作になるため、WebX 内では使いません。'}
             {platform === 'mac' && ' Mod キーは ⌘（Command）です。'}
             {platform === 'ipad' && ' Mod キーは ⌘（Command）です。外付けキーボードで使えます。タッチだけでも全機能使えます。'}
             {platform === 'android' && ' Mod キーは Ctrl / ⌘ のどちらでも使えます。'}

@@ -67,12 +67,12 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
   const doImport = async (file: File) => {
     try {
       const data = JSON.parse(await file.text())
-      if (data?.app !== 'YKR-OS' || !Array.isArray(data.docs)) throw new Error('bad format')
+      if ((data?.app !== 'WebX' && data?.app !== 'YKR-OS') || !Array.isArray(data.docs)) throw new Error('bad format')
       await importAll(data)
       setMsg('バックアップから復元しました')
       await refresh()
     } catch {
-      setMsg('復元できませんでした。YKR-OS のバックアップファイルを選んでください')
+      setMsg('復元できませんでした。WebX のバックアップファイルを選んでください')
     }
   }
 

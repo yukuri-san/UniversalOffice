@@ -3,8 +3,8 @@
   "description": "ブラウザで動くOS風スイート（ワープロ・表計算・メモ・カレンダー）",
   "display": "standalone",
   "lang": "ja",
-  "name": "YKR-OS",
-  "short_name": "YKR-OS",
+  "name": "WebX",
+  "short_name": "WebX",
   "start_url": "./",
   "theme_color": "#2563eb"
 }

@@ -1,4 +1,4 @@
-# YKR-OS（旧 UniversalOffice）
+# WebX（旧 UniversalOffice）
 
 ブラウザで動く OS 風スイートです。デスクトップにアイコンが並び、アプリはウィンドウで開きます。タスクバー（フローティングのガラス風ドック）とスタートメニュー、時計ウィジェットつき。UI は Windows 11 / Android / iOS の要素と Liquid Glass（すりガラス）風デザインを取り入れています。
 
