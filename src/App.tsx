@@ -23,7 +23,7 @@ export default function App() {
       </header>
       <main>{mode === 'word' ? <WordProcessor /> : <Spreadsheet />}</main>
       <footer>
-        <small>UniversalOffice v0.1 — ファイルはブラウザから直接読み書きします（サーバーに送信されません）。</small>
+        <small>UniversalOffice v0.2 — ファイルはブラウザから直接読み書きします（サーバーに送信されません）。</small>
       </footer>
     </div>
   )
