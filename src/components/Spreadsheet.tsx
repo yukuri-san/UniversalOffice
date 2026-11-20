@@ -62,7 +62,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: 'word' | 'sh
   }
 
   return (
-    <section>
+    <section className="sheet-app">
       <Backstage
         open={homeOpen}
         onClose={() => setHomeOpen(false)}
