@@ -1,0 +1,26 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; background: #f3f5f9; color: #17202b; }
+.app { max-width: 1180px; margin: 0 auto; padding: 20px 16px 32px; }
+header h1 { margin: 0 0 4px; font-size: 28px; }
+header p { margin: 0 0 14px; color: #526173; }
+nav { display: flex; gap: 8px; margin-bottom: 16px; }
+nav button, .toolbar button { border: 1px solid #c6d0dd; background: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 14px; }
+nav button.active { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px; margin-bottom: 12px; }
+.toolbar .filename { display: flex; gap: 6px; align-items: center; font-size: 13px; color: #526173; }
+.toolbar .filename input { border: 1px solid #c6d0dd; border-radius: 6px; padding: 6px 8px; }
+.toolbar .meta { margin-left: auto; font-size: 13px; color: #526173; }
+.word-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 760px) { .word-grid { grid-template-columns: 1fr; } }
+.editor { width: 100%; min-height: 480px; resize: vertical; border: 1px solid #dde3ec; border-radius: 10px; padding: 14px; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 14px; line-height: 1.7; background: #fff; }
+.preview { border: 1px solid #dde3ec; border-radius: 10px; padding: 6px 18px; background: #fff; line-height: 1.8; overflow-wrap: anywhere; min-height: 480px; }
+.preview pre { background: #f3f5f9; padding: 10px; border-radius: 8px; overflow-x: auto; }
+.preview code { font-family: ui-monospace, Menlo, Consolas, monospace; }
+.sheet-wrap { overflow: auto; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; }
+table.sheet { border-collapse: collapse; min-width: 100%; }
+table.sheet th, table.sheet td { border: 1px solid #e0e6ef; padding: 0; }
+table.sheet thead th, table.sheet tbody th { background: #eef2f8; font-size: 12px; color: #526173; padding: 6px 10px; text-align: center; }
+table.sheet td input { width: 100%; min-width: 110px; border: 0; padding: 8px 10px; font-size: 14px; background: transparent; }
+table.sheet td input:focus { outline: 2px solid #2563eb; outline-offset: -2px; }
+.hint { color: #526173; font-size: 13px; }
+footer { margin-top: 20px; color: #7a8798; }
