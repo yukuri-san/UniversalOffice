@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   deleteDoc, exportAll, importAll, listDocs, listEvents, listFolders,
-  requestPersist, storageInfo, type LocalDoc,
+  ownUsageBytes, requestPersist, storageInfo, type LocalDoc,
 } from '../lib/store'
 import { downloadText } from '../lib/files'
 import type { AppId } from './Backstage'
@@ -26,15 +26,17 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
   const [eventCount, setEventCount] = useState(0)
   const [filter, setFilter] = useState('__all__')
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
+  const [ownBytes, setOwnBytes] = useState(0)
   const [msg, setMsg] = useState('')
   const importRef = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(async () => {
-    const [d, f, e, i] = await Promise.all([listDocs(), listFolders(), listEvents(), storageInfo()])
+    const [d, f, e, i, own] = await Promise.all([listDocs(), listFolders(), listEvents(), storageInfo(), ownUsageBytes()])
     setDocs(d)
     setFolders(f)
     setEventCount(e.length)
     setInfo(i)
+    setOwnBytes(own)
   }, [])
 
   useEffect(() => {
@@ -45,7 +47,7 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
 
   const visible = docs.filter((d) => filter === '__all__' || d.folder === filter)
   const docsSize = docs.reduce((sum, d) => sum + new Blob([d.content]).size, 0)
-  const usagePct = info && info.quota > 0 ? Math.min(100, (info.usage / info.quota) * 100) : 0
+  const usagePct = info && info.quota > 0 ? Math.min(100, (ownBytes / info.quota) * 100) : 0
 
   const open = (doc: LocalDoc) => {
     localStorage.setItem('uo-pending-open', doc.id)
@@ -82,13 +84,16 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
         <h3>ストレージ</h3>
         {info ? (
           <>
-            <div className="storage-bar"><span style={{ width: `${usagePct}%` }} /></div>
+            {info.quota > 0 && <div className="storage-bar"><span style={{ width: `${usagePct}%` }} /></div>}
             <p>
-              使用量 {formatBytes(info.usage)} / 上限の目安 {info.quota ? formatBytes(info.quota) : '不明'}（{usagePct.toFixed(1)}%）
+              WebX の使用量 {formatBytes(ownBytes)}
+              {info.quota > 0
+                ? ` / 上限の目安 ${formatBytes(info.quota)}（${usagePct.toFixed(2)}%）`
+                : ' / 上限はこのブラウザでは取得できません'}
               ／ 保存方式：{info.backend} ／ 永続化：{info.persisted ? '有効' : '未設定'}
             </p>
             <p>
-              ファイル {docs.length} 件（{formatBytes(docsSize)}）／ フォルダ {folders.length} 個 ／ カレンダーの予定 {eventCount} 件
+              ファイル {docs.length} 件（本文 {formatBytes(docsSize)}）／ フォルダ {folders.length} 個 ／ カレンダーの予定 {eventCount} 件
             </p>
             <div className="explorer-actions">
               {!info.persisted && (

@@ -351,3 +351,36 @@ export async function importAll(data: BackupData): Promise<void> {
     else await set(e.id, e, eventsStore)
   }
 }
+
+/* ---------- WebX 自身の使用量（実測） ----------
+   estimate() が上限や使用量を返さない環境向けに、保存データそのものを測る。 */
+export async function ownUsageBytes(): Promise<number> {
+  try {
+    if (await useOpfs()) {
+      let total = 0
+      for (const dirName of ['docs', 'events']) {
+        try {
+          const dir = await opfsDir(dirName)
+          for await (const handle of (dir as AnyHandle).values() as AsyncIterable<AnyHandle>) {
+            if (handle.kind === 'file') {
+              const file = await handle.getFile()
+              total += file.size
+            }
+          }
+        } catch { /* ignore */ }
+      }
+      try {
+        const root = await opfsDir('')
+        const fh = await root.getFileHandle('folders.json')
+        total += (await fh.getFile()).size
+      } catch { /* ignore */ }
+      if (total > 0) return total
+    }
+  } catch { /* fallthrough */ }
+  const [docs, events] = await Promise.all([listDocs(), listEvents()])
+  const encoder = new TextEncoder()
+  let total = 0
+  for (const d of docs) total += encoder.encode(d.content).length + encoder.encode(d.name).length + 64
+  for (const e of events) total += encoder.encode(e.title + e.memo).length + 64
+  return total
+}

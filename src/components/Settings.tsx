@@ -1,5 +1,5 @@
 import { LANGUAGES, type Lang } from '../lib/i18n'
-import { requestPersist, storageInfo } from '../lib/store'
+import { ownUsageBytes, requestPersist, storageInfo } from '../lib/store'
 import { useEffect, useState } from 'react'
 
 export type ThemeId = 'light' | 'dark' | 'ipados' | 'macos' | 'win11' | 'win7' | 'winxp' | 'win95'
@@ -24,9 +24,11 @@ interface Props {
 
 export default function Settings({ lang, setLang, theme, setTheme }: Props) {
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
+  const [ownBytes, setOwnBytes] = useState(0)
 
   useEffect(() => {
     void storageInfo().then(setInfo)
+    void ownUsageBytes().then(setOwnBytes)
   }, [])
 
   const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`
@@ -64,7 +66,7 @@ export default function Settings({ lang, setLang, theme, setTheme }: Props) {
         <h3>ストレージ</h3>
         {info ? (
           <p className="settings-note">
-            保存方式：{info.backend} / 使用量：{mb(info.usage)} / 上限の目安：{info.quota ? mb(info.quota) : '不明'} /
+            保存方式：{info.backend} / WebX の使用量：{mb(ownBytes)} / 上限：{info.quota ? mb(info.quota) : 'このブラウザでは取得できません'} /
             永続化：{info.persisted ? '有効（自動で消えにくい）' : '未設定'}
           </p>
         ) : (
