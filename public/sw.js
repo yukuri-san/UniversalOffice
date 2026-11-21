@@ -1,4 +1,4 @@
-const CACHE = 'universal-office-v27'
+const CACHE = 'universal-office-v28'
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html'])))
   self.skipWaiting()

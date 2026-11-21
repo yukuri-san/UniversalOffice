@@ -6,7 +6,7 @@ const W = 1200
 const H = 800
 const PALETTE = ['#111827', '#e11d48', '#f59e0b', '#facc15', '#10b981', '#2563eb', '#7c3aed', '#ec4899', '#ffffff']
 
-type Tool = 'brush' | 'eraser' | 'line' | 'rect' | 'ellipse' | 'fill' | 'picker'
+type Tool = 'brush' | 'eraser' | 'line' | 'rect' | 'ellipse' | 'fill' | 'picker' | 'text'
 
 interface Layer {
   id: number
@@ -75,6 +75,8 @@ export default function Paint() {
   const [color, setColor] = useState('#2563eb')
   const [size, setSize] = useState(6)
   const [brushOpacity, setBrushOpacity] = useState(1)
+  const [textEdit, setTextEdit] = useState<{ x: number; y: number; fontPx: number; displayPx: number } | null>(null)
+  const [textValue, setTextValue] = useState('')
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const drawState = useRef<{ drawing: boolean; start: { x: number; y: number } | null; last: { x: number; y: number } | null }>({ drawing: false, start: null, last: null })
   const importRef = useRef<HTMLInputElement>(null)
@@ -157,9 +159,35 @@ export default function Paint() {
     ctx.globalAlpha = 1
   }
 
+  const commitText = () => {
+    if (!textEdit || !active) return
+    const value = textValue
+    setTextEdit(null)
+    setTextValue('')
+    if (!value.trim()) return
+    pushUndo(active)
+    const ctx = active.canvas.getContext('2d')!
+    ctx.save()
+    ctx.font = `${textEdit.fontPx}px sans-serif`
+    ctx.textBaseline = 'top'
+    ctx.fillStyle = color
+    ctx.globalAlpha = brushOpacity
+    ctx.fillText(value, textEdit.x, textEdit.y)
+    ctx.restore()
+    rerender()
+  }
+
   const onDown = (e: React.PointerEvent) => {
     if (!active) return
     const p = pos(e)
+
+    if (tool === 'text') {
+      commitText()
+      const rect = overlayRef.current!.getBoundingClientRect()
+      setTextEdit({ x: p.x, y: p.y, fontPx: size, displayPx: Math.max(10, (size * rect.width) / W) })
+      setTextValue('')
+      return
+    }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
 
     if (tool === 'picker') {
@@ -333,6 +361,7 @@ export default function Paint() {
     { id: 'ellipse', label: t('toolEllipse') },
     { id: 'fill', label: t('toolFill') },
     { id: 'picker', label: t('toolPicker') },
+    { id: 'text', label: t('toolText') },
   ]
 
   return (
@@ -373,6 +402,27 @@ export default function Paint() {
               onPointerUp={onUp}
               onPointerLeave={onUp}
             />
+            {textEdit && (
+              <input
+                autoFocus
+                className="paint-text-input"
+                style={{
+                  left: `${(textEdit.x / W) * 100}%`,
+                  top: `${(textEdit.y / H) * 100}%`,
+                  fontSize: textEdit.displayPx,
+                  color,
+                }}
+                value={textValue}
+                onChange={(e) => setTextValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commitText()
+                  if (e.key === 'Escape') { setTextEdit(null); setTextValue('') }
+                }}
+                onBlur={commitText}
+                placeholder={t('toolTextPh')}
+                aria-label={t('toolText')}
+              />
+            )}
           </div>
         </div>
         <aside className="paint-layers">

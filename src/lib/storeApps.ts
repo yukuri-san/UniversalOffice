@@ -121,7 +121,7 @@ export const STORE_APPS: StoreAppDef[] = [
   },
   {
     id: 'suika', icon: '🍉', cls: 'suika', name: 'スイカゲーム',
-    desc: '果物を落としてくっつけて進化。大きなスイカを作ろう。', version: '1.0.1',
+    desc: '果物を落としてくっつけて進化。大きなスイカを作ろう。', version: '1.0.2',
     category: 'game',
   },
   {

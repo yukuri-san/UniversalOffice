@@ -349,8 +349,16 @@ export default function App() {
     setWindows((prev) => {
       if (prev.some((w) => w.id === app)) return prev
       const offset = (prev.length % 5) * 34
-      const w = Math.min(920, Math.max(560, desktop.w * 0.72))
-      const h = Math.min(640, Math.max(420, desktop.h * 0.78))
+      const isGame = STORE_APPS.some((a) => a.id === app && a.category === 'game')
+      let w = Math.min(920, Math.max(560, desktop.w * 0.72))
+      let h = Math.min(640, Math.max(420, desktop.h * 0.78))
+      if (isGame) {
+        // ゲームは縦に長いので、初期ウィンドウを大きめにする（はみ出し防止）
+        w = Math.min(560, Math.max(400, desktop.w * 0.6))
+        h = Math.min(760, Math.max(640, desktop.h * 0.92))
+      }
+      w = Math.min(w, Math.max(320, desktop.w - 12))
+      h = Math.min(h, Math.max(320, desktop.h - 12))
       zRef.current += 1
       return [
         ...prev,

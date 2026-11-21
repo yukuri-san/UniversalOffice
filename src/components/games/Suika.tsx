@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 // スイカゲーム風：同じ果物をくっつけて大きくする物理パズル（簡易物理 v1.0.1）
-const W = 340, H = 480, WALL = 6
+const W = 340, H = 436, WALL = 6
 const LINE_Y = 52
 const FRUITS = [
   { name: '🍒', r: 13, score: 1, color: '#ef4444' },
@@ -107,7 +107,7 @@ export default function Suika() {
           }
         }
       }
-      // 合体：しっかり接触（中心距離が半径合計の92%以下）＋両方とも生まれてから300ms以上
+      // 合体：接触（中心距離が半径合計の105%以下）＋両方とも生まれてから250ms以上
       const now = performance.now()
       let merged = true
       while (merged) {
@@ -116,9 +116,9 @@ export default function Suika() {
           for (let j = i + 1; j < balls.current.length; j++) {
             const a = balls.current[i], b = balls.current[j]
             if (a.t !== b.t || a.t >= FRUITS.length - 1) continue
-            if (now - a.born < 300 || now - b.born < 300) continue
+            if (now - a.born < 250 || now - b.born < 250) continue
             const dist = Math.hypot(b.x - a.x, b.y - a.y)
-            if (dist < (FRUITS[a.t].r + FRUITS[b.t].r) * 0.92) {
+            if (dist < (FRUITS[a.t].r + FRUITS[b.t].r) * 1.05) {
               const nt = a.t + 1
               const nb: Ball = { id: idRef.current++, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, vx: (a.vx + b.vx) / 2, vy: Math.min(a.vy, b.vy), t: nt, born: now }
               balls.current = balls.current.filter((x) => x.id !== a.id && x.id !== b.id)
@@ -190,8 +190,7 @@ export default function Suika() {
         onPointerMove={onMove}
         onPointerDown={(e) => { onMove(e); drop(dropX.current) }}
       />
-      <p className="game-help">動かして位置を決め、クリック／タップで落下。同じ果物同士がくっつくと進化します。上の線を超えたまま止まるとゲームオーバー。</p>
-      <p className="game-help">進化：🍒→🍓→🍇→🍊→🍎→🍐→🍑→🍍→🍈→🍉</p>
+      <p className="game-help">動かして位置を決め、クリック／タップで落下。同じ果物がくっつくと進化。線を超えたまま止まるとゲームオーバー。進化：🍒→🍓→🍇→🍊→🍎→🍐→🍑→🍍→🍈→🍉</p>
     </div>
   )
 }
