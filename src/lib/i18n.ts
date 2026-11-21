@@ -158,6 +158,8 @@ const ja: Dict = {
   updNoNotes: '詳しい更新内容は用意されていません',
   updNewVer: '新しいバージョン',
   updCheckInterval: '更新の確認間隔（分）',
+  retryBtn: '再試行',
+  updCheckFailed: '更新情報を取得できませんでした',
 }
 
 const en: Dict = {
@@ -292,6 +294,8 @@ const en: Dict = {
   updNoNotes: 'No detailed notes for this update',
   updNewVer: 'New version',
   updCheckInterval: 'Update check interval (min)',
+  retryBtn: 'Retry',
+  updCheckFailed: 'Could not fetch update info',
 }
 
 const zh: Dict = {
@@ -425,6 +429,8 @@ const zh: Dict = {
   updNoNotes: '此更新没有详细说明',
   updNewVer: '新版本',
   updCheckInterval: '检查更新间隔（分钟）',
+  retryBtn: '重试',
+  updCheckFailed: '无法获取更新信息',
 }
 
 const ko: Dict = {
@@ -558,6 +564,8 @@ const ko: Dict = {
   updNoNotes: '자세한 업데이트 내용이 없습니다',
   updNewVer: '새 버전',
   updCheckInterval: '업데이트 확인 간격(분)',
+  retryBtn: '재시도',
+  updCheckFailed: '업데이트 정보를 가져올 수 없습니다',
 }
 
 const th: Dict = {
@@ -691,6 +699,8 @@ const th: Dict = {
   updNoNotes: 'ไม่มีรายละเอียดการอัปเดต',
   updNewVer: 'เวอร์ชันใหม่',
   updCheckInterval: 'ช่วงเวลาตรวจสอบอัปเดต (นาที)',
+  retryBtn: 'ลองอีกครั้ง',
+  updCheckFailed: 'ไม่สามารถดึงข้อมูลอัปเดตได้',
 }
 
 const es: Dict = {
@@ -1003,6 +1013,8 @@ const es: Dict = {
   updNoNotes: 'Sin notas detalladas',
   updNewVer: 'Nueva versión',
   updCheckInterval: 'Intervalo de comprobación (min)',
+  retryBtn: 'Reintentar',
+  updCheckFailed: 'No se pudo obtener la información de actualización',
 }
 
 const fr: Dict = {
@@ -1315,6 +1327,8 @@ const fr: Dict = {
   updNoNotes: 'Pas de notes détaillées',
   updNewVer: 'Nouvelle version',
   updCheckInterval: 'Intervalle de vérification (min)',
+  retryBtn: 'Réessayer',
+  updCheckFailed: 'Infos de mise à jour indisponibles',
 }
 
 const de: Dict = {
@@ -1627,6 +1641,8 @@ const de: Dict = {
   updNoNotes: 'Keine detaillierten Hinweise',
   updNewVer: 'Neue Version',
   updCheckInterval: 'Prüfintervall (Min.)',
+  retryBtn: 'Erneut versuchen',
+  updCheckFailed: 'Update-Infos konnten nicht geladen werden',
 }
 
 export const DICTS: Record<Lang, Dict> = { ja, en, zh, ko, th, es, fr, de }

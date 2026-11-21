@@ -178,6 +178,7 @@ export default function App() {
     })
     setWindows((prev) => prev.filter((w) => w.id !== id))
   }
+  const [updateTarget, setUpdateTarget] = useState<{ kind: 'webx' } | { kind: 'app'; id: string } | { kind: 'apps' }>({ kind: 'webx' })
   const updateStoreApp = (id: string) => {
     const def = STORE_APPS.find((a) => a.id === id)
     if (!def) return
@@ -400,7 +401,10 @@ export default function App() {
     // そのアプリを開いたら、宛先がそのアプリの通知は消える
     setNotes((prev) => prev.filter((n) => n.app !== app))
     setWindows((prev) => {
-      if (prev.some((w) => w.id === app)) return prev
+      if (prev.some((w) => w.id === app)) {
+        zRef.current += 1
+        return prev.map((w) => (w.id === app ? { ...w, z: zRef.current, minimized: false } : w))
+      }
       const offset = (prev.length % 5) * 34
       const isGame = STORE_APPS.some((a) => a.id === app && a.category === 'game')
       let w = Math.min(920, Math.max(560, desktop.w * 0.72))
@@ -592,11 +596,11 @@ export default function App() {
           onInstall={installApp}
           onUninstall={uninstallApp}
           onUpdateApp={updateStoreApp}
-          onShowUpdate={(target) => { try { localStorage.setItem('webx-update-target', JSON.stringify(target)) } catch { /* ignore */ } openApp('updateinfo') }}
+          onShowUpdate={(target) => { setUpdateTarget(target); openApp('updateinfo') }}
         />
       )
       case 'updateinfo': return (
-        <UpdateInfoWindow installed={installedApps} versions={appVersions} onUpdateApp={updateStoreApp} />
+        <UpdateInfoWindow target={updateTarget} installed={installedApps} versions={appVersions} onUpdateApp={updateStoreApp} />
       )
       case 'unit': return <UnitConverter />
       case 'pomodoro': return <Pomodoro />

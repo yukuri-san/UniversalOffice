@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { marked } from 'marked'
 import { useLang } from '../lib/i18n'
 import { STORE_APPS } from '../lib/storeApps'
@@ -7,24 +7,13 @@ import { compareVersions, fetchLatestVersion, performUpdate } from '../lib/updat
 import { notifyOs } from '../lib/notify'
 import changelogText from '../../CHANGELOG.md?raw'
 
+export type UpdateTarget = { kind: 'webx' } | { kind: 'app'; id: string } | { kind: 'apps' }
+
 interface Props {
+  target: UpdateTarget
   installed: string[]
   versions: Record<string, string>
   onUpdateApp: (id: string) => void
-}
-
-type Target = { kind: 'webx' } | { kind: 'app'; id: string } | { kind: 'apps' }
-
-function readTarget(): Target {
-  try {
-    const raw = localStorage.getItem('webx-update-target')
-    if (raw) {
-      const p = JSON.parse(raw) as { kind?: string; id?: string }
-      if (p.kind === 'app' && p.id) return { kind: 'app', id: p.id }
-      if (p.kind === 'apps') return { kind: 'apps' }
-    }
-  } catch { /* ignore */ }
-  return { kind: 'webx' }
 }
 
 function changelogSection(version: string): string {
@@ -33,30 +22,38 @@ function changelogSection(version: string): string {
   return m ? m[1].trim() : ''
 }
 
-export default function UpdateInfoWindow({ installed, versions, onUpdateApp }: Props) {
+export default function UpdateInfoWindow({ target, installed, versions, onUpdateApp }: Props) {
   const { t } = useLang()
-  const [target] = useState<Target>(readTarget)
   const [latest, setLatest] = useState<string | null>(null)
+  const [fetchState, setFetchState] = useState<'loading' | 'done' | 'failed'>('loading')
   const [remoteNotes, setRemoteNotes] = useState('')
   const [doneApps, setDoneApps] = useState<string[]>([])
   const [webxDone, setWebxDone] = useState(false)
 
+  // 表示対象が変わったら状態をリセットする（ウィンドウを開いたまま別の「更新する」を押した場合）
   useEffect(() => {
-    if (target.kind !== 'webx') return
-    void (async () => {
-      const v = await fetchLatestVersion()
-      setLatest(v)
-      if (v) {
-        try {
-          const res = await fetch(`release-notes.json?ts=${Date.now()}`, { cache: 'no-store' })
-          if (res.ok) {
-            const data = (await res.json()) as { version?: string; notes?: string }
-            if (data.version === v && data.notes) setRemoteNotes(data.notes)
-          }
-        } catch { /* ignore */ }
+    setDoneApps([])
+    setWebxDone(false)
+  }, [target])
+
+  const loadWebx = useCallback(async () => {
+    setFetchState('loading')
+    const v = await fetchLatestVersion()
+    if (!v) { setFetchState('failed'); return }
+    setLatest(v)
+    setFetchState('done')
+    try {
+      const res = await fetch(`release-notes.json?ts=${Date.now()}`, { cache: 'no-store' })
+      if (res.ok) {
+        const data = (await res.json()) as { version?: string; notes?: string }
+        if (data.version === v && data.notes) setRemoteNotes(data.notes)
       }
-    })()
-  }, [target.kind])
+    } catch { /* ignore */ }
+  }, [])
+
+  useEffect(() => {
+    if (target.kind === 'webx') void loadWebx()
+  }, [target, loadWebx])
 
   const outdated = useMemo(
     () => STORE_APPS.filter((a) => installed.includes(a.id) && versions[a.id] !== a.version),
@@ -79,6 +76,14 @@ export default function UpdateInfoWindow({ installed, versions, onUpdateApp }: P
         {notes
           ? <div className="manual-body update-notes" dangerouslySetInnerHTML={notesHtml(notes)} />
           : <p className="hint">{t('updNoNotes')}</p>}
+        {fetchState === 'loading' && <p className="hint">{t('loading')}</p>}
+        {fetchState === 'failed' && (
+          <>
+            <p className="hint">{t('updCheckFailed')}</p>
+            <button className="btn" onClick={() => void loadWebx()}>{t('retryBtn')}</button>
+          </>
+        )}
+        {fetchState === 'done' && !hasUpdate && <p className="hint">{t('latestVersion')}</p>}
         {hasUpdate && !webxDone && (
           <button
             className="btn accent"
@@ -89,8 +94,6 @@ export default function UpdateInfoWindow({ installed, versions, onUpdateApp }: P
             {t('updateNow')}
           </button>
         )}
-        {latest !== null && !hasUpdate && <p className="hint">{t('latestVersion')}</p>}
-        {latest === null && <p className="hint">{t('loading')}</p>}
       </div>
     )
   }
