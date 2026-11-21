@@ -247,6 +247,11 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const addCol = () => setGrid((prev) => prev.map((row) => [...row, '']))
   const deleteRow = () => setGrid((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== selected.r) : prev))
   const deleteCol = () => setGrid((prev) => (prev[0].length > 1 ? prev.map((row) => row.filter((_, i) => i !== selected.c)) : prev))
+  const insertRow = () => setGrid((prev) => {
+    const cols = prev[0]?.length ?? 1
+    return [...prev.slice(0, selected.r), Array(cols).fill(''), ...prev.slice(selected.r)]
+  })
+  const insertCol = () => setGrid((prev) => prev.map((row) => [...row.slice(0, selected.c), '', ...row.slice(selected.c)]))
   const clear = () => setGrid((prev) => prev.map((row) => row.map(() => '')))
 
   const sortByColumn = (dir: 1 | -1) => {
@@ -355,10 +360,12 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <button onClick={printSheet}>{t('printPdf')}</button>
         <button onClick={addRow}>{t('addRow')}</button>
         <button onClick={addCol}>{t('addCol')}</button>
+        <button onClick={insertRow}>{t('insertRow')}</button>
+        <button onClick={insertCol}>{t('insertCol')}</button>
         <button onClick={deleteRow}>{t('delRow')}</button>
         <button onClick={deleteCol}>{t('delCol')}</button>
         <button onClick={() => sortByColumn(1)}>{t('sortAsc')}</button>
-        <button onClick={() => sortByColumn(-1)}>列で降順</button>
+        <button onClick={() => sortByColumn(-1)}>{t('sortDesc')}</button>
         <label className="check-inline"><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> {t('freeze')}</label>
         <span className="meta">{grid.length} 行 × {grid[0]?.length ?? 0} 列</span>
       </div>
