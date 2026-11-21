@@ -3,6 +3,7 @@ import { STORE_APPS, STORE_CATEGORIES, type StoreCategory } from '../lib/storeAp
 import { notifyOs } from '../lib/notify'
 import { APP_VERSION } from '../lib/version'
 import { compareVersions, fetchLatestVersion, performUpdate } from '../lib/updateCheck'
+import { useLang } from '../lib/i18n'
 
 interface Props {
   installed: string[]
@@ -18,6 +19,7 @@ type CheckState = 'idle' | 'checking' | 'done' | 'error'
 // アプリの入手・削除・更新はすべてこのストアで処理する。
 // WebX 本体の更新確認・適用もここで行う（設定からは移管済み）。
 export default function AppStore({ installed, versions, coreApps, onInstall, onUninstall, onUpdateApp }: Props) {
+  const { t } = useLang()
   const [check, setCheck] = useState<CheckState>('idle')
   const [category, setCategory] = useState<StoreCategory | 'all' | 'updates'>('all')
   const [latest, setLatest] = useState('')
@@ -37,8 +39,8 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
     setLatest(v)
     setCheck('done')
     const parts: string[] = []
-    parts.push(compareVersions(v, APP_VERSION) > 0 ? `WebX v${v} があります` : 'WebX は最新です')
-    parts.push(outdatedApps.length > 0 ? `更新できるアプリが ${outdatedApps.length} 件あります` : 'アプリはすべて最新です')
+    parts.push(compareVersions(v, APP_VERSION) > 0 ? `WebX v${v}${t('stHasUpdateSuffix')}` : `WebX: ${t('latestVersion')}`)
+    parts.push(outdatedApps.length > 0 ? `${outdatedApps.length} × ${t('stUpdateBtn')}` : t('stAllLatest'))
     setSummary(parts.join('／'))
   }
 
@@ -49,30 +51,30 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
 
   return (
     <div className="store-app">
-      <h3 className="store-head">WebX 本体</h3>
+      <h3 className="store-head">{t('stWebxBody')}</h3>
       <div className="store-row">
         <span className="app-icon store">W</span>
         <div className="store-meta">
           <div className="store-name">
             WebX
-            <span className="store-ver">現在のバージョン v{APP_VERSION}</span>
-            {webxOutdated && <span className="store-state">v{latest} があります</span>}
+            <span className="store-ver">{t('stCurrentVer')} v{APP_VERSION}</span>
+            {webxOutdated && <span className="store-state">v{latest}{t('stHasUpdateSuffix')}</span>}
           </div>
           <div className="store-desc">本体の更新確認と適用はこのストアで行います</div>
         </div>
         <div className="store-actions">
           <button className="btn" onClick={() => void runCheck()} disabled={check === 'checking'}>
-            {check === 'checking' ? '確認中…' : '更新確認'}
+            {check === 'checking' ? t('checkingUpdate') : t('checkUpdate')}
           </button>
           {webxOutdated && (
-            <button className="btn accent" onClick={() => void doWebxUpdate()}>今すぐ更新</button>
+            <button className="btn accent" onClick={() => void doWebxUpdate()}>{t('updateNow')}</button>
           )}
         </div>
       </div>
       {summary && <p className="store-note">{summary}</p>}
 
-      <h3 className="store-head">ストアアプリ</h3>
-      <p className="store-note">インストールしたアプリだけがデスクトップやスタートメニューに表示されます。更新はアプリごとに個別に行います。</p>
+      <h3 className="store-head">{t('stStoreApps')}</h3>
+      <p className="store-note">{t('stNoteText')}</p>
       <div className="store-cats">
         <button className={category === 'all' ? 'chip on' : 'chip'} onClick={() => setCategory('all')}>すべて（{STORE_APPS.length}）</button>
         {outdatedApps.length > 0 && (
@@ -86,12 +88,12 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
       </div>
       {category === 'updates' && outdatedApps.length > 0 && (
         <div className="store-bulk">
-          <span>{outdatedApps.length} 件のアプリに更新があります</span>
-          <button className="btn accent" onClick={() => outdatedApps.forEach((a) => onUpdateApp(a.id))}>すべて更新</button>
+          <span>{outdatedApps.length} × {t('stUpdateBtn')}</span>
+          <button className="btn accent" onClick={() => outdatedApps.forEach((a) => onUpdateApp(a.id))}>{t('stBulkUpdate')}</button>
         </div>
       )}
       {category === 'updates' && outdatedApps.length === 0 && (
-        <p className="store-note">更新があるアプリはありません。すべて最新です。</p>
+        <p className="store-note">{t('stAllLatest')}</p>
       )}
       <div className="store-list">
         {STORE_APPS.filter((a) => category === 'all' || (category === 'updates' ? outdatedApps.some((o) => o.id === a.id) : a.category === category)).map((app) => {
@@ -105,7 +107,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
                 <div className="store-name">
                   {app.name}
                   <span className="store-ver">v{app.version}</span>
-                  {isIn && <span className="store-state">{outdated ? `インストール済み v${cur ?? '?'}（更新あり）` : 'インストール済み'}</span>}
+                  {isIn && <span className="store-state">{outdated ? `${t('stInstalled')} v${cur ?? '?'} (${t('stUpdateBtn')})` : t('stInstalled')}</span>}
                 </div>
                 <div className="store-desc">{app.desc}</div>
               </div>
@@ -118,7 +120,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
                       notifyOs(`「${app.name}」をインストールしました`)
                     }}
                   >
-                    インストール
+                    {t('stInstall')}
                   </button>
                 )}
                 {isIn && outdated && (
@@ -129,7 +131,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
                       notifyOs(`「${app.name}」を v${app.version} に更新しました`)
                     }}
                   >
-                    更新する
+                    {t('stUpdateBtn')}
                   </button>
                 )}
                 {isIn && (
@@ -139,7 +141,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
                       if (window.confirm(`「${app.name}」をアンインストールしますか？`)) onUninstall(app.id)
                     }}
                   >
-                    アンインストール
+                    {t('stUninstall')}
                   </button>
                 )}
               </div>
@@ -149,7 +151,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
         {STORE_APPS.length === 0 && <p className="store-note">まだストアアプリはありません。</p>}
       </div>
 
-      <h3 className="store-head">標準アプリ（アンインストール不可）</h3>
+      <h3 className="store-head">{t('stBuiltIn')}</h3>
       <div className="store-list">
         {coreApps.map((app) => (
           <div className="store-row" key={app.id}>

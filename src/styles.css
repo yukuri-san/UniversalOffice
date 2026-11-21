@@ -980,3 +980,28 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
   .manual-side { width: 100%; border-right: none; border-bottom: 1px solid #e5e7eb; max-height: 168px; }
   .manual-article { padding: 14px 16px 12px; }
 }
+
+/* ===== v1.16.0: セットアップウィザード / アイコンサイズ / リセット ===== */
+.setup-overlay { position: fixed; inset: 0; z-index: 500; background: rgba(5, 8, 20, .55); backdrop-filter: blur(6px); display: flex; align-items: center; justify-content: center; padding: 14px; }
+.setup-card { width: min(520px, 94vw); max-height: 88%; overflow-y: auto; background: var(--panel, #fff); color: var(--text, #1c2430); border-radius: 18px; box-shadow: 0 24px 60px rgba(0,0,0,.4); padding: 18px; animation: win-in .18s ease-out; }
+.setup-head { display: flex; align-items: center; gap: 10px; }
+.setup-logo { width: 40px; height: 40px; border-radius: 10px; background: linear-gradient(135deg, #4f8ff7, #8b5cf6); color: #fff; font-weight: 800; font-size: 22px; display: flex; align-items: center; justify-content: center; }
+.setup-ver { display: block; font-size: 11px; opacity: .65; }
+.setup-dots { margin-left: auto; display: flex; gap: 5px; }
+.setup-dots i { width: 8px; height: 8px; border-radius: 50%; background: rgba(127,140,160,.35); }
+.setup-dots i.on { background: #4f8ff7; }
+.setup-body { margin-top: 14px; }
+.setup-body h2 { margin: 0 0 10px; font-size: 19px; }
+.setup-label { display: block; margin: 12px 0 6px; font-size: 12px; font-weight: 700; opacity: .75; }
+.setup-input { width: 100%; box-sizing: border-box; padding: 9px 10px; border-radius: 10px; border: 1px solid var(--border, #ccd4de); background: transparent; color: inherit; font-size: 14px; }
+.setup-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.setup-chips .chip, .setup-nav .chip { padding: 7px 12px; border-radius: 999px; border: 1px solid var(--border, #ccd4de); background: transparent; color: inherit; cursor: pointer; font-size: 13px; }
+.setup-chips .chip.on { background: #4f8ff7; border-color: #4f8ff7; color: #fff; }
+.setup-nav { display: flex; align-items: center; margin-top: 18px; }
+.setup-spacer { flex: 1; }
+.setup-nav .chip.primary { background: #4f8ff7; border-color: #4f8ff7; color: #fff; font-weight: 700; padding: 9px 18px; }
+.setup-summary { margin: 0; padding-left: 18px; line-height: 1.9; font-size: 14px; }
+.start-user { padding: 8px 10px 2px; font-size: 13px; font-weight: 700; opacity: .9; }
+.opt.danger { border-color: rgba(220, 60, 60, .5); color: #d33; }
+.os-root[data-iconsize="s"] .desktop-icon .app-icon { width: 32px; height: 32px; font-size: 16px; border-radius: 7px; }
+.os-root[data-iconsize="l"] .desktop-icon .app-icon { width: 54px; height: 54px; font-size: 27px; border-radius: 11px; }

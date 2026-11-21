@@ -1,5 +1,7 @@
 import { LANGUAGES, translate, type Lang } from '../lib/i18n'
-import { ownUsageBytes, requestPersist, storageInfo } from '../lib/store'
+import { clearAllStoredData, ownUsageBytes, requestPersist, storageInfo } from '../lib/store'
+import { notifyOs } from '../lib/notify'
+import { TIMEZONES } from './SetupWizard'
 import { useEffect, useRef, useState } from 'react'
 import { APP_VERSION } from '../lib/version'
 
@@ -37,6 +39,15 @@ interface Props {
   onOpenStore: () => void
   uiScale: string
   onUiScale: (value: string) => void
+  userName: string
+  setUserName: (v: string) => void
+  timezone: string
+  setTimezone: (v: string) => void
+  iconSize: string
+  setIconSize: (v: string) => void
+  iconClick: string
+  setIconClick: (v: string) => void
+  onShowSetup: () => void
 }
 
 export const WALLPAPERS: { id: string; key: string }[] = [
@@ -71,7 +82,7 @@ async function fileToWallpaper(file: File): Promise<string> {
   }
 }
 
-export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale }: Props) {
+export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale, userName, setUserName, timezone, setTimezone, iconSize, setIconSize, iconClick, setIconClick, onShowSetup }: Props) {
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
   const [ownBytes, setOwnBytes] = useState(0)
   const wpFileRef = useRef<HTMLInputElement>(null)
@@ -82,6 +93,25 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
   }, [])
 
   const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`
+
+  const SETTINGS_KEYS = ['ykr-theme', 'ykr-lang', 'webx-wp-preset', 'webx-wp-custom', 'webx-wp-use', 'webx-ui-scale', 'webx-user-name', 'webx-timezone', 'webx-icon-size', 'webx-icon-click', 'webx-installed-apps', 'webx-app-versions', 'webx-setup-done']
+  const resetSettingsOnly = () => {
+    if (!window.confirm(translate(lang, 'resetSettingsDesc'))) return
+    for (const k of SETTINGS_KEYS) localStorage.removeItem(k)
+    location.reload()
+  }
+  const resetStorageOnly = async () => {
+    if (!window.confirm(translate(lang, 'resetStorageDesc'))) return
+    await clearAllStoredData()
+    notifyOs(translate(lang, 'resetDoneMsg'), 'settings')
+    window.setTimeout(() => location.reload(), 700)
+  }
+  const resetEverything = async () => {
+    if (!window.confirm(translate(lang, 'resetAllDesc'))) return
+    await clearAllStoredData()
+    localStorage.clear()
+    location.reload()
+  }
 
   return (
     <div className="settings-app">
@@ -97,6 +127,34 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
           ))}
         </div>
         <p className="settings-note">{translate(lang, 'langNote')}</p>
+      </section>
+
+      <section className="settings-section">
+        <h3>{translate(lang, 'userSection')}</h3>
+        <label className="setup-label">{translate(lang, 'userName')}</label>
+        <input className="setup-input" value={userName} placeholder={translate(lang, 'userNamePh')}
+          onChange={(e) => setUserName(e.target.value)} />
+        <label className="setup-label">{translate(lang, 'timezone')}</label>
+        <select className="setup-input" value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+          <option value="">{translate(lang, 'tzAuto')}</option>
+          {TIMEZONES.map((z) => <option key={z} value={z}>{z}</option>)}
+        </select>
+        <label className="setup-label">{translate(lang, 'iconSize')}</label>
+        <div className="settings-options">
+          {(['s', 'm', 'l'] as const).map((s) => (
+            <button key={s} className={iconSize === s ? 'opt on' : 'opt'} onClick={() => setIconSize(s)}>
+              {s === 's' ? translate(lang, 'sizeSmall') : s === 'm' ? translate(lang, 'sizeMedium') : translate(lang, 'sizeLarge')}
+            </button>
+          ))}
+        </div>
+        <label className="setup-label">{translate(lang, 'iconClickMode')}</label>
+        <div className="settings-options">
+          <button className={iconClick === 'double' ? 'opt on' : 'opt'} onClick={() => setIconClick('double')}>{translate(lang, 'clickDouble')}</button>
+          <button className={iconClick === 'single' ? 'opt on' : 'opt'} onClick={() => setIconClick('single')}>{translate(lang, 'clickSingle')}</button>
+        </div>
+        <div className="settings-options" style={{ marginTop: 10 }}>
+          <button className="opt" onClick={onShowSetup}>{translate(lang, 'setupAgain')}</button>
+        </div>
       </section>
 
       <section className="settings-section">
@@ -189,6 +247,18 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
         <div className="settings-options" style={{ marginTop: 10 }}>
           <button className="opt" onClick={onOpenStore}>ストアを開く</button>
         </div>
+      </section>
+
+      <section className="settings-section">
+        <h3>{translate(lang, 'resetSection')}</h3>
+        <div className="settings-options">
+          <button className="opt danger" onClick={resetSettingsOnly}>{translate(lang, 'resetSettingsBtn')}</button>
+          <button className="opt danger" onClick={() => void resetStorageOnly()}>{translate(lang, 'resetStorageBtn')}</button>
+          <button className="opt danger" onClick={() => void resetEverything()}>{translate(lang, 'resetAllBtn')}</button>
+        </div>
+        <p className="settings-note">{translate(lang, 'resetSettingsDesc')}</p>
+        <p className="settings-note">{translate(lang, 'resetStorageDesc')}</p>
+        <p className="settings-note">{translate(lang, 'resetAllDesc')}</p>
       </section>
 
       <section className="settings-section">

@@ -6,7 +6,8 @@ import Calendar from './components/Calendar'
 import BrowserPanel from './components/BrowserPanel'
 import FilesWindow from './components/FilesWindow'
 import Settings, { type ThemeId } from './components/Settings'
-import { LangContext, translate, type Lang } from './lib/i18n'
+import { LangContext, LOCALES, translate, type Lang } from './lib/i18n'
+import SetupWizard from './components/SetupWizard'
 import YoutubeApp from './components/YoutubeApp'
 import TrashWindow from './components/TrashWindow'
 import DocsWindow, { type DocKind } from './components/DocsWindow'
@@ -123,6 +124,15 @@ export default function App() {
   const [notes, setNotes] = useState<{ id: number; text: string; time: string; app?: string }[]>([])
   const [notesOpen, setNotesOpen] = useState(false)
   const [selectedIcon, setSelectedIcon] = useState<WindowApp | null>(null)
+  const [userName, setUserNameState] = useState(() => localStorage.getItem('webx-user-name') ?? '')
+  const [timezone, setTimezoneState] = useState(() => localStorage.getItem('webx-timezone') ?? '')
+  const [iconSize, setIconSizeState] = useState(() => localStorage.getItem('webx-icon-size') ?? 'm')
+  const [iconClick, setIconClickState] = useState(() => localStorage.getItem('webx-icon-click') ?? 'double')
+  const [showSetup, setShowSetup] = useState(() => localStorage.getItem('webx-setup-done') !== '1')
+  const setUserName = (v: string) => { setUserNameState(v); localStorage.setItem('webx-user-name', v) }
+  const setTimezone = (v: string) => { setTimezoneState(v); localStorage.setItem('webx-timezone', v) }
+  const setIconSize = (v: string) => { setIconSizeState(v); localStorage.setItem('webx-icon-size', v) }
+  const setIconClick = (v: string) => { setIconClickState(v); localStorage.setItem('webx-icon-click', v) }
   const [installedApps, setInstalledApps] = useState<string[]>(() => {
     try {
       const v = JSON.parse(localStorage.getItem('webx-installed-apps') ?? '[]')
@@ -511,6 +521,11 @@ export default function App() {
             setUiScaleSetting(value)
             localStorage.setItem('webx-ui-scale', value)
           }}
+          userName={userName} setUserName={setUserName}
+          timezone={timezone} setTimezone={setTimezone}
+          iconSize={iconSize} setIconSize={setIconSize}
+          iconClick={iconClick} setIconClick={setIconClick}
+          onShowSetup={() => setShowSetup(true)}
         />
       )
       case 'youtube': return <YoutubeApp />
@@ -574,12 +589,14 @@ export default function App() {
     }
   }
 
-  const clock = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  const tzOpt = timezone ? { timeZone: timezone } : {}
+  const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, ...tzOpt }).format(now)
+  const widgetDate = new Intl.DateTimeFormat(LOCALES[lang], { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short', ...tzOpt }).format(now)
   const dateLabel = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`
 
   return (
     <LangContext.Provider value={lang}>
-    <div className="os-root" data-theme={theme} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
+    <div className="os-root" data-theme={theme} data-iconsize={iconSize} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
       <div
         className="os-desktop"
         ref={desktopRef}
@@ -595,7 +612,7 @@ export default function App() {
             <button
               key={app}
               className={selectedIcon === app ? 'desktop-icon selected' : 'desktop-icon'}
-              onClick={(e) => { e.stopPropagation(); setSelectedIcon(app) }}
+              onClick={(e) => { e.stopPropagation(); setSelectedIcon(app); if (iconClick === 'single') openApp(app) }}
               onDoubleClick={(e) => { e.stopPropagation(); openApp(app) }}
             >
               <span className={`app-icon big ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
@@ -606,7 +623,7 @@ export default function App() {
         </div>
         <div className="desktop-widget">
           <span className="widget-clock">{clock}</span>
-          <span className="widget-date">{now.getFullYear()}年{now.getMonth() + 1}月{now.getDate()}日（{'日月火水木金土'[now.getDay()]}）</span>
+          <span className="widget-date">{widgetDate}</span>
           <span className="widget-brand">WebX</span>
         </div>
         {windows.length === 0 && (
@@ -695,6 +712,7 @@ export default function App() {
             あなたの環境：{platformLabel(platform)}（{modLabel(platform)} キー対応）<br />
             {t('dataLocal')}
           </p>
+          {userName && <div className="start-user">👤 {userName}</div>}
           <button className="start-version" onClick={() => { openApp('about'); setStartOpen(false) }}>WebX v{APP_VERSION} — {t('aboutWebX')}</button>
           <button className="start-shortcuts" onClick={() => { setStartOpen(false); setShortcutsOpen(true) }}>
             {t('shortcuts')}（{modLabel(platform)} + /）
@@ -702,6 +720,18 @@ export default function App() {
         </div>
       )}
 
+      {showSetup && booted && (
+        <SetupWizard
+          setLang={setLang} theme={theme} setTheme={setTheme}
+          wpPreset={wpPreset}
+          onSelectPreset={(id) => { setWpPreset(id); setWpUseCustom(false) }}
+          userName={userName} setUserName={setUserName}
+          timezone={timezone} setTimezone={setTimezone}
+          iconSize={iconSize} setIconSize={setIconSize}
+          iconClick={iconClick} setIconClick={setIconClick}
+          onFinish={() => { localStorage.setItem('webx-setup-done', '1'); setShowSetup(false); notifyOs(t('setupDoneMsg'), 'settings') }}
+        />
+      )}
       {shortcutsOpen && (
         <div className="shortcuts-modal" role="dialog" aria-label="キーボードショートカット">
           <div className="shortcuts-head">

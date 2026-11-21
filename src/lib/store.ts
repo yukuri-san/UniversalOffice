@@ -376,6 +376,21 @@ export async function exportAll(): Promise<BackupData> {
   return { app: 'WebX', version: 1, exportedAt: new Date().toISOString(), docs, events, folders }
 }
 
+/* ---------- 全データ削除（リセット用） ---------- */
+export async function clearAllStoredData(): Promise<void> {
+  const docs = await listAllDocsRaw()
+  for (const d of docs) await deleteDoc(d.id)
+  const events = await listEvents()
+  for (const e of events) await deleteEvent(e.id)
+  if (await useOpfs()) {
+    try { await opfsDelete('', 'folders.json') } catch { /* ignore */ }
+  }
+  // IndexedDB 側の残骸も消す（移行で復活しないように）
+  try { for (const d of await idbAll<LocalDoc>(docsStore)) await del(d.id, docsStore) } catch { /* ignore */ }
+  try { for (const e of await idbAll<CalEvent>(eventsStore)) await del(e.id, eventsStore) } catch { /* ignore */ }
+  try { for (const k of (await keys(foldersStore)) as string[]) await del(k, foldersStore) } catch { /* ignore */ }
+}
+
 export async function importAll(data: BackupData): Promise<void> {
   for (const f of data.folders ?? []) await addFolder(f)
   for (const d of data.docs ?? []) {

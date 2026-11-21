@@ -25,10 +25,10 @@ const APPS: { id: AppId; icon: string; cls: string }[] = [
 ]
 
 const DESCS: Record<AppId, Record<Lang, string>> = {
-  word: { ja: '文書を作る（Word 風）', en: 'Documents, Word-style', zh: '制作文档（Word 风格）', ko: '문서 작성 (Word 스타일)', th: 'สร้างเอกสาร (สไตล์ Word)' },
-  sheet: { ja: '表と数式（CSV 対応）', en: 'Tables & formulas (CSV)', zh: '表格与公式（支持 CSV）', ko: '표와 수식 (CSV 지원)', th: 'ตารางและสูตร (รองรับ CSV)' },
-  note: { ja: 'プレーンテキストのメモ', en: 'Plain-text notes', zh: '纯文本笔记', ko: '일반 텍스트 메모', th: 'บันทึกข้อความธรรมดา' },
-  calendar: { ja: '予定の管理', en: 'Manage events', zh: '管理日程', ko: '일정 관리', th: 'จัดการกิจกรรม' },
+  word: { ja: '文書を作る（Word 風）', en: 'Documents, Word-style', zh: '制作文档（Word 风格）', ko: '문서 작성 (Word 스타일)', th: 'สร้างเอกสาร (สไตล์ Word)', es: 'Documentos, estilo Word', fr: 'Documents, style Word', de: 'Dokumente im Word-Stil' },
+  sheet: { ja: '表と数式（CSV 対応）', en: 'Tables & formulas (CSV)', zh: '表格与公式（支持 CSV）', ko: '표와 수식 (CSV 지원)', th: 'ตารางและสูตร (รองรับ CSV)', es: 'Tablas y fórmulas (CSV)', fr: 'Tableaux et formules (CSV)', de: 'Tabellen & Formeln (CSV)' },
+  note: { ja: 'プレーンテキストのメモ', en: 'Plain-text notes', zh: '纯文本笔记', ko: '일반 텍스트 메모', th: 'บันทึกข้อความธรรมดา', es: 'Notas de texto plano', fr: 'Notes en texte brut', de: 'Notizen als Klartext' },
+  calendar: { ja: '予定の管理', en: 'Manage events', zh: '管理日程', ko: '일정 관리', th: 'จัดการกิจกรรม', es: 'Gestionar eventos', fr: 'Gérer les événements', de: 'Termine verwalten' },
 }
 
 export default function Backstage({ open, onClose, current, onSwitch, actions, fileManager }: Props) {
