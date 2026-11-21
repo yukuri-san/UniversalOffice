@@ -274,6 +274,42 @@ export default function App() {
   // PIN が設定されていれば、起動時はまずロック画面から入る
   const [locked, setLocked] = useState(() => !!localStorage.getItem('webx-pin-hash'))
   const [kbOpen, setKbOpen] = useState(false)
+  // iOS かつモバイルサイズのときだけ、入力中はスクロール制限を撤廃する（iOS 標準の入力欄スクロールに任せる）
+  const [inputUnlock, setInputUnlock] = useState(false)
+  useEffect(() => {
+    const ua = navigator.userAgent
+    const isIOS = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && navigator.maxTouchPoints > 1)
+    if (!isIOS) return
+    const mq = window.matchMedia('(max-width: 820px)')
+    let mobile = mq.matches
+    let focused = false
+    const apply = () => {
+      const on = mobile && focused
+      setInputUnlock(on)
+      document.documentElement.classList.toggle('wx-unlock', on)
+    }
+    const isEditable = (t: EventTarget | null) => {
+      const el = t as HTMLElement | null
+      return !!el?.closest?.('input, textarea, select, [contenteditable="true"], .ProseMirror')
+    }
+    const onFocusIn = (e: FocusEvent) => { if (isEditable(e.target)) { focused = true; apply() } }
+    const onFocusOut = () => {
+      window.setTimeout(() => {
+        focused = isEditable(document.activeElement)
+        apply()
+      }, 60)
+    }
+    const onMq = () => { mobile = mq.matches; apply() }
+    document.addEventListener('focusin', onFocusIn)
+    document.addEventListener('focusout', onFocusOut)
+    mq.addEventListener('change', onMq)
+    return () => {
+      document.removeEventListener('focusin', onFocusIn)
+      document.removeEventListener('focusout', onFocusOut)
+      mq.removeEventListener('change', onMq)
+      document.documentElement.classList.remove('wx-unlock')
+    }
+  }, [])
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState(false)
   const [pinForgot, setPinForgot] = useState(false)
@@ -600,6 +636,7 @@ export default function App() {
     if (!vv) return
     let maxH = vv.height
     const onResize = () => {
+      document.documentElement.style.setProperty('--app-top', `${vv.offsetTop}px`)
       maxH = Math.max(maxH, vv.height)
       // ビューポートが大きく縮んだらキーボード表示中とみなす
       setKbOpen(vv.height < maxH * 0.72)
@@ -610,8 +647,9 @@ export default function App() {
       }
     }
     const onScroll = () => {
-      // iOS はキーボード表示時にページをスクロールして画面を押し上げることがあるので戻す
-      if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0)
+      // iOS はキーボード表示時にビジュアルビューポートをずらして入力欄を見せようとする。
+      // それを打ち消すと入力欄がキーボード裏に隠れるので、アプリ本体をずれた分だけ追随させる
+      document.documentElement.style.setProperty('--app-top', `${vv.offsetTop}px`)
     }
     onResize()
     vv.addEventListener('resize', onResize)
@@ -1051,7 +1089,7 @@ export default function App() {
 
   return (
     <LangContext.Provider value={lang}>
-    <div className={`os-root${kbOpen ? ' kb-open' : ''}`} data-theme={theme} data-ui={resolvedUi} data-iconsize={iconSize} data-motion={reduceMotion || safeMode ? 'reduced' : undefined} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
+    <div className={`os-root${kbOpen ? ' kb-open' : ''}${inputUnlock ? ' input-unlock' : ''}`} data-theme={theme} data-ui={resolvedUi} data-iconsize={iconSize} data-motion={reduceMotion || safeMode ? 'reduced' : undefined} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
       <div
         className="os-desktop"
         ref={desktopRef}
