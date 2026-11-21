@@ -33,6 +33,7 @@ interface Win {
   y: number
   w: number
   h: number
+  scale: number // 画像のように比率を保って拡縮する（レイアウトは崩れない）
 }
 
 const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
@@ -165,6 +166,24 @@ export default function App() {
   const desktopRef = useRef<HTMLDivElement>(null)
   const zRef = useRef(10)
   const dragRef = useRef<{ id: WindowApp; dx: number; dy: number } | null>(null)
+  const resizeRef = useRef<{ id: WindowApp; startX: number; startY: number; startScale: number; baseW: number; baseH: number } | null>(null)
+
+  const onResizePointerDown = (e: React.PointerEvent, win: Win) => {
+    e.stopPropagation()
+    focusWin(win.id)
+    resizeRef.current = { id: win.id, startX: e.clientX, startY: e.clientY, startScale: win.scale, baseW: win.w, baseH: win.h }
+    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+  }
+  const onResizePointerMove = (e: React.PointerEvent) => {
+    const r = resizeRef.current
+    if (!r) return
+    const factor = 1 + ((e.clientX - r.startX) / r.baseW + (e.clientY - r.startY) / r.baseH) / 2
+    const scale = Math.min(1.8, Math.max(0.35, r.startScale * factor))
+    setWindows((prev) => prev.map((w) => (w.id === r.id ? { ...w, scale } : w)))
+  }
+  const onResizePointerUp = () => {
+    resizeRef.current = null
+  }
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(new Date()), 1000)
@@ -213,6 +232,7 @@ export default function App() {
           y: Math.max(6, (desktop.h - h) / 2 + offset - 30),
           w,
           h,
+          scale: 1,
         },
       ]
     })
@@ -400,7 +420,15 @@ export default function App() {
           const full = win.maximized || !wide
           const style: React.CSSProperties = full
             ? { inset: 0, width: '100%', height: '100%', zIndex: win.z }
-            : { left: win.x, top: win.y, width: win.w, height: win.h, zIndex: win.z }
+            : {
+                left: win.x,
+                top: win.y,
+                width: win.w,
+                height: win.h,
+                zIndex: win.z,
+                transform: win.scale !== 1 ? `scale(${win.scale})` : undefined,
+                transformOrigin: 'top left',
+              }
           return (
             <section
               key={win.id}
@@ -424,6 +452,14 @@ export default function App() {
                 </div>
               </div>
               <div className="os-window-body">{renderContent(win.id)}</div>
+              {!full && wide && (
+                <div
+                  className="os-resize-handle"
+                  onPointerDown={(e) => onResizePointerDown(e, win)}
+                  onPointerMove={onResizePointerMove}
+                  onPointerUp={onResizePointerUp}
+                />
+              )}
             </section>
           )
         })}
