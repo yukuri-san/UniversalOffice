@@ -20,12 +20,16 @@ import ManualWindow from './components/ManualWindow'
 import AppStore from './components/AppStore'
 import UnitConverter from './components/UnitConverter'
 import { STORE_APPS } from './lib/storeApps'
+import { Dice, Janken, NumGuess, Omikuji } from './components/store/Games'
+import { PassGen, TextCount, ColorPicker, Morse } from './components/store/ToolsA'
+import { DayCalc, Bmi, SplitBill, Currency, Wareki } from './components/store/ToolsB'
+import { Pomodoro, Metronome, WhiteNoise, Flashcards } from './components/store/Life'
 import { requestPersist } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki'
 
 interface Win {
   id: WindowApp
@@ -58,6 +62,23 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   manual: { icon: '説', cls: 'manual' },
   store: { icon: '店', cls: 'store' },
   unit: { icon: '換', cls: 'unit' },
+  pomodoro: { icon: 'ポ', cls: 'pomodoro' },
+  metronome: { icon: '拍', cls: 'metronome' },
+  whitenoise: { icon: '音', cls: 'whitenoise' },
+  flashcards: { icon: '単', cls: 'flashcards' },
+  dice: { icon: '🎲', cls: 'dice' },
+  janken: { icon: '✊', cls: 'janken' },
+  numguess: { icon: '？', cls: 'numguess' },
+  omikuji: { icon: '籤', cls: 'omikuji' },
+  passgen: { icon: '鍵', cls: 'passgen' },
+  textcount: { icon: '字', cls: 'textcount' },
+  colorpicker: { icon: '色', cls: 'colorpicker' },
+  morse: { icon: 'モ', cls: 'morse' },
+  daycalc: { icon: '日', cls: 'daycalc' },
+  bmi: { icon: '体', cls: 'bmi' },
+  splitbill: { icon: '勘', cls: 'splitbill' },
+  currency: { icon: '¥', cls: 'currency' },
+  wareki: { icon: '暦', cls: 'wareki' },
 }
 const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'settings']
 
@@ -440,6 +461,23 @@ export default function App() {
         />
       )
       case 'unit': return <UnitConverter />
+      case 'pomodoro': return <Pomodoro />
+      case 'metronome': return <Metronome />
+      case 'whitenoise': return <WhiteNoise />
+      case 'flashcards': return <Flashcards />
+      case 'dice': return <Dice />
+      case 'janken': return <Janken />
+      case 'numguess': return <NumGuess />
+      case 'omikuji': return <Omikuji />
+      case 'passgen': return <PassGen />
+      case 'textcount': return <TextCount />
+      case 'colorpicker': return <ColorPicker />
+      case 'morse': return <Morse />
+      case 'daycalc': return <DayCalc />
+      case 'bmi': return <Bmi />
+      case 'splitbill': return <SplitBill />
+      case 'currency': return <Currency />
+      case 'wareki': return <Wareki />
     }
   }
 
