@@ -213,6 +213,8 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .cal-view-switch button.active { background: #6b4fa1; color: #fff; }
 .cal-week-cell { min-height: 160px; }
 .cal-count { margin-left: auto; font-size: 13px; color: #526173; }
+.cal-ics { display: flex; gap: 6px; }
+.cal-ics-msg { margin: 0 0 10px; font-size: 13px; color: #2f6b3a; }
 .cal-search { display: flex; align-items: center; gap: 2px; }
 .cal-search input { border: 1px solid #c6d0dd; border-radius: 999px; padding: 7px 12px; font-size: 13.5px; width: 180px; }
 .cal-search button { border: 0; background: transparent; font-size: 16px; line-height: 1; padding: 4px 8px; cursor: pointer; color: #526173; }
@@ -1752,6 +1754,7 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 .os-root.input-unlock .os-desktop { overflow: visible; }
 
 /* 追加分（タイピング寿司打／メディア変換） */
+.app-icon.recipe { background: linear-gradient(135deg, #fda4af, #be123c); }
 .app-icon.mediaconv { background: linear-gradient(135deg, #f59e0b, #dc2626); }
 .sa-col { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .sa-app input[type="url"] { border: 1px solid #c6d0dd; border-radius: 8px; padding: 8px; font-size: 14px; background: #fff; }

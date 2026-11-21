@@ -418,3 +418,77 @@ export function SleepLog() {
     </div>
   )
 }
+
+/* ---------- レシピ帳 ---------- */
+interface RecipeRec { id: number; name: string; category: string; minutes: number; servings: number; ingredients: string; steps: string; fav: boolean }
+const RECIPE_CATS = ['主菜', '副菜', '汁物・スープ', 'ごはん・麺', 'お菓子', 'その他']
+export function RecipeBook() {
+  const [items, setItems] = useState<RecipeRec[]>(() => load('webx-recipe', []))
+  const [name, setName] = useState('')
+  const [category, setCategory] = useState(RECIPE_CATS[0])
+  const [minutes, setMinutes] = useState(30)
+  const [servings, setServings] = useState(2)
+  const [ingredients, setIngredients] = useState('')
+  const [steps, setSteps] = useState('')
+  const [query, setQuery] = useState('')
+  const [openId, setOpenId] = useState<number | null>(null)
+  const persist = (next: RecipeRec[]) => { setItems(next); save('webx-recipe', next) }
+  const add = () => {
+    if (!name.trim()) return
+    const rec: RecipeRec = { id: Date.now(), name: name.trim(), category, minutes: Math.max(1, minutes || 1), servings: Math.max(1, servings || 1), ingredients: ingredients.trim(), steps: steps.trim(), fav: false }
+    persist([rec, ...items].sort((a, b) => b.id - a.id))
+    setName(''); setIngredients(''); setSteps('')
+  }
+  const q = query.trim()
+  const shown = items.filter((r) => !q || r.name.includes(q) || r.ingredients.includes(q) || r.category.includes(q))
+  const favCount = items.filter((r) => r.fav).length
+  return (
+    <div className="sa-app">
+      <div className="sa-row">
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="料理名（例：肉じゃが）" style={{ flex: 1 }} />
+        <select value={category} onChange={(e) => setCategory(e.target.value)}>
+          {RECIPE_CATS.map((c) => <option key={c}>{c}</option>)}
+        </select>
+      </div>
+      <div className="sa-row">
+        <label>調理時間 <input type="number" min={1} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} style={{ width: 64 }} /> 分</label>
+        <label>人数 <input type="number" min={1} value={servings} onChange={(e) => setServings(Number(e.target.value))} style={{ width: 56 }} /> 人分</label>
+        <button className="btn accent" onClick={add}>追加</button>
+      </div>
+      <div className="sa-row">
+        <textarea value={ingredients} onChange={(e) => setIngredients(e.target.value)} placeholder="材料（1行に1つずつ）" rows={2} style={{ flex: 1 }} />
+        <textarea value={steps} onChange={(e) => setSteps(e.target.value)} placeholder="手順（1行に1工程ずつ）" rows={2} style={{ flex: 1 }} />
+      </div>
+      <div className="sa-row">
+        <input type="text" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="検索（料理名・材料・カテゴリ）" style={{ flex: 1 }} />
+      </div>
+      <div className="sa-stats">
+        <span>登録数 <b>{items.length}</b></span>
+        <span>お気に入り <b>{favCount}</b></span>
+      </div>
+      <div className="sa-log">
+        {shown.map((r) => (
+          <div key={r.id} className="sa-cardrow">
+            <span style={{ flex: 1 }}>
+              <b>{r.name}</b> <span className="sa-note">{r.category}／{r.minutes}分／{r.servings}人分</span>
+              <button className="btn small" onClick={() => setOpenId(openId === r.id ? null : r.id)}>{openId === r.id ? '閉じる' : 'レシピを見る'}</button>
+              {openId === r.id && (
+                <span className="sa-col" style={{ marginTop: 6 }}>
+                  {r.ingredients && <span><b>材料</b><br />{r.ingredients.split('\n').filter(Boolean).map((l, i) => <span key={i}>・{l}<br /></span>)}</span>}
+                  {r.steps && <span><b>手順</b><br />{r.steps.split('\n').filter(Boolean).map((l, i) => <span key={i}>{i + 1}. {l}<br /></span>)}</span>}
+                  {!r.ingredients && !r.steps && <span className="sa-note">材料・手順は登録されていません。</span>}
+                </span>
+              )}
+            </span>
+            <span className="sa-row">
+              <button className="btn small" onClick={() => persist(items.map((x) => x.id === r.id ? { ...x, fav: !x.fav } : x))}>{r.fav ? '★ お気に入り' : '☆'}</button>
+              <button className="btn small" onClick={() => persist(items.filter((x) => x.id !== r.id))}>削除</button>
+            </span>
+          </div>
+        ))}
+        {shown.length === 0 && <p className="sa-note">{items.length === 0 ? 'まだレシピが登録されていません。料理名を入れて追加してください。' : '検索に合うレシピがありません。'}</p>}
+      </div>
+      <p className="sa-note">作り方を書き留めておけるレシピ帳です。材料と手順は1行ずつ入力します。記録は端末内に保存されます。</p>
+    </div>
+  )
+}

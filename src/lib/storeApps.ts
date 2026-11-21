@@ -612,6 +612,11 @@ export const STORE_APPS: StoreAppDef[] = [
     category: 'life',
   },
   {
+    id: 'recipe', icon: '料', cls: 'recipe', name: 'レシピ帳',
+    desc: '料理のレシピを記録。材料・手順を書き留め、料理名や材料で検索できます。', version: '1.0.0', notes: '新規アプリです。料理のレシピ（材料・手順）の記録と検索ができます。',
+    category: 'life',
+  },
+  {
     id: 'mediaconv', icon: '変', cls: 'mediaconv', name: 'メディア変換',
     desc: '動画を GIF／音声（MP3）／WebM に変換。FFmpeg を端末内で実行し、ファイルは外部送信されません。', version: '1.0.0', notes: '新規アプリです。FFmpeg（WASM）で動画を GIF・MP3・WebM に変換できます。初回のみエンジン読み込みにネット接続が必要です。',
     category: 'tool',
