@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Backstage, { type AppId } from './Backstage'
 import { LOCALES, useLang } from '../lib/i18n'
+import { eventsToIcs, parseIcs } from '../lib/ics'
 import { deleteEvent, listEvents, saveEvent, EVENT_COLORS, type CalEvent, type EventColor, type RepeatKind } from '../lib/store'
 
 function weekdayNames(locale: string): string[] {
@@ -93,6 +94,8 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [dragOverDate, setDragOverDate] = useState<string | null>(null)
+  const [icsMsg, setIcsMsg] = useState('')
+  const icsFileRef = useRef<HTMLInputElement>(null)
 
   const refresh = useCallback(async () => {
     setEvents(await listEvents())
@@ -286,6 +289,42 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     await refresh()
   }
 
+  // ICS の書き出し・読み込み結果の表示は6秒で消える
+  useEffect(() => {
+    if (!icsMsg) return
+    const id = window.setTimeout(() => setIcsMsg(''), 6000)
+    return () => window.clearTimeout(id)
+  }, [icsMsg])
+
+  // すべての予定を ICS ファイルとして書き出す（繰り返しは RRULE で1件にまとまる）
+  const exportIcs = () => {
+    if (events.length === 0) {
+      setIcsMsg(t('icsExportNone'))
+      return
+    }
+    const blob = new Blob([eventsToIcs(events)], { type: 'text/calendar;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'webx-calendar.ics'
+    a.click()
+    URL.revokeObjectURL(a.href)
+    setIcsMsg(t('icsExportDone').replace('{n}', String(events.length)))
+  }
+
+  // ICS ファイルを読み込み、同じ日付・時刻・タイトルの予定を除いて追加する
+  const onIcsFile = async (f: File) => {
+    try {
+      const parsed = parseIcs(await f.text())
+      const existing = new Set(events.map((e) => `${e.date}|${e.time ?? ''}|${e.title}`))
+      const fresh = parsed.filter((ev) => !existing.has(`${ev.date}|${ev.time ?? ''}|${ev.title}`))
+      for (const ev of fresh) await saveEvent(ev)
+      if (fresh.length > 0) await refresh()
+      setIcsMsg(fresh.length > 0 ? t('icsImported').replace('{n}', String(fresh.length)) : t('icsImportNone'))
+    } catch {
+      setIcsMsg(t('icsImportFailed'))
+    }
+  }
+
   // 予定を別の日にドラッグ＆ドロップで移動する
   // 繰り返し予定はドラッグした出現日と同じ日数だけ開始日をずらし、シリーズごと移動する
   const moveEventToDate = async (id: string, occurrenceDate: string, targetDate: string) => {
@@ -405,6 +444,11 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
           <button className={mode === 'month' ? 'active' : ''} onClick={() => setMode('month')}>{t('monthView')}</button>
           <button className={mode === 'week' ? 'active' : ''} onClick={() => setMode('week')}>{t('weekView')}</button>
         </span>
+        <span className="cal-ics">
+          <button onClick={exportIcs}>{t('exportIcs')}</button>
+          <button onClick={() => icsFileRef.current?.click()}>{t('importIcs')}</button>
+          <input ref={icsFileRef} type="file" accept=".ics,text/calendar" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void onIcsFile(f); e.target.value = '' }} />
+        </span>
         <span className="cal-search">
           <input
             value={searchQuery}
@@ -418,6 +462,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
         <span className="cal-count">{t('eventsThisMonth').replace('{n}', String(monthEventCount))}</span>
       </div>
       <p className="cal-drag-hint">{t('dragEventHint')}</p>
+      {icsMsg && <p className="cal-ics-msg">{icsMsg}</p>}
       {searchQuery.trim() !== '' && (
         <div className="cal-search-results">
           {searchResults.length === 0 ? (
