@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { CalEvent } from '../lib/store'
 import { EVENT_COLORS } from '../lib/store'
 import { WEATHER_CITIES, type WidgetConfig, type WidgetId } from '../lib/widgets'
+import { timeLabel } from './Calendar'
 
 export interface LauncherAppInfo { id: string; name: string; icon: string; cls: string }
 
@@ -226,7 +227,7 @@ export default function DesktopWidget({ id, now, clock, dateLabel, events, confi
         <div className="dwidget">
           <div className="dw-title">📅 今日の予定</div>
           {items.length > 0
-            ? items.map((e) => <div key={e.id} className="agenda-item"><span className="cal-color-dot" style={{ backgroundColor: EVENT_COLORS.find((c) => c.id === (e.color ?? 'blue'))?.hex ?? '#3b82f6' }} />{e.time ? `${e.time} ` : ''}{e.title}</div>)
+            ? items.map((e) => <div key={e.id} className="agenda-item"><span className="cal-color-dot" style={{ backgroundColor: EVENT_COLORS.find((c) => c.id === (e.color ?? 'blue'))?.hex ?? '#3b82f6' }} />{timeLabel(e) ? `${timeLabel(e)} ` : ''}{e.title}</div>)
             : <div className="dw-note">今日の予定はありません</div>}
         </div>
       )

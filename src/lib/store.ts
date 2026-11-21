@@ -29,6 +29,7 @@ export interface CalEvent {
   id: string
   date: string // YYYY-MM-DD
   time?: string // HH:MM、未指定は終日（既存データとの互換のため）
+  endTime?: string // HH:MM、開始時刻より後の場合のみ有効（未指定は開始時刻のみ）
   title: string
   memo: string
   repeat?: RepeatKind // 未指定は 'none' と同じ（既存データとの互換のため）
