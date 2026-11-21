@@ -148,6 +148,16 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setFormMemo('')
   }
 
+  // 予定フォーム：Enter で追加・保存、Esc で編集中をキャンセル
+  const onFormKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      void addEvent()
+    } else if (e.key === 'Escape' && editingId) {
+      cancelEdit()
+    }
+  }
+
   const removeEvent = async (e: CalEvent) => {
     if (!window.confirm(t('confirmDeleteEvent').replace('{title}', e.title))) return
     await deleteEvent(e.id)
@@ -239,8 +249,8 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
             </ul>
           )}
           <div className="cal-form">
-            <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder={t('eventTitle')} aria-label={t('eventTitle')} />
-            <input value={formMemo} onChange={(e) => setFormMemo(e.target.value)} placeholder={t('eventMemo')} aria-label={t('eventMemo')} />
+            <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} onKeyDown={onFormKeyDown} placeholder={t('eventTitle')} aria-label={t('eventTitle')} />
+            <input value={formMemo} onChange={(e) => setFormMemo(e.target.value)} onKeyDown={onFormKeyDown} placeholder={t('eventMemo')} aria-label={t('eventMemo')} />
             <button onClick={() => void addEvent()}>{editingId ? t('saveEvent') : t('addEvent')}</button>
             {editingId && <button className="cal-cancel" onClick={cancelEdit}>{t('cancelBtn')}</button>}
           </div>
