@@ -79,6 +79,7 @@ function download(name: string, blob: Blob) {
 export default function YmmDic() {
   const [folders, setFolders] = useState<YFolder[]>([])
   const [files, setFiles] = useState<YFile[]>([])
+  const [charIds, setCharIds] = useState<string[]>([]) // 空間IDは全ファイル共通
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeRowId, setActiveRowId] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
@@ -106,11 +107,20 @@ export default function YmmDic() {
   useEffect(() => {
     void (async () => {
       try {
-        const [fo, fi, act] = await Promise.all([
+        const [fo, fi, act, gids] = await Promise.all([
           get<YFolder[]>('folders', store),
           get<YFile[]>('files', store),
           get<string>('activeId', store),
+          get<string[]>('charIds', store),
         ])
+        // 空間IDは全ファイル共通。旧データ（ファイルごとのID）は統合して移行する
+        if (Array.isArray(gids)) setCharIds(gids)
+        else if (fi) {
+          // 仮データ掃除がまだの環境では、既定ID（仮データ）を共通IDへ持ち込まない
+          const cleanedYet = !!localStorage.getItem('webx-ymm-cleaned-v110')
+          const union = Array.from(new Set(fi.flatMap((f) => f.characterIds ?? [])))
+          setCharIds(cleanedYet ? union : union.filter((c) => !LEGACY_DUMMY_IDS.includes(c)))
+        }
         if (fi && fi.length > 0) {
           let cleaned = fi
           // v1.1.0：仮データ（既定ID・未編集のサンプル）の掃除を一度だけ行う
@@ -138,13 +148,14 @@ export default function YmmDic() {
         try {
           await set('folders', folders, store)
           await set('files', files, store)
+          await set('charIds', charIds, store)
           await set('activeId', activeId ?? '', store)
           const d = new Date()
           setSaveMsg(`✓ 保存 ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`)
         } catch { setSaveMsg('保存に失敗しました') }
       })()
     }, 400)
-  }, [folders, files, activeId, loaded])
+  }, [folders, files, charIds, activeId, loaded])
 
   const patchFile = (id: string, patch: Partial<YFile>) =>
     setFiles((prev) => prev.map((f) => (f.id === id ? { ...f, ...patch, updatedAt: Date.now() } : f)))
@@ -184,7 +195,7 @@ export default function YmmDic() {
   // ---- 行操作 ----
   const insertRowAfter = (afterId: string | null) => {
     if (!active) return
-    const r: YRow = { id: uid(), charId: active.characterIds[0] ?? '', text: '' }
+    const r: YRow = { id: uid(), charId: charIds[0] ?? '', text: '' }
     const rows = [...active.rows]
     const i = afterId ? rows.findIndex((x) => x.id === afterId) : -1
     if (i >= 0) {
@@ -220,36 +231,31 @@ export default function YmmDic() {
 
   // ---- 立ち絵空間ID（設定画面） ----
   const renameId = (oldName: string, raw: string) => {
-    if (!active) return
     const name = raw.trim()
     if (!name || name === oldName) return
-    if (active.characterIds.includes(name)) { notifyOs('同じ名前のIDが既にあります', 'ymmdic'); return }
-    patchFile(active.id, {
-      characterIds: active.characterIds.map((c) => (c === oldName ? name : c)),
-      rows: active.rows.map((r) => (r.charId === oldName ? { ...r, charId: name } : r)),
-    })
+    if (charIds.includes(name)) { notifyOs('同じ名前のIDが既にあります', 'ymmdic'); return }
+    setCharIds((prev) => prev.map((c) => (c === oldName ? name : c)))
+    // 名前変更は全ファイルの行にも反映する
+    setFiles((prev) => prev.map((f) => ({ ...f, rows: f.rows.map((r) => (r.charId === oldName ? { ...r, charId: name } : r)) })))
   }
   const deleteId = (name: string) => {
-    if (!active) return
-    const n = active.rows.filter((r) => r.charId === name).length
-    if (!window.confirm(`空間ID「${name}」を削除しますか？${n > 0 ? `\n（このIDを使っている行が ${n} 件あります。行そのものは残ります）` : ''}`)) return
-    patchFile(active.id, { characterIds: active.characterIds.filter((c) => c !== name) })
+    const n = files.reduce((sum, f) => sum + f.rows.filter((r) => r.charId === name).length, 0)
+    if (!window.confirm(`空間ID「${name}」を削除しますか？${n > 0 ? `\n（このIDを使っている行が全ファイルで ${n} 件あります。行そのものは残ります）` : ''}`)) return
+    setCharIds((prev) => prev.filter((c) => c !== name))
   }
   const moveId = (name: string, dir: -1 | 1) => {
-    if (!active) return
-    const ids = [...active.characterIds]
+    const ids = [...charIds]
     const i = ids.indexOf(name)
     const j = i + dir
     if (i < 0 || j < 0 || j >= ids.length) return
     ;[ids[i], ids[j]] = [ids[j], ids[i]]
-    patchFile(active.id, { characterIds: ids })
+    setCharIds(ids)
   }
   const addId = () => {
-    if (!active) return
     const name = newId.trim()
     if (!name) return
-    if (active.characterIds.includes(name)) { notifyOs('同じ名前のIDが既にあります', 'ymmdic'); return }
-    patchFile(active.id, { characterIds: [...active.characterIds, name] })
+    if (charIds.includes(name)) { notifyOs('同じ名前のIDが既にあります', 'ymmdic'); return }
+    setCharIds((prev) => [...prev, name])
     setNewId('')
   }
 
@@ -271,16 +277,16 @@ export default function YmmDic() {
         }
       }
       if (rows.length === 0) { notifyOs('インポート可能なデータがありませんでした', 'ymmdic'); return }
+      setCharIds((prev) => Array.from(new Set([...prev, ...detected])))
       if (importMode.current === 'overwrite' && active) {
         if (!window.confirm(`「${active.name}」の内容を、このCSVで上書きしますか？`)) return
-        const merged = Array.from(new Set([...active.characterIds, ...detected]))
-        patchFile(active.id, { rows, characterIds: merged })
+        patchFile(active.id, { rows })
         notifyOs(`CSVを上書き取り込みしました（${rows.length}行）`, 'ymmdic')
       } else {
         const name = file.name.replace(/\.csv$/i, '') || '取り込んだ辞書'
         const f: YFile = {
           id: uid(), folderId: null, name,
-          characterIds: detected,
+          characterIds: [],
           rows, updatedAt: Date.now(),
         }
         setFiles((p) => [...p, f])
@@ -299,16 +305,17 @@ export default function YmmDic() {
 
   // ---- JSONバックアップ ----
   const exportJSON = () => {
-    download('ymm-dic-backup.json', new Blob([JSON.stringify({ folders, files }, null, 2)], { type: 'application/json' }))
+    download('ymm-dic-backup.json', new Blob([JSON.stringify({ folders, files, charIds }, null, 2)], { type: 'application/json' }))
   }
   const onJsonPicked = (file: File) => {
     void (async () => {
       try {
-        const data = JSON.parse(await file.text()) as { folders?: YFolder[]; files?: YFile[] }
+        const data = JSON.parse(await file.text()) as { folders?: YFolder[]; files?: YFile[]; charIds?: string[] }
         if (!Array.isArray(data.files)) throw new Error('bad format')
         if (!window.confirm('現在の辞書データをすべて、このバックアップで置き換えますか？')) return
         setFolders(Array.isArray(data.folders) ? data.folders : [])
         setFiles(data.files)
+        setCharIds(Array.isArray(data.charIds) ? data.charIds : Array.from(new Set(data.files.flatMap((f) => f.characterIds ?? []))))
         setActiveId(data.files[0]?.id ?? null)
         notifyOs('バックアップを復元しました', 'ymmdic')
       } catch { notifyOs('バックアップファイルを読み込めませんでした', 'ymmdic') }
@@ -388,11 +395,11 @@ export default function YmmDic() {
               <div className="ymm-set-head">
                 <button className="ymm-backbtn" onClick={() => setView('edit')}>← 戻る</button>
                 <span className="ymm-set-title">🎭 空間IDの設定</span>
-                <span className="hint">{active.name}</span>
+                <span className="hint">全ファイル共通</span>
               </div>
-              <p className="hint" style={{ margin: 0 }}>名前を変えると、そのIDを使っている行にも反映されます。並び順は、行のID選択肢の順番になります。</p>
+              <p className="hint" style={{ margin: 0 }}>空間IDは全ての辞書ファイルで共通です。名前を変えると、全ファイルの行にも反映されます。並び順は、行のID選択肢の順番になります。</p>
               <div className="ymm-set-list">
-                {active.characterIds.map((c) => (
+                {charIds.map((c) => (
                   <div key={c} className="ymm-set-row">
                     <span className="ymm-ava" style={{ background: colorOf(c), width: 26, height: 26, fontSize: 13 }}>{c.slice(0, 1)}</span>
                     <input
@@ -401,13 +408,13 @@ export default function YmmDic() {
                       onBlur={(e) => renameId(c, e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
                     />
-                    <span className="ymm-set-count">{active.rows.filter((r) => r.charId === c).length}行</span>
+                    <span className="ymm-set-count">全{files.reduce((sum, f) => sum + f.rows.filter((r) => r.charId === c).length, 0)}行</span>
                     <button className="ymm-iconbtn" title="上へ" onClick={() => moveId(c, -1)}>↑</button>
                     <button className="ymm-iconbtn" title="下へ" onClick={() => moveId(c, 1)}>↓</button>
                     <button className="ymm-iconbtn" title="削除" onClick={() => deleteId(c)}>✕</button>
                   </div>
                 ))}
-                {active.characterIds.length === 0 && <p className="hint">空間IDがまだありません。下から追加してください。</p>}
+                {charIds.length === 0 && <p className="hint">空間IDがまだありません。下から追加してください。</p>}
               </div>
               <div className="ymm-set-add">
                 <input
@@ -433,7 +440,7 @@ export default function YmmDic() {
               </div>
 
               <div className="ymm-chips">
-                {active.characterIds.map((c) => (
+                {charIds.map((c) => (
                   <span key={c} className="ymm-chip">
                     <span className="ymm-ava" style={{ background: colorOf(c) }}>{c.slice(0, 1)}</span>
                     {c}
@@ -470,8 +477,8 @@ export default function YmmDic() {
                     <span className="ymm-row-bar" style={{ background: colorOf(r.charId) }} />
                     <span className="ymm-ava" style={{ background: colorOf(r.charId) }}>{(r.charId || '？').slice(0, 1)}</span>
                     <select className="ymm-sel" value={r.charId} onFocus={() => setActiveRowId(r.id)} onChange={(e) => patchRow(r.id, { charId: e.target.value })}>
-                      {active.characterIds.map((c) => <option key={c} value={c}>{c}</option>)}
-                      {!active.characterIds.includes(r.charId) && <option value={r.charId}>{r.charId}</option>}
+                      {charIds.map((c) => <option key={c} value={c}>{c}</option>)}
+                      {!charIds.includes(r.charId) && r.charId && <option value={r.charId}>{r.charId}</option>}
                     </select>
                     <input
                       className="ymm-txt"
