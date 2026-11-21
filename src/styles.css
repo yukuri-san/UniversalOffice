@@ -1311,3 +1311,13 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .mx-recent-card { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 8px 10px; }
 .mx-recent-main { flex: 1; display: flex; align-items: center; gap: 10px; border: 0; background: transparent; cursor: pointer; font-size: 14.5px; color: #101828; text-align: left; }
 .mx-recent-close { border: 0; background: #f1f5f9; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }
+
+/* ===== v1.22.0a: MXUI 表示の最適化 ===== */
+.os-root[data-ui="mxui-classic"] .desktop-widgets, .os-root[data-ui="mxui-liquid"] .desktop-widgets { align-items: flex-start; max-height: none; overflow-y: visible; padding: 2px 2px 8px; scrollbar-width: none; }
+.os-root[data-ui="mxui-liquid"] .desktop-widgets { top: 8px; }
+.os-root[data-ui="mxui-classic"] .dwidget, .os-root[data-ui="mxui-liquid"] .dwidget { max-height: 168px; overflow-y: auto; scrollbar-width: none; }
+.os-root[data-ui="mxui-classic"] .desktop-icons, .os-root[data-ui="mxui-liquid"] .desktop-icons { top: 196px; justify-content: center; }
+.os-root[data-ui="mxui-liquid"] .os-desktop { margin-top: 56px; margin-bottom: 104px; }
+.os-root[data-ui="mxui-classic"] .notes-panel, .os-root[data-ui="mxui-liquid"] .notes-panel { z-index: 320; }
+.os-root[data-ui="mxui-liquid"] .notes-panel { bottom: 118px; max-height: calc(100dvh - 210px); }
+.mx-recents { z-index: 330; }
