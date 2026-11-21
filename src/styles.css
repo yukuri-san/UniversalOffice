@@ -99,10 +99,12 @@ footer { margin-top: 8px; color: #7a8798; }
 table.sheet { border-collapse: collapse; min-width: 100%; table-layout: fixed; }
 table.sheet th, table.sheet td { border: 1px solid #e0e6ef; padding: 0; }
 table.sheet thead th, table.sheet tbody th { background: #eef2f8; font-size: 12px; color: #526173; padding: 6px 10px; text-align: center; }
-table.sheet thead th { position: relative; overflow: visible; }
+table.sheet thead th, table.sheet tbody th { position: relative; overflow: visible; }
 /* 列幅ドラッグ用のハンドル（列見出しの右端）。ダブルクリックで自動調整 */
 table.sheet thead th .col-resize { position: absolute; top: 0; right: -4px; width: 9px; height: 100%; cursor: col-resize; touch-action: none; z-index: 3; }
 table.sheet thead th .col-resize:hover, table.sheet thead th .col-resize:active { background: rgba(33, 115, 70, 0.35); }
+table.sheet tbody th .row-resize { position: absolute; left: 0; bottom: -4px; width: 100%; height: 9px; cursor: row-resize; touch-action: none; z-index: 3; }
+table.sheet tbody th .row-resize:hover, table.sheet tbody th .row-resize:active { background: rgba(33, 115, 70, 0.35); }
 table.sheet td input { width: 100%; min-width: 0; border: 0; padding: 8px 10px; font-size: 14px; background: transparent; }
 table.sheet td input:focus { outline: 2px solid #217346; outline-offset: -2px; }
 .hint { color: #526173; font-size: 13px; }

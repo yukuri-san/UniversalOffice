@@ -35,6 +35,32 @@ function remapColWidths(widths: ColWidthMap, mapCol: (c: number) => number | nul
   return next
 }
 
+const ROWHEIGHT_KEY = 'universal-office-sheet-rowheights'
+/** 行の高さの既定値（px）。セル内 input の上下 padding（8px×2）＋文字の高さに合わせる */
+const DEFAULT_ROW_HEIGHT = 36
+const MIN_ROW_HEIGHT = 24
+const MAX_ROW_HEIGHT = 160
+type RowHeightMap = Record<number, number>
+
+function loadRowHeights(): RowHeightMap {
+  try {
+    const saved = localStorage.getItem(ROWHEIGHT_KEY)
+    if (saved) return JSON.parse(saved) as RowHeightMap
+  } catch { /* ignore */ }
+  return {}
+}
+
+/** 行の挿入／削除／ソートに合わせて行の高さマップの行番号を付け替える */
+function remapRowHeights(heights: RowHeightMap, mapRow: (r: number) => number | null): RowHeightMap {
+  const next: RowHeightMap = {}
+  for (const [key, h] of Object.entries(heights)) {
+    const r = Number(key)
+    const p = mapRow(r)
+    if (p !== null) next[p] = h
+  }
+  return next
+}
+
 /** セルの書式。キーは `${row},${col}`。fmt は数値書式（未指定＝標準） */
 type NumFmt = 'number' | 'currency' | 'percent'
 type CellStyle = { b?: boolean; i?: boolean; color?: string; bg?: string; align?: 'left' | 'center' | 'right'; fmt?: NumFmt }
@@ -270,6 +296,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const [filename, setFilename] = useState(() => localStorage.getItem(NAME_KEY) || 'sheet.csv')
   const [styles, setStyles] = useState<StyleMap>(loadStyles)
   const [colWidths, setColWidths] = useState<ColWidthMap>(loadColWidths)
+  const [rowHeights, setRowHeights] = useState<RowHeightMap>(loadRowHeights)
   const [homeOpen, setHomeOpen] = useState(false)
   const [selected, setSelected] = useState({ r: 0, c: 0 })
   const [focused, setFocused] = useState<{ r: number; c: number } | null>(null)
@@ -336,6 +363,9 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   useEffect(() => {
     localStorage.setItem(COLWIDTH_KEY, JSON.stringify(colWidths))
   }, [colWidths])
+  useEffect(() => {
+    localStorage.setItem(ROWHEIGHT_KEY, JSON.stringify(rowHeights))
+  }, [rowHeights])
   useEffect(() => {
     localStorage.setItem(NAME_KEY, filename)
   }, [filename])
@@ -423,6 +453,39 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     setColWidths((prev) => ({ ...prev, [c]: w }))
   }
   const resetColWidths = () => setColWidths({})
+
+  /** 行の高さのドラッグ変更。行見出しの下端を掴んで上下に動かすとその行の高さが変わる */
+  const rowDragRef = useRef<{ r: number; startY: number; startH: number } | null>(null)
+  const rowHeight = (r: number) => rowHeights[r] ?? DEFAULT_ROW_HEIGHT
+  const startRowResize = (e: React.PointerEvent, r: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const startY = e.clientY
+    const startH = rowHeight(r)
+    rowDragRef.current = { r, startY, startH }
+    const onMove = (ev: PointerEvent) => {
+      const d = rowDragRef.current
+      if (!d) return
+      const h = Math.min(MAX_ROW_HEIGHT, Math.max(MIN_ROW_HEIGHT, d.startH + (ev.clientY - d.startY)))
+      setRowHeights((prev) => ({ ...prev, [d.r]: h }))
+    }
+    const onUp = () => {
+      rowDragRef.current = null
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+  /** その行の高さを既定に戻す（ダブルクリック用） */
+  const resetRowHeight = (r: number) => {
+    setRowHeights((prev) => {
+      const next = { ...prev }
+      delete next[r]
+      return next
+    })
+  }
+  const resetRowHeights = () => setRowHeights({})
 
   /** 選択位置をグリッド内に収める（行・列の増減を伴う操作の後用） */
   const clampSelection = (g: string[][]) => {
@@ -546,6 +609,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     pushHistory(grid, styles)
     setGrid((prev) => prev.filter((_, i) => i !== selected.r))
     setStyles((prev) => remapStyles(prev, (r, c) => (r === selected.r ? null : r > selected.r ? { r: r - 1, c } : { r, c })))
+    setRowHeights((prev) => remapRowHeights(prev, (r) => (r === selected.r ? null : r > selected.r ? r - 1 : r)))
     // 末尾の行を消したとき選択位置が範囲外に残らないよう詰める
     const r = Math.min(selected.r, grid.length - 2)
     setSelected({ r, c: selected.c })
@@ -570,6 +634,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
       return [...prev.slice(0, selected.r), Array(cols).fill(''), ...prev.slice(selected.r)]
     })
     setStyles((prev) => remapStyles(prev, (r, c) => (r >= selected.r ? { r: r + 1, c } : { r, c })))
+    setRowHeights((prev) => remapRowHeights(prev, (r) => (r >= selected.r ? r + 1 : r)))
   }
   const insertCol = () => {
     pushHistory(grid, styles)
@@ -601,6 +666,11 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
       const newBodyIdx = order.indexOf(r - 1)
       return newBodyIdx < 0 ? null : { r: newBodyIdx + 1, c }
     }))
+    setRowHeights((prev) => remapRowHeights(prev, (r) => {
+      if (r === 0) return 0
+      const newBodyIdx = order.indexOf(r - 1)
+      return newBodyIdx < 0 ? null : newBodyIdx + 1
+    }))
   }
 
   const openCsv = async (file: File) => {
@@ -629,7 +699,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     const head = computed[0]?.map((c, ci) => `<th${cellAttr(0, ci)}>${escapeHtml(formatCellValue(c, styles[styleKey(0, ci)]?.fmt))}</th>`).join('') ?? ''
     const body = computed
       .slice(1)
-      .map((row, ri) => `<tr>${row.map((c, ci) => `<td${cellAttr(ri + 1, ci)}>${escapeHtml(formatCellValue(c, styles[styleKey(ri + 1, ci)]?.fmt))}</td>`).join('')}</tr>`)
+      .map((row, ri) => `<tr style="height:${rowHeight(ri + 1)}px">${row.map((c, ci) => `<td${cellAttr(ri + 1, ci)}>${escapeHtml(formatCellValue(c, styles[styleKey(ri + 1, ci)]?.fmt))}</td>`).join('')}</tr>`)
       .join('')
     printHtml(filename.replace(/\.csv$/i, ''), `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`)
   }
@@ -712,6 +782,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <button onClick={() => sortByColumn(1)}>{t('sortAsc')}</button>
         <button onClick={() => sortByColumn(-1)}>{t('sortDesc')}</button>
         <button onClick={resetColWidths} title={t('colWidthResetHint')}>{t('colWidthReset')}</button>
+        <button onClick={resetRowHeights} title={t('rowHeightResetHint')}>{t('rowHeightReset')}</button>
         <span className="fmt-group" role="group" aria-label="セル書式">
           <button className={curStyle?.b ? 'fmt-active' : ''} onClick={() => updateStyle({ b: !curStyle?.b })} title={t('cellBold')} aria-pressed={!!curStyle?.b}><b>B</b></button>
           <button className={curStyle?.i ? 'fmt-active' : ''} onClick={() => updateStyle({ i: !curStyle?.i })} title={t('cellItalic')} aria-pressed={!!curStyle?.i}><i>I</i></button>
@@ -799,8 +870,15 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </thead>
           <tbody>
             {grid.map((row, r) => (
-              <tr key={r}>
-                <th className={r === selected.r ? 'sel-row' : ''}>{r + 1}</th>
+              <tr key={r} style={{ height: rowHeight(r) }}>
+                <th className={r === selected.r ? 'sel-row' : ''}>{r + 1}
+                  <span
+                    className="row-resize"
+                    title={t('rowHeightDefault')}
+                    onPointerDown={(e) => startRowResize(e, r)}
+                    onDoubleClick={() => resetRowHeight(r)}
+                  />
+                </th>
                 {row.map((cell, c) => {
                   const isFocused = focused?.r === r && focused?.c === c
                   return (
@@ -822,7 +900,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </tbody>
         </table>
       </div>
-      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
+      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。行の高さ：行見出し（1・2・3…）の下端をドラッグすると行の高さを変えられます。下端をダブルクリックすると既定の高さに戻ります。高さは端末内に保存され、行の挿入／削除・ソートに追従し、印刷にも反映されます。「行の高さをリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
     </section>
   )
 }
