@@ -78,6 +78,7 @@ export default function Paint() {
   const [textEdit, setTextEdit] = useState<{ x: number; y: number; fontPx: number; displayPx: number } | null>(null)
   const [textValue, setTextValue] = useState('')
   const overlayRef = useRef<HTMLCanvasElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
   const drawState = useRef<{ drawing: boolean; start: { x: number; y: number } | null; last: { x: number; y: number } | null }>({ drawing: false, start: null, last: null })
   const importRef = useRef<HTMLInputElement>(null)
 
@@ -115,6 +116,23 @@ export default function Paint() {
       rerender()
     }
     img.src = prev
+  }
+
+  // 選択中のレイヤーをクリア（元に戻すで復旧できる）
+  const clearLayer = () => {
+    if (!active) return
+    pushUndo(active)
+    active.canvas.getContext('2d')!.clearRect(0, 0, W, H)
+    rerender()
+  }
+
+  // Ctrl+Z / Cmd+Z で元に戻す（テキスト入力中は入力欄の操作を優先）
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return
+    const ae = document.activeElement as HTMLElement | null
+    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return
+    e.preventDefault()
+    undo()
   }
 
   const composite = (): HTMLCanvasElement => {
@@ -179,6 +197,7 @@ export default function Paint() {
 
   const onDown = (e: React.PointerEvent) => {
     if (!active) return
+    rootRef.current?.focus({ preventScroll: true })
     const p = pos(e)
 
     if (tool === 'text') {
@@ -365,7 +384,7 @@ export default function Paint() {
   ]
 
   return (
-    <div className="paint-app pro">
+    <div className="paint-app pro" ref={rootRef} tabIndex={0} onKeyDown={onKeyDown}>
       <div className="paint-tools wrap">
         <div className="paint-toolgroup">
           {tools.map((toolItem) => (
@@ -381,6 +400,7 @@ export default function Paint() {
         <label className="paint-size">{t('brush')}<input type="range" min={1} max={60} value={size} onChange={(e) => setSize(Number(e.target.value))} /></label>
         <label className="paint-size">{t('brushOpacity')}<input type="range" min={10} max={100} value={Math.round(brushOpacity * 100)} onChange={(e) => setBrushOpacity(Number(e.target.value) / 100)} /></label>
         <button onClick={undo}>{t('undo')}</button>
+        <button onClick={clearLayer}>{t('clearLayer')}</button>
         <button onClick={() => importRef.current?.click()}>{t('importImage')}</button>
         <input ref={importRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importImage(f); e.target.value = '' }} />
         <button onClick={download}>{t('downloadBtn')}</button>
