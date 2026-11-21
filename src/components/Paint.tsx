@@ -70,6 +70,8 @@ function floodFill(ctx: CanvasRenderingContext2D, x: number, y: number, fill: [n
   ctx.putImageData(img, 0, 0)
 }
 
+const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2]
+
 export default function Paint() {
   const { t } = useLang()
   const layersRef = useRef<Layer[]>([])
@@ -132,6 +134,8 @@ export default function Paint() {
   }, [])
   const [activeId, setActiveId] = useState(0)
   const [tool, setTool] = useState<Tool>('brush')
+  const [shapeFill, setShapeFill] = useState(false)
+  const [zoom, setZoom] = useState(1)
   const [color, setColor] = useState('#2563eb')
   const [size, setSize] = useState(6)
   const [brushOpacity, setBrushOpacity] = useState(1)
@@ -246,9 +250,11 @@ export default function Paint() {
       ctx.lineTo(to.x, to.y)
       ctx.stroke()
     } else if (shapeTool === 'rect') {
+      if (shapeFill) { ctx.fillStyle = color; ctx.fillRect(from.x, from.y, to.x - from.x, to.y - from.y) }
       ctx.strokeRect(from.x, from.y, to.x - from.x, to.y - from.y)
     } else if (shapeTool === 'ellipse') {
       ctx.ellipse((from.x + to.x) / 2, (from.y + to.y) / 2, Math.abs(to.x - from.x) / 2, Math.abs(to.y - from.y) / 2, 0, 0, Math.PI * 2)
+      if (shapeFill) { ctx.fillStyle = color; ctx.fill() }
       ctx.stroke()
     }
     ctx.globalAlpha = 1
@@ -480,6 +486,15 @@ export default function Paint() {
         </div>
         <label className="paint-size">{t('brush')}<input type="range" min={1} max={60} value={size} onChange={(e) => setSize(Number(e.target.value))} /></label>
         <label className="paint-size">{t('brushOpacity')}<input type="range" min={10} max={100} value={Math.round(brushOpacity * 100)} onChange={(e) => setBrushOpacity(Number(e.target.value) / 100)} /></label>
+        {(tool === 'rect' || tool === 'ellipse') && (
+          <button className={shapeFill ? 'on' : ''} onClick={() => setShapeFill((v) => !v)}>{t('shapeFill')}</button>
+        )}
+        <div className="paint-zoom">
+          <button onClick={() => setZoom((z) => ZOOM_STEPS[Math.max(0, ZOOM_STEPS.indexOf(z) - 1)])} aria-label={t('zoomOut')}>−</button>
+          <span>{Math.round(zoom * 100)}%</span>
+          <button onClick={() => setZoom((z) => ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, ZOOM_STEPS.indexOf(z) + 1)])} aria-label={t('zoomIn')}>＋</button>
+          <button onClick={() => setZoom(1)}>{t('zoomFit')}</button>
+        </div>
         <button onClick={undo}>{t('undo')}</button>
         <button onClick={clearLayer}>{t('clearLayer')}</button>
         <button onClick={() => void newCanvas()}>{t('paintNew')}</button>
@@ -491,7 +506,7 @@ export default function Paint() {
       </div>
       <div className="paint-main">
         <div className="paint-stage">
-          <div className="paint-stack">
+          <div className="paint-stack" style={{ width: `min(${100 * zoom}%, ${1200 * zoom}px)` }}>
             {layers.map((layer) => (
               <LayerCanvas key={layer.id} layer={layer} tick={0} />
             ))}
