@@ -1162,6 +1162,62 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .app-icon.coinflip { background: linear-gradient(135deg, #fbbf24, #b45309); }
 .app-icon.countdown { background: linear-gradient(135deg, #06b6d4, #155e75); }
 .app-icon.agecalc { background: linear-gradient(135deg, #f472b6, #9d174d); }
+.app-icon.tap10 { background: linear-gradient(135deg, #fb7185, #be123c); }
+.app-icon.aimtrainer { background: linear-gradient(135deg, #f87171, #991b1b); }
+.app-icon.lightsout { background: linear-gradient(135deg, #fde047, #d97706); }
+.app-icon.mastermind { background: linear-gradient(135deg, #a78bfa, #4c1d95); }
+.app-icon.trivia { background: linear-gradient(135deg, #38bdf8, #7c3aed); }
+.app-icon.flagquiz { background: linear-gradient(135deg, #34d399, #0e7490); }
+.app-icon.nummemory { background: linear-gradient(135deg, #818cf8, #1e40af); }
+.app-icon.colormatch { background: linear-gradient(135deg, #f472b6, #facc15); }
+.app-icon.balloonpop { background: linear-gradient(135deg, #fda4af, #0ea5e9); }
+.app-icon.samegame { background: linear-gradient(135deg, #4ade80, #2563eb); }
+.app-icon.mathdash { background: linear-gradient(135deg, #fbbf24, #dc2626); }
+.app-icon.shiritori { background: linear-gradient(135deg, #2dd4bf, #166534); }
+.app-icon.kuku { background: linear-gradient(135deg, #fdba74, #c2410c); }
+.app-icon.drill { background: linear-gradient(135deg, #93c5fd, #1d4ed8); }
+.app-icon.engquiz { background: linear-gradient(135deg, #60a5fa, #0f766e); }
+.app-icon.prefquiz { background: linear-gradient(135deg, #86efac, #15803d); }
+.app-icon.elements { background: linear-gradient(135deg, #67e8f9, #6d28d9); }
+.app-icon.historyquiz { background: linear-gradient(135deg, #d6a35c, #7c2d12); }
+.app-icon.kanjiquiz { background: linear-gradient(135deg, #1f2937, #b91c1c); }
+.app-icon.capitals { background: linear-gradient(135deg, #7dd3fc, #0369a1); }
+.app-icon.sciencequiz { background: linear-gradient(135deg, #5eead4, #1e40af); }
+.app-icon.baseconv { background: linear-gradient(135deg, #94a3b8, #0f766e); }
+.app-icon.percent { background: linear-gradient(135deg, #f0abfc, #86198f); }
+.app-icon.taxcalc { background: linear-gradient(135deg, #fca5a5, #991b1b); }
+.app-icon.discount { background: linear-gradient(135deg, #fde68a, #ea580c); }
+.app-icon.loan { background: linear-gradient(135deg, #a5b4fc, #3730a3); }
+.app-icon.tip { background: linear-gradient(135deg, #fcd34d, #059669); }
+.app-icon.salary { background: linear-gradient(135deg, #6ee7b7, #065f46); }
+.app-icon.pace { background: linear-gradient(135deg, #fda4af, #7c2d12); }
+.app-icon.aspect { background: linear-gradient(135deg, #c4b5fd, #1e3a8a); }
+.app-icon.gcd { background: linear-gradient(135deg, #bef264, #3f6212); }
+.app-icon.prime { background: linear-gradient(135deg, #f9a8d4, #7e22ce); }
+.app-icon.combin { background: linear-gradient(135deg, #fda4af, #9d174d); }
+.app-icon.texttools { background: linear-gradient(135deg, #7dd3fc, #4338ca); }
+.app-icon.jsonfmt { background: linear-gradient(135deg, #fbbf24, #92400e); }
+.app-icon.base64 { background: linear-gradient(135deg, #a3a3a3, #171717); }
+.app-icon.urltool { background: linear-gradient(135deg, #38bdf8, #065f46); }
+.app-icon.uuid { background: linear-gradient(135deg, #d8b4fe, #581c87); }
+.app-icon.hashtool { background: linear-gradient(135deg, #64748b, #7c2d12); }
+.app-icon.passcheck { background: linear-gradient(135deg, #4ade80, #14532d); }
+.app-icon.flashlight { background: linear-gradient(135deg, #fef08a, #ca8a04); }
+.app-icon.ruler { background: linear-gradient(135deg, #fde68a, #b45309); }
+.app-icon.mirror { background: linear-gradient(135deg, #e0f2fe, #818cf8); }
+.app-icon.voicerec { background: linear-gradient(135deg, #f87171, #7f1d1d); }
+.app-icon.amida { background: linear-gradient(135deg, #fbcfe8, #9d174d); }
+.app-icon.teams { background: linear-gradient(135deg, #99f6e4, #0d9488); }
+.app-icon.scoreboard { background: linear-gradient(135deg, #fde047, #166534); }
+.app-icon.tournament { background: linear-gradient(135deg, #facc15, #b45309); }
+.app-icon.reading { background: linear-gradient(135deg, #fca5a5, #7c2d12); }
+.app-icon.movie { background: linear-gradient(135deg, #c7d2fe, #312e81); }
+.app-icon.plants { background: linear-gradient(135deg, #bbf7d0, #15803d); }
+.app-icon.inventory { background: linear-gradient(135deg, #fed7aa, #9a3412); }
+.app-icon.expiry { background: linear-gradient(135deg, #fecdd3, #be123c); }
+.app-icon.gift { background: linear-gradient(135deg, #fbcfe8, #db2777); }
+.app-icon.savings { background: linear-gradient(135deg, #fef08a, #a16207); }
+.app-icon.subs { background: linear-gradient(135deg, #bae6fd, #7c3aed); }
 .app-icon.sysinfo { background: linear-gradient(135deg, #475569, #0f172a); }
 .app-icon.taskman { background: linear-gradient(135deg, #0ea5e9, #1e3a8a); }
 .app-icon.clipboard { background: linear-gradient(135deg, #a78bfa, #5b21b6); }
@@ -1687,3 +1743,28 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 .os-root.input-unlock { position: absolute; top: 0; }
 .os-root.input-unlock .os-desktop { overflow: visible; }
+
+/* 追加分（タイピング寿司打／メディア変換） */
+.app-icon.mediaconv { background: linear-gradient(135deg, #f59e0b, #dc2626); }
+.sa-col { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+.sa-app input[type="url"] { border: 1px solid #c6d0dd; border-radius: 8px; padding: 8px; font-size: 14px; background: #fff; }
+.sa-progress { position: relative; height: 22px; background: #e5eaf1; border-radius: 999px; overflow: hidden; }
+.sa-progress-bar { height: 100%; background: linear-gradient(90deg, #38bdf8, #2563eb); transition: width .2s; }
+.sa-progress span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #1e293b; }
+.sushi-lane { position: relative; height: 190px; margin: 0 10px; border-radius: 14px; overflow: hidden; background: linear-gradient(180deg, #78350f 0 14px, #d6c7b2 14px calc(100% - 14px), #78350f calc(100% - 14px)); box-shadow: inset 0 0 0 2px rgba(0,0,0,.15); }
+.sushi-plate { position: absolute; top: 34px; left: 0; width: 240px; padding: 8px 10px; border-radius: 50% / 38%; background: radial-gradient(ellipse at center, #ffffff 55%, #dbe4ee 100%); box-shadow: 0 3px 8px rgba(0,0,0,.3); text-align: center; will-change: transform; }
+.sushi-plate.target { outline: 3px solid #f59e0b; }
+.sushi-plate.sentence { background: radial-gradient(ellipse at center, #fff7ed 55%, #fde68a 100%); }
+.sushi-dish { font-size: 20px; }
+.sushi-price { font-size: 12px; font-weight: 700; color: #b45309; }
+.sushi-word { font-size: 19px; font-weight: 700; color: #1f2937; line-height: 1.25; }
+.sushi-yomi { font-size: 12px; color: #6b7280; }
+.sushi-romaji { font-family: ui-monospace, monospace; font-size: 13px; color: #9ca3af; letter-spacing: 1px; word-break: break-all; }
+.sushi-romaji .done, .sushi-now-romaji .done { color: #16a34a; font-weight: 700; }
+.sushi-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #57534e; font-size: 14px; padding: 0 16px; text-align: center; }
+.sushi-result { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; background: rgba(255,251,235,.92); color: #1f2937; font-size: 15px; }
+.sushi-clear { font-size: 22px; font-weight: 800; color: #16a34a; }
+.sushi-miss-goal { font-size: 22px; font-weight: 800; color: #6b7280; }
+.sushi-now { display: flex; gap: 14px; align-items: baseline; justify-content: center; padding: 8px 10px 0; flex-wrap: wrap; }
+.sushi-now-word { font-size: 22px; font-weight: 700; }
+.sushi-now-romaji { font-family: ui-monospace, monospace; font-size: 18px; color: #9ca3af; letter-spacing: 1px; }

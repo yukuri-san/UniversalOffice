@@ -101,7 +101,30 @@ export function Currency() {
   const [amount, setAmount] = useState(10000)
   const [from, setFrom] = useState('JPY')
   const [to, setTo] = useState('USD')
-  const result = amount * (RATES[from].per / RATES[to].per)
+  const [live, setLive] = useState<Record<string, number> | null>(null)
+  const [rateInfo, setRateInfo] = useState('')
+  const [fetching, setFetching] = useState(false)
+  const per = (k: string) => live?.[k] ?? RATES[k].per
+  const result = amount * (per(from) / per(to))
+  const fetchRates = async () => {
+    setFetching(true)
+    try {
+      const r = await fetch('https://open.er-api.com/v6/latest/USD')
+      const j = await r.json()
+      if (!j || j.result !== 'success' || !j.rates?.JPY) throw new Error('bad response')
+      const next: Record<string, number> = {}
+      for (const k of Object.keys(RATES)) {
+        const usdRate = j.rates[k]
+        if (typeof usdRate === 'number' && usdRate > 0) next[k] = j.rates.JPY / usdRate
+      }
+      next.JPY = 1
+      setLive(next)
+      const when = j.time_last_update_utc ? new Date(j.time_last_update_utc).toLocaleString('ja-JP') : new Date().toLocaleString('ja-JP')
+      setRateInfo(`最新レートを取得しました（${when} 時点）`)
+    } catch {
+      setRateInfo('最新レートを取得できませんでした。従来の固定レートを使います')
+    } finally { setFetching(false) }
+  }
   return (
     <div className="sa-app">
       <div className="sa-row">
@@ -116,8 +139,9 @@ export function Currency() {
           {Object.entries(RATES).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
         </select>
         <button className="btn" onClick={() => { setFrom(to); setTo(from) }}>⇅ 入れ替え</button>
+        <button className="btn accent" onClick={fetchRates} disabled={fetching}>{fetching ? '取得中…' : '最新レートを取得'}</button>
       </div>
-      <p className="sa-note">レートは 2026年11月時点の目安（固定値）です。実際の取引レートとは異なります。</p>
+      <p className="sa-note">{rateInfo || 'レートは 2026年11月時点の目安（固定値）です。「最新レートを取得」で open.er-api.com の最新値に更新できます。実際の取引レートとは異なります。'}</p>
     </div>
   )
 }

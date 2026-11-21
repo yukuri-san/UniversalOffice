@@ -1,57 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 
-/* ================= タイピング ================= */
-const WORDS = ['sakura', 'webx', 'keyboard', 'neko', 'sushi', 'tokyo', 'piano', 'mizu', 'hoshi', 'yama', 'kawa', 'sora', 'umi', 'hana', 'tsuki', 'ame', 'yuki', 'kaze', 'mori', 'hikari', 'densha', 'jitensha', 'tomodachi', 'arigatou', 'ohayou', 'konnichiwa', 'sayounara', 'ganbatte', 'omedetou', 'tanoshii']
-export function Typing() {
-  const [word, setWord] = useState(() => WORDS[Math.floor(Math.random() * WORDS.length)])
-  const [typed, setTyped] = useState('')
-  const [count, setCount] = useState(0)
-  const [miss, setMiss] = useState(0)
-  const [timeLeft, setTimeLeft] = useState(60)
-  const [running, setRunning] = useState(false)
-  const [best, setBest] = useState(0)
-  useEffect(() => {
-    if (!running) return
-    const id = window.setInterval(() => {
-      setTimeLeft((t) => {
-        if (t <= 1) { setRunning(false); setBest((b) => Math.max(b, count)); return 0 }
-        return t - 1
-      })
-    }, 1000)
-    return () => window.clearInterval(id)
-  }, [running, count])
-  const start = () => { setCount(0); setMiss(0); setTimeLeft(60); setTyped(''); setWord(WORDS[Math.floor(Math.random() * WORDS.length)]); setRunning(true) }
-  const onType = (v: string) => {
-    if (!running) return
-    const next = v.slice(-1)
-    if (next && next !== word[typed.length]) { setMiss((m) => m + 1); return }
-    const nt = typed + next
-    if (nt === word) {
-      setCount((c) => c + 1)
-      setWord(WORDS[Math.floor(Math.random() * WORDS.length)])
-      setTyped('')
-    } else setTyped(nt)
-  }
-  return (
-    <div className="game-app col">
-      <div className="game-bar">
-        <span className="game-stat inline">正解<b>{count}</b></span>
-        <span className="game-stat inline">ミス<b>{miss}</b></span>
-        <span className="game-stat inline">残り<b>{timeLeft}秒</b></span>
-        <span className="game-stat inline">ベスト<b>{best}</b></span>
-        <button className="btn accent" onClick={start}>{running ? 'リスタート' : 'スタート（60秒）'}</button>
-      </div>
-      <div className="typing-word">
-        {word.split('').map((ch, i) => (
-          <span key={i} style={{ color: i < typed.length ? '#16a34a' : i === typed.length ? '#2563eb' : '#9ca3af', textDecoration: i === typed.length ? 'underline' : 'none' }}>{ch}</span>
-        ))}
-      </div>
-      <input className="typing-input" value="" onChange={(e) => onType(e.target.value)} placeholder={running ? 'ここに入力' : 'スタートを押してください'} disabled={!running} />
-      <p className="game-help">表示されたローマ字を正確に入力。60秒で何問解ける？</p>
-    </div>
-  )
-}
-
+export { Typing } from "./SushiTyping"
 /* ================= 15パズル ================= */
 function pInit(): number[] {
   const arr = Array.from({ length: 16 }, (_, i) => i)

@@ -40,6 +40,12 @@ import { GalleryApp } from './components/store/GalleryApp'
 import { MusicApp } from './components/store/MusicApp'
 import { QrApp } from './components/store/QrApp'
 import { Kakeibo, HabitTracker, ShoppingList, ReactionTest, SimonGame, Counter, Roulette, CoinFlip, Countdown, AgeCalc } from './components/store/Apps2'
+import { Tap10, AimTrainer, LightsOut, Mastermind, Trivia, FlagQuiz, NumMemory, ColorMatch, BalloonPop, SameGame, MathDash, Shiritori } from './components/store/Mega1'
+import { Kuku, Drill, EngQuiz, PrefQuiz, Elements, HistoryQuiz, KanjiQuiz, Capitals, ScienceQuiz } from './components/store/Mega2'
+import { BaseConv, Percent, TaxCalc, Discount, Loan, Tip, Salary, Pace, Aspect, Gcd, Prime, Combin } from './components/store/Mega3'
+import { TextTools, JsonFmt, Base64Tool, UrlTool, UuidGen, HashTool, PassCheck, Flashlight, Ruler, Mirror, VoiceRec, Amida, Teams, Scoreboard, Tournament } from './components/store/Mega4'
+import { Reading, MovieLog, Plants, Inventory, Expiry, GiftMemo, Savings, Subs } from './components/store/Mega5'
+import { MediaConv } from './components/store/MediaConv'
 import SysInfo from './components/SysInfo'
 import TaskManager from './components/TaskManager'
 import ClipboardApp from './components/ClipboardApp'
@@ -64,7 +70,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'mediaconv'
 
 interface Win {
   id: WindowApp
@@ -158,6 +164,63 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   coinflip: { icon: '🪙', cls: 'coinflip' },
   countdown: { icon: '⏳', cls: 'countdown' },
   agecalc: { icon: '🎂', cls: 'agecalc' },
+  tap10: { icon: '連', cls: 'tap10' },
+  aimtrainer: { icon: '的', cls: 'aimtrainer' },
+  lightsout: { icon: '灯', cls: 'lightsout' },
+  mastermind: { icon: '推', cls: 'mastermind' },
+  trivia: { icon: '雑', cls: 'trivia' },
+  flagquiz: { icon: '旗', cls: 'flagquiz' },
+  nummemory: { icon: '憶', cls: 'nummemory' },
+  colormatch: { icon: '彩', cls: 'colormatch' },
+  balloonpop: { icon: '風', cls: 'balloonpop' },
+  samegame: { icon: '消', cls: 'samegame' },
+  mathdash: { icon: '算', cls: 'mathdash' },
+  shiritori: { icon: '詞', cls: 'shiritori' },
+  kuku: { icon: '九', cls: 'kuku' },
+  drill: { icon: '練', cls: 'drill' },
+  engquiz: { icon: '英', cls: 'engquiz' },
+  prefquiz: { icon: '県', cls: 'prefquiz' },
+  elements: { icon: '元', cls: 'elements' },
+  historyquiz: { icon: '史', cls: 'historyquiz' },
+  kanjiquiz: { icon: '漢', cls: 'kanjiquiz' },
+  capitals: { icon: '都', cls: 'capitals' },
+  sciencequiz: { icon: '理', cls: 'sciencequiz' },
+  baseconv: { icon: '進', cls: 'baseconv' },
+  percent: { icon: '％', cls: 'percent' },
+  taxcalc: { icon: '税', cls: 'taxcalc' },
+  discount: { icon: '割', cls: 'discount' },
+  loan: { icon: '融', cls: 'loan' },
+  tip: { icon: '礼', cls: 'tip' },
+  salary: { icon: '給', cls: 'salary' },
+  pace: { icon: '速', cls: 'pace' },
+  aspect: { icon: '比', cls: 'aspect' },
+  gcd: { icon: '約', cls: 'gcd' },
+  prime: { icon: '素', cls: 'prime' },
+  combin: { icon: '組', cls: 'combin' },
+  texttools: { icon: '変', cls: 'texttools' },
+  jsonfmt: { icon: '整', cls: 'jsonfmt' },
+  base64: { icon: '符', cls: 'base64' },
+  urltool: { icon: '鎖', cls: 'urltool' },
+  uuid: { icon: 'ID', cls: 'uuid' },
+  hashtool: { icon: '＃', cls: 'hashtool' },
+  passcheck: { icon: '検', cls: 'passcheck' },
+  flashlight: { icon: '光', cls: 'flashlight' },
+  ruler: { icon: '定', cls: 'ruler' },
+  mirror: { icon: '鏡', cls: 'mirror' },
+  voicerec: { icon: '録', cls: 'voicerec' },
+  amida: { icon: '梯', cls: 'amida' },
+  teams: { icon: '分', cls: 'teams' },
+  scoreboard: { icon: '点', cls: 'scoreboard' },
+  tournament: { icon: '勝', cls: 'tournament' },
+  reading: { icon: '読', cls: 'reading' },
+  movie: { icon: '映', cls: 'movie' },
+  plants: { icon: '植', cls: 'plants' },
+  inventory: { icon: '持', cls: 'inventory' },
+  expiry: { icon: '期', cls: 'expiry' },
+  gift: { icon: '贈', cls: 'gift' },
+  savings: { icon: '貯', cls: 'savings' },
+  subs: { icon: '契', cls: 'subs' },
+  mediaconv: { icon: '変', cls: 'mediaconv' },
   sysinfo: { icon: '情', cls: 'sysinfo' },
   taskman: { icon: '管', cls: 'taskman' },
   clipboard: { icon: '📋', cls: 'clipboard' },
@@ -1069,6 +1132,63 @@ export default function App() {
       case 'coinflip': return <CoinFlip />
       case 'countdown': return <Countdown />
       case 'agecalc': return <AgeCalc />
+      case 'tap10': return <Tap10 />
+      case 'aimtrainer': return <AimTrainer />
+      case 'lightsout': return <LightsOut />
+      case 'mastermind': return <Mastermind />
+      case 'trivia': return <Trivia />
+      case 'flagquiz': return <FlagQuiz />
+      case 'nummemory': return <NumMemory />
+      case 'colormatch': return <ColorMatch />
+      case 'balloonpop': return <BalloonPop />
+      case 'samegame': return <SameGame />
+      case 'mathdash': return <MathDash />
+      case 'shiritori': return <Shiritori />
+      case 'kuku': return <Kuku />
+      case 'drill': return <Drill />
+      case 'engquiz': return <EngQuiz />
+      case 'prefquiz': return <PrefQuiz />
+      case 'elements': return <Elements />
+      case 'historyquiz': return <HistoryQuiz />
+      case 'kanjiquiz': return <KanjiQuiz />
+      case 'capitals': return <Capitals />
+      case 'sciencequiz': return <ScienceQuiz />
+      case 'baseconv': return <BaseConv />
+      case 'percent': return <Percent />
+      case 'taxcalc': return <TaxCalc />
+      case 'discount': return <Discount />
+      case 'loan': return <Loan />
+      case 'tip': return <Tip />
+      case 'salary': return <Salary />
+      case 'pace': return <Pace />
+      case 'aspect': return <Aspect />
+      case 'gcd': return <Gcd />
+      case 'prime': return <Prime />
+      case 'combin': return <Combin />
+      case 'texttools': return <TextTools />
+      case 'jsonfmt': return <JsonFmt />
+      case 'base64': return <Base64Tool />
+      case 'urltool': return <UrlTool />
+      case 'uuid': return <UuidGen />
+      case 'hashtool': return <HashTool />
+      case 'passcheck': return <PassCheck />
+      case 'flashlight': return <Flashlight />
+      case 'ruler': return <Ruler />
+      case 'mirror': return <Mirror />
+      case 'voicerec': return <VoiceRec />
+      case 'amida': return <Amida />
+      case 'teams': return <Teams />
+      case 'scoreboard': return <Scoreboard />
+      case 'tournament': return <Tournament />
+      case 'reading': return <Reading />
+      case 'movie': return <MovieLog />
+      case 'plants': return <Plants />
+      case 'inventory': return <Inventory />
+      case 'expiry': return <Expiry />
+      case 'gift': return <GiftMemo />
+      case 'savings': return <Savings />
+      case 'subs': return <Subs />
+      case 'mediaconv': return <MediaConv />
       case 'sysinfo': return <SysInfo />
       case 'taskman': return (
         <TaskManager

@@ -159,7 +159,28 @@ export function Flashcards() {
   const [idx, setIdx] = useState(0)
   const [flipped, setFlipped] = useState(false)
   const [study, setStudy] = useState(false)
+  const [ioMsg, setIoMsg] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
   const save = (next: Card[]) => { setCards(next); localStorage.setItem(KEY, JSON.stringify(next)) }
+  const exportJson = () => {
+    const blob = new Blob([JSON.stringify(cards, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'webx-flashcards.json'
+    a.click()
+    URL.revokeObjectURL(a.href)
+    setIoMsg(`書き出しました（${cards.length}枚）`)
+  }
+  const importJson = async (f: File) => {
+    try {
+      const v = JSON.parse(await f.text())
+      const list: Card[] = (Array.isArray(v) ? v : []).filter((c) => c && typeof c.front === 'string' && typeof c.back === 'string')
+        .map((c) => ({ front: c.front, back: c.back }))
+      if (!list.length) { setIoMsg('読み込めるカードがありませんでした'); return }
+      save([...cards, ...list])
+      setIoMsg(`${list.length}枚を追加しました（合計 ${cards.length + list.length}枚）`)
+    } catch { setIoMsg('JSON の読み込みに失敗しました') }
+  }
   const add = () => {
     if (!front.trim() || !back.trim()) return
     save([...cards, { front: front.trim(), back: back.trim() }])
@@ -178,6 +199,13 @@ export function Flashcards() {
             <input type="text" value={front} onChange={(e) => setFront(e.target.value)} placeholder="表（問題）" />
             <input type="text" value={back} onChange={(e) => setBack(e.target.value)} placeholder="裏（答え）" />
             <button className="btn accent" onClick={add}>追加</button>
+          </div>
+          <div className="sa-row">
+            <button className="btn" onClick={exportJson} disabled={cards.length === 0}>⬇ JSON書き出し</button>
+            <button className="btn" onClick={() => fileRef.current?.click()}>⬆ JSON読み込み</button>
+            <input ref={fileRef} type="file" accept="application/json,.json" style={{ display: 'none' }}
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) void importJson(f); e.target.value = '' }} />
+            {ioMsg && <span className="sa-note">{ioMsg}</span>}
           </div>
           <div className="sa-log">
             {cards.map((c, i) => (
