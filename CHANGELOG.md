@@ -1,3 +1,13 @@
+## v1.39.0（2026-11-21）
+
+表計算に条件付き書式を追加した。
+
+- ツールバーの「条件付き書式」から、範囲（例：A1:B5）・条件・値・色を指定すると、条件に合うセルの背景色が変わるようになった
+- 条件は「より大きい」「より小さい」「等しい」「以上」「以下」「を含む」「空欄」の7種類。数値の条件は数式の計算結果（例：=B2*C2 の金額）にも対応する
+- 複数のルールがあるときは先に登録したものが優先される。ルールは一覧で確認でき、「削除」で個別に消せる
+- ルールは端末内に保存され（保存キー universal-office-sheet-condfmt）、行・列の挿入／削除・ソートに追従し、印刷（PDF）にも反映される
+- 表示は8言語対応（新規キー condFmt／condFmtRange／condFmtOp／condFmtValue／condFmtColor／condFmtNoRules／condOpGt／condOpLt／condOpEq／condOpGte／condOpLte／condOpContains／condOpEmpty、全455キー）
+
 ## v1.38.0（2026-11-21）
 
 カレンダーの予定に終了時刻を設定できるようになった。

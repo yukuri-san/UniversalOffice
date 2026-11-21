@@ -86,6 +86,48 @@ function remapMerges(merges: MergeMap, mapPos: (r: number, c: number, rs: number
   return next
 }
 
+const CONDFMT_KEY = 'universal-office-sheet-condfmt'
+/** 条件付き書式のルール。範囲内のセルで条件に合うものの背景色を変える */
+type CondFmtOp = 'gt' | 'lt' | 'eq' | 'gte' | 'lte' | 'contains' | 'empty'
+type CondFmtRule = { id: string; r1: number; c1: number; r2: number; c2: number; op: CondFmtOp; value: string; bg: string }
+
+function loadCondFmt(): CondFmtRule[] {
+  try {
+    const saved = localStorage.getItem(CONDFMT_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as CondFmtRule[]
+      if (Array.isArray(parsed)) return parsed.filter((r) => r && typeof r.r1 === 'number' && typeof r.c1 === 'number' && typeof r.bg === 'string')
+    }
+  } catch { /* ignore */ }
+  return []
+}
+
+/** 行・列の挿入／削除／ソートに合わせて条件付き書式の範囲を付け替える。範囲が消えたルールは除く */
+function remapCondFmt(rules: CondFmtRule[], mapPos: (r: number, c: number) => { r: number; c: number } | null): CondFmtRule[] {
+  const next: CondFmtRule[] = []
+  for (const rule of rules) {
+    const pts: { r: number; c: number }[] = []
+    const corners = [
+      { r: rule.r1, c: rule.c1 }, { r: rule.r1, c: rule.c2 },
+      { r: rule.r2, c: rule.c1 }, { r: rule.r2, c: rule.c2 },
+    ]
+    for (const p of corners) {
+      const m = mapPos(p.r, p.c)
+      if (m) pts.push(m)
+    }
+    if (pts.length === 0) continue
+    const r1 = Math.min(...pts.map((p) => p.r))
+    const r2 = Math.max(...pts.map((p) => p.r))
+    const c1 = Math.min(...pts.map((p) => p.c))
+    const c2 = Math.max(...pts.map((p) => p.c))
+    next.push({ ...rule, r1, r2, c1, c2 })
+  }
+  return next
+}
+
+/** 条件付き書式の条件ラベル用の i18n キー */
+const condOpKey = (op: CondFmtOp): string => ({ gt: 'condOpGt', lt: 'condOpLt', eq: 'condOpEq', gte: 'condOpGte', lte: 'condOpLte', contains: 'condOpContains', empty: 'condOpEmpty' })[op]
+
 /** セルの書式。キーは `${row},${col}`。fmt は数値書式（未指定＝標準） */
 type NumFmt = 'number' | 'currency' | 'percent'
 type CellStyle = { b?: boolean; i?: boolean; color?: string; bg?: string; align?: 'left' | 'center' | 'right'; fmt?: NumFmt }
@@ -122,13 +164,14 @@ function styleToCss(s?: CellStyle): React.CSSProperties {
   }
 }
 
-/** 印刷用 HTML の style 属性（色はカラーピッカー由来の hex のみ） */
-function styleToAttr(s?: CellStyle): string {
+/** 印刷用 HTML の style 属性（色はカラーピッカー由来の hex のみ）。overrideBg があればセルの背景色より優先する */
+function styleToAttr(s?: CellStyle, overrideBg?: string): string {
   const parts: string[] = []
   if (s?.b) parts.push('font-weight:bold')
   if (s?.i) parts.push('font-style:italic')
   if (s?.color) parts.push(`color:${s.color}`)
-  if (s?.bg) parts.push(`background-color:${s.bg}`)
+  const bg = overrideBg ?? s?.bg
+  if (bg) parts.push(`background-color:${bg}`)
   if (s?.align) parts.push(`text-align:${s.align}`)
   return parts.length ? ` style="${parts.join(';')}"` : ''
 }
@@ -323,6 +366,12 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const [colWidths, setColWidths] = useState<ColWidthMap>(loadColWidths)
   const [rowHeights, setRowHeights] = useState<RowHeightMap>(loadRowHeights)
   const [merges, setMerges] = useState<MergeMap>(loadMerges)
+  const [condFmt, setCondFmt] = useState<CondFmtRule[]>(loadCondFmt)
+  const [condFmtOpen, setCondFmtOpen] = useState(false)
+  const [cfRange, setCfRange] = useState('')
+  const [cfOp, setCfOp] = useState<CondFmtOp>('gt')
+  const [cfValue, setCfValue] = useState('')
+  const [cfBg, setCfBg] = useState('#fde68a')
   const [homeOpen, setHomeOpen] = useState(false)
   const [selected, setSelected] = useState({ r: 0, c: 0 })
   /** 範囲選択（Shift+クリック）。結合の対象になる矩形。null は単独セル選択 */
@@ -400,6 +449,9 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     localStorage.setItem(MERGE_KEY, JSON.stringify(merges))
   }, [merges])
   useEffect(() => {
+    localStorage.setItem(CONDFMT_KEY, JSON.stringify(condFmt))
+  }, [condFmt])
+  useEffect(() => {
     localStorage.setItem(NAME_KEY, filename)
   }, [filename])
 
@@ -422,6 +474,57 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const canMerge = !!rangeRect && (rangeRect.r1 !== rangeRect.r2 || rangeRect.c1 !== rangeRect.c2)
   /** 選択中のセルを含む結合（なければ undefined） */
   const selectedMerge = coverAt(selected.r, selected.c)
+
+  /** 表示値（数式の計算結果）に対して条件付き書式のルールが合うか判定する */
+  const condFmtMatch = (rule: CondFmtRule, display: string, raw: string): boolean => {
+    if (rule.op === 'empty') return raw.trim() === ''
+    if (rule.op === 'contains') return rule.value !== '' && display.includes(rule.value)
+    if (rule.value.trim() === '') return false
+    const n = Number(display)
+    const v = Number(rule.value)
+    if (Number.isNaN(n) || Number.isNaN(v)) return false
+    switch (rule.op) {
+      case 'gt': return n > v
+      case 'lt': return n < v
+      case 'eq': return n === v
+      case 'gte': return n >= v
+      case 'lte': return n <= v
+    }
+  }
+  /** セルに適用される条件付き書式の背景色（先に登録したルールを優先）。無ければ undefined */
+  const condFmtBg = (r: number, c: number): string | undefined => {
+    for (const rule of condFmt) {
+      if (r < rule.r1 || r > rule.r2 || c < rule.c1 || c > rule.c2) continue
+      const display = computed[r]?.[c] ?? ''
+      const raw = grid[r]?.[c] ?? ''
+      if (condFmtMatch(rule, display, raw)) return rule.bg
+    }
+    return undefined
+  }
+  /** 選択範囲を A1:B5 形式の文字列にする（単独セルは A1 形式） */
+  const selectionRangeText = (): string => {
+    const rect = rangeRect ?? { r1: selected.r, r2: selected.r, c1: selected.c, c2: selected.c }
+    const from = `${colName(rect.c1)}${rect.r1 + 1}`
+    if (rect.r1 === rect.r2 && rect.c1 === rect.c2) return from
+    return `${from}:${colName(rect.c2)}${rect.r2 + 1}`
+  }
+  /** パネルで入力した条件付き書式のルールを追加する。範囲が空欄なら選択範囲を使う */
+  const addCondFmtRule = () => {
+    const text = cfRange.trim() || selectionRangeText()
+    const parts = text.split(':')
+    const a = parseRef(parts[0] ?? '')
+    const b = parseRef(parts[1] ?? parts[0] ?? '')
+    if (!a || !b) return
+    const rule: CondFmtRule = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      r1: Math.min(a.r, b.r), r2: Math.max(a.r, b.r),
+      c1: Math.min(a.c, b.c), c2: Math.max(a.c, b.c),
+      op: cfOp, value: cfValue, bg: cfBg,
+    }
+    setCondFmt((prev) => [...prev, rule])
+    setCfValue('')
+  }
+  const deleteCondFmtRule = (id: string) => setCondFmt((prev) => prev.filter((r) => r.id !== id))
 
   // ホーム画面で文書が選ばれたら開く
   useEffect(() => {
@@ -683,6 +786,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     setGrid((prev) => prev.filter((_, i) => i !== selected.r))
     setStyles((prev) => remapStyles(prev, (r, c) => (r === selected.r ? null : r > selected.r ? { r: r - 1, c } : { r, c })))
     setMerges((prev) => remapMerges(prev, (r, c, rs, cs) => (r === selected.r ? null : r > selected.r ? { r: r - 1, c, rs, cs } : r < selected.r && selected.r < r + rs ? { r, c, rs: rs - 1, cs } : { r, c, rs, cs })))
+    setCondFmt((prev) => remapCondFmt(prev, (r, c) => (r === selected.r ? null : r > selected.r ? { r: r - 1, c } : { r, c })))
     setRowHeights((prev) => remapRowHeights(prev, (r) => (r === selected.r ? null : r > selected.r ? r - 1 : r)))
     // 末尾の行を消したとき選択位置が範囲外に残らないよう詰める
     const r = Math.min(selected.r, grid.length - 2)
@@ -696,6 +800,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     setGrid((prev) => prev.map((row) => row.filter((_, i) => i !== selected.c)))
     setStyles((prev) => remapStyles(prev, (r, c) => (c === selected.c ? null : c > selected.c ? { r, c: c - 1 } : { r, c })))
     setMerges((prev) => remapMerges(prev, (r, c, rs, cs) => (c === selected.c ? null : c > selected.c ? { r, c: c - 1, rs, cs } : c < selected.c && selected.c < c + cs ? { r, c, rs, cs: cs - 1 } : { r, c, rs, cs })))
+    setCondFmt((prev) => remapCondFmt(prev, (r, c) => (c === selected.c ? null : c > selected.c ? { r, c: c - 1 } : { r, c })))
     setColWidths((prev) => remapColWidths(prev, (c) => (c === selected.c ? null : c > selected.c ? c - 1 : c)))
     // 末尾の列を消したとき選択位置が範囲外に残らないよう詰める
     const c = Math.min(selected.c, cols - 2)
@@ -710,6 +815,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     })
     setStyles((prev) => remapStyles(prev, (r, c) => (r >= selected.r ? { r: r + 1, c } : { r, c })))
     setMerges((prev) => remapMerges(prev, (r, c, rs, cs) => (r >= selected.r ? { r: r + 1, c, rs, cs } : r < selected.r && selected.r < r + rs ? { r, c, rs: rs + 1, cs } : { r, c, rs, cs })))
+    setCondFmt((prev) => remapCondFmt(prev, (r, c) => (r >= selected.r ? { r: r + 1, c } : { r, c })))
     setRowHeights((prev) => remapRowHeights(prev, (r) => (r >= selected.r ? r + 1 : r)))
   }
   const insertCol = () => {
@@ -717,6 +823,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     setGrid((prev) => prev.map((row) => [...row.slice(0, selected.c), '', ...row.slice(selected.c)]))
     setStyles((prev) => remapStyles(prev, (r, c) => (c >= selected.c ? { r, c: c + 1 } : { r, c })))
     setMerges((prev) => remapMerges(prev, (r, c, rs, cs) => (c >= selected.c ? { r, c: c + 1, rs, cs } : c < selected.c && selected.c < c + cs ? { r, c, rs, cs: cs + 1 } : { r, c, rs, cs })))
+    setCondFmt((prev) => remapCondFmt(prev, (r, c) => (c >= selected.c ? { r, c: c + 1 } : { r, c })))
     setColWidths((prev) => remapColWidths(prev, (c) => (c >= selected.c ? c + 1 : c)))
   }
   const clear = () => {
@@ -740,6 +847,11 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     })
     setGrid([head, ...order.map((i) => body[i])])
     setStyles((prev) => remapStyles(prev, (r, c) => {
+      if (r === 0) return { r, c }
+      const newBodyIdx = order.indexOf(r - 1)
+      return newBodyIdx < 0 ? null : { r: newBodyIdx + 1, c }
+    }))
+    setCondFmt((prev) => remapCondFmt(prev, (r, c) => {
       if (r === 0) return { r, c }
       const newBodyIdx = order.indexOf(r - 1)
       return newBodyIdx < 0 ? null : { r: newBodyIdx + 1, c }
@@ -806,9 +918,9 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   }
 
   const printSheet = () => {
-    /** 印刷用セルの style 属性。書式に加えて列幅も反映する */
+    /** 印刷用セルの style 属性。書式に加えて列幅も反映する。条件付き書式の背景色があればそちらを優先する */
     const cellAttr = (r: number, c: number) => {
-      const base = styleToAttr(styles[styleKey(r, c)])
+      const base = styleToAttr(styles[styleKey(r, c)], condFmtBg(r, c))
       const w = `width:${colWidth(c)}px`
       return base ? base.replace(/"$/, `;${w}"`) : ` style="${w}"`
     }
@@ -936,6 +1048,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <label className="check-inline"><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> {t('freeze')}</label>
         <span className="meta">{grid.length} 行 × {grid[0]?.length ?? 0} 列</span>
         <button onClick={() => setChartOpen((v) => !v)}>📊 グラフ</button>
+        <button onClick={() => { if (!condFmtOpen) setCfRange(selectionRangeText()); setCondFmtOpen((v) => !v) }}>{t('condFmt')}</button>
       </div>
       {findOpen && (
         <div className="sheet-find-panel">
@@ -960,6 +1073,43 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </label>
           <label className="check-inline"><input type="checkbox" checked={chartLabels} onChange={(e) => setChartLabels(e.target.checked)} /> 先頭列をラベルにする</label>
           <SheetChart computed={computed} range={chartRange} type={chartType} useLabels={chartLabels} />
+        </div>
+      )}
+      {condFmtOpen && (
+        <div className="sheet-condfmt-panel">
+          <div className="sheet-condfmt-form">
+            <label>{t('condFmtRange')} <input value={cfRange} onChange={(e) => setCfRange(e.target.value)} size={9} placeholder="A1:B5" /></label>
+            <label>{t('condFmtOp')}
+              <select value={cfOp} onChange={(e) => setCfOp(e.target.value as CondFmtOp)}>
+                <option value="gt">{t('condOpGt')}</option>
+                <option value="lt">{t('condOpLt')}</option>
+                <option value="eq">{t('condOpEq')}</option>
+                <option value="gte">{t('condOpGte')}</option>
+                <option value="lte">{t('condOpLte')}</option>
+                <option value="contains">{t('condOpContains')}</option>
+                <option value="empty">{t('condOpEmpty')}</option>
+              </select>
+            </label>
+            {cfOp !== 'empty' && (
+              <label>{t('condFmtValue')} <input value={cfValue} onChange={(e) => setCfValue(e.target.value)} size={8} /></label>
+            )}
+            <label className="fmt-color" title={t('condFmtColor')}>■<input type="color" value={cfBg} onChange={(e) => setCfBg(e.target.value)} aria-label={t('condFmtColor')} /></label>
+            <button onClick={addCondFmtRule}>{t('addBtn')}</button>
+            <button onClick={() => setCondFmtOpen(false)}>{t('close')}</button>
+          </div>
+          {condFmt.length === 0 ? (
+            <p className="sheet-chart-empty">{t('condFmtNoRules')}</p>
+          ) : (
+            <ul className="sheet-condfmt-list">
+              {condFmt.map((rule) => (
+                <li key={rule.id}>
+                  <span className="sheet-condfmt-swatch" style={{ background: rule.bg }} />
+                  {`${colName(rule.c1)}${rule.r1 + 1}${rule.r1 === rule.r2 && rule.c1 === rule.c2 ? '' : `:${colName(rule.c2)}${rule.r2 + 1}`} ${t(condOpKey(rule.op))}${rule.op === 'empty' ? '' : ` ${rule.value}`}`}
+                  <button onClick={() => deleteCondFmtRule(rule.id)}>{t('deleteBtn')}</button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
       <div className="formula-bar">
@@ -1019,12 +1169,13 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
                   if (cov && (cov.or !== r || cov.oc !== c)) return null
                   const isFocused = focused?.r === r && focused?.c === c
                   const inRange = !!rangeRect && r >= rangeRect.r1 && r <= rangeRect.r2 && c >= rangeRect.c1 && c <= rangeRect.c2
+                  const cfBgCell = condFmtBg(r, c)
                   return (
                     <td key={c} rowSpan={cov?.rs} colSpan={cov?.cs} className={`${r === selected.r && c === selected.c ? 'sel-cell' : ''}${inRange ? ' in-range' : ''}`}>
                       <input
                         ref={(el) => { if (el) cellRefs.current.set(`${r}-${c}`, el); else cellRefs.current.delete(`${r}-${c}`) }}
                         value={isFocused ? cell : formatCellValue(computed[r]?.[c] ?? cell, styles[styleKey(r, c)]?.fmt)}
-                        style={styleToCss(styles[styleKey(r, c)])}
+                        style={{ ...styleToCss(styles[styleKey(r, c)]), ...(cfBgCell ? { backgroundColor: cfBgCell } : {}) }}
                         onFocus={() => { setSelected({ r, c }); setFocused({ r, c }); beginEdit() }}
                         onBlur={() => { setFocused(null); commitEdit() }}
                         onChange={(e) => setCell(r, c, e.target.value)}
@@ -1047,7 +1198,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </tbody>
         </table>
       </div>
-      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。行の高さ：行見出し（1・2・3…）の下端をドラッグすると行の高さを変えられます。下端をダブルクリックすると既定の高さに戻ります。高さは端末内に保存され、行の挿入／削除・ソートに追従し、印刷にも反映されます。「行の高さをリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。セルの結合：セルをクリックしてから Shift+クリックで範囲を選び、ツールバーの「セルを結合」で1つのセルにまとめられます。表示されるのは左上のセルの値で、結合したセルは行・列の挿入／削除に追従し、印刷にも反映されます。「結合を解除」で元のセルに戻ります（隠れていたセルの値は残ります）。</p>
+      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。行の高さ：行見出し（1・2・3…）の下端をドラッグすると行の高さを変えられます。下端をダブルクリックすると既定の高さに戻ります。高さは端末内に保存され、行の挿入／削除・ソートに追従し、印刷にも反映されます。「行の高さをリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。セルの結合：セルをクリックしてから Shift+クリックで範囲を選び、ツールバーの「セルを結合」で1つのセルにまとめられます。表示されるのは左上のセルの値で、結合したセルは行・列の挿入／削除に追従し、印刷にも反映されます。「結合を解除」で元のセルに戻ります（隠れていたセルの値は残ります）。条件付き書式：ツールバーの「条件付き書式」から、範囲・条件（より大きい／より小さい／等しい／以上／以下／を含む／空欄）・値・色を指定すると、条件に合うセルの背景色が変わります。数式の計算結果にも対応し、複数のルールがあるときは先に登録したものが優先されます。ルールは端末内に保存され、行・列の挿入／削除・ソートに追従し、印刷にも反映されます。</p>
     </section>
   )
 }
