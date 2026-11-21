@@ -9,6 +9,31 @@ import { listDocs } from '../lib/store'
 const GRID_KEY = 'universal-office-sheet-grid'
 const NAME_KEY = 'universal-office-sheet-name'
 const STYLE_KEY = 'universal-office-sheet-styles'
+const COLWIDTH_KEY = 'universal-office-sheet-colwidths'
+/** 列幅の既定値（px）。table-layout: fixed のもと col 要素で指定する */
+const DEFAULT_COL_WIDTH = 130
+const MIN_COL_WIDTH = 48
+const MAX_COL_WIDTH = 420
+type ColWidthMap = Record<number, number>
+
+function loadColWidths(): ColWidthMap {
+  try {
+    const saved = localStorage.getItem(COLWIDTH_KEY)
+    if (saved) return JSON.parse(saved) as ColWidthMap
+  } catch { /* ignore */ }
+  return {}
+}
+
+/** 列の挿入／削除に合わせて列幅マップの列番号を付け替える */
+function remapColWidths(widths: ColWidthMap, mapCol: (c: number) => number | null): ColWidthMap {
+  const next: ColWidthMap = {}
+  for (const [key, w] of Object.entries(widths)) {
+    const c = Number(key)
+    const p = mapCol(c)
+    if (p !== null) next[p] = w
+  }
+  return next
+}
 
 /** セルの書式。キーは `${row},${col}`。fmt は数値書式（未指定＝標準） */
 type NumFmt = 'number' | 'currency' | 'percent'
@@ -244,6 +269,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   })
   const [filename, setFilename] = useState(() => localStorage.getItem(NAME_KEY) || 'sheet.csv')
   const [styles, setStyles] = useState<StyleMap>(loadStyles)
+  const [colWidths, setColWidths] = useState<ColWidthMap>(loadColWidths)
   const [homeOpen, setHomeOpen] = useState(false)
   const [selected, setSelected] = useState({ r: 0, c: 0 })
   const [focused, setFocused] = useState<{ r: number; c: number } | null>(null)
@@ -308,6 +334,9 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     localStorage.setItem(STYLE_KEY, JSON.stringify(styles))
   }, [styles])
   useEffect(() => {
+    localStorage.setItem(COLWIDTH_KEY, JSON.stringify(colWidths))
+  }, [colWidths])
+  useEffect(() => {
     localStorage.setItem(NAME_KEY, filename)
   }, [filename])
 
@@ -358,6 +387,42 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     })
   }
   const curStyle = styles[styleKey(selected.r, selected.c)]
+
+  /** 列幅のドラッグ変更。ハンドルを掴んで左右に動かすとその列の幅が変わる */
+  const dragRef = useRef<{ c: number; startX: number; startW: number } | null>(null)
+  const colWidth = (c: number) => colWidths[c] ?? DEFAULT_COL_WIDTH
+  const startColResize = (e: React.PointerEvent, c: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const startX = e.clientX
+    const startW = colWidth(c)
+    dragRef.current = { c, startX, startW }
+    const onMove = (ev: PointerEvent) => {
+      const d = dragRef.current
+      if (!d) return
+      const w = Math.min(MAX_COL_WIDTH, Math.max(MIN_COL_WIDTH, d.startW + (ev.clientX - d.startX)))
+      setColWidths((prev) => ({ ...prev, [d.c]: w }))
+    }
+    const onUp = () => {
+      dragRef.current = null
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+  /** 列の内容に合わせて幅を自動調整する（ダブルクリック用）。見出し＋表示値の最長から見積もる */
+  const autoFitColumn = (c: number) => {
+    const head = colName(c).length
+    let maxLen = head
+    computed.forEach((row, r) => {
+      const v = formatCellValue(row[c] ?? '', styles[styleKey(r, c)]?.fmt)
+      maxLen = Math.max(maxLen, String(v).length)
+    })
+    const w = Math.min(MAX_COL_WIDTH, Math.max(MIN_COL_WIDTH, Math.ceil(maxLen * 8.5) + 26))
+    setColWidths((prev) => ({ ...prev, [c]: w }))
+  }
+  const resetColWidths = () => setColWidths({})
 
   /** 選択位置をグリッド内に収める（行・列の増減を伴う操作の後用） */
   const clampSelection = (g: string[][]) => {
@@ -492,6 +557,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     pushHistory(grid, styles)
     setGrid((prev) => prev.map((row) => row.filter((_, i) => i !== selected.c)))
     setStyles((prev) => remapStyles(prev, (r, c) => (c === selected.c ? null : c > selected.c ? { r, c: c - 1 } : { r, c })))
+    setColWidths((prev) => remapColWidths(prev, (c) => (c === selected.c ? null : c > selected.c ? c - 1 : c)))
     // 末尾の列を消したとき選択位置が範囲外に残らないよう詰める
     const c = Math.min(selected.c, cols - 2)
     setSelected({ r: selected.r, c })
@@ -509,6 +575,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     pushHistory(grid, styles)
     setGrid((prev) => prev.map((row) => [...row.slice(0, selected.c), '', ...row.slice(selected.c)]))
     setStyles((prev) => remapStyles(prev, (r, c) => (c >= selected.c ? { r, c: c + 1 } : { r, c })))
+    setColWidths((prev) => remapColWidths(prev, (c) => (c >= selected.c ? c + 1 : c)))
   }
   const clear = () => {
     pushHistory(grid, styles)
@@ -553,10 +620,16 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   }
 
   const printSheet = () => {
-    const head = computed[0]?.map((c, ci) => `<th${styleToAttr(styles[styleKey(0, ci)])}>${escapeHtml(formatCellValue(c, styles[styleKey(0, ci)]?.fmt))}</th>`).join('') ?? ''
+    /** 印刷用セルの style 属性。書式に加えて列幅も反映する */
+    const cellAttr = (r: number, c: number) => {
+      const base = styleToAttr(styles[styleKey(r, c)])
+      const w = `width:${colWidth(c)}px`
+      return base ? base.replace(/"$/, `;${w}"`) : ` style="${w}"`
+    }
+    const head = computed[0]?.map((c, ci) => `<th${cellAttr(0, ci)}>${escapeHtml(formatCellValue(c, styles[styleKey(0, ci)]?.fmt))}</th>`).join('') ?? ''
     const body = computed
       .slice(1)
-      .map((row, ri) => `<tr>${row.map((c, ci) => `<td${styleToAttr(styles[styleKey(ri + 1, ci)])}>${escapeHtml(formatCellValue(c, styles[styleKey(ri + 1, ci)]?.fmt))}</td>`).join('')}</tr>`)
+      .map((row, ri) => `<tr>${row.map((c, ci) => `<td${cellAttr(ri + 1, ci)}>${escapeHtml(formatCellValue(c, styles[styleKey(ri + 1, ci)]?.fmt))}</td>`).join('')}</tr>`)
       .join('')
     printHtml(filename.replace(/\.csv$/i, ''), `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`)
   }
@@ -638,6 +711,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <button onClick={deleteCol}>{t('delCol')}</button>
         <button onClick={() => sortByColumn(1)}>{t('sortAsc')}</button>
         <button onClick={() => sortByColumn(-1)}>{t('sortDesc')}</button>
+        <button onClick={resetColWidths} title={t('colWidthResetHint')}>{t('colWidthReset')}</button>
         <span className="fmt-group" role="group" aria-label="セル書式">
           <button className={curStyle?.b ? 'fmt-active' : ''} onClick={() => updateStyle({ b: !curStyle?.b })} title={t('cellBold')} aria-pressed={!!curStyle?.b}><b>B</b></button>
           <button className={curStyle?.i ? 'fmt-active' : ''} onClick={() => updateStyle({ i: !curStyle?.i })} title={t('cellItalic')} aria-pressed={!!curStyle?.i}><i>I</i></button>
@@ -703,10 +777,24 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
       </div>
       <div className="sheet-wrap">
         <table className={freeze ? 'sheet freeze' : 'sheet'}>
+          <colgroup>
+            <col style={{ width: 44 }} />
+            {grid[0]?.map((_, c) => <col key={c} style={{ width: colWidth(c) }} />)}
+          </colgroup>
           <thead>
             <tr>
               <th className="corner" />
-              {grid[0]?.map((_, c) => <th key={c} className={c === selected.c ? 'sel-col' : ''}>{colName(c)}</th>)}
+              {grid[0]?.map((_, c) => (
+                <th key={c} className={c === selected.c ? 'sel-col' : ''}>
+                  {colName(c)}
+                  <span
+                    className="col-resize"
+                    title={t('colWidthAutoFit')}
+                    onPointerDown={(e) => startColResize(e, c)}
+                    onDoubleClick={() => autoFitColumn(c)}
+                  />
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -734,7 +822,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </tbody>
         </table>
       </div>
-      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
+      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
     </section>
   )
 }

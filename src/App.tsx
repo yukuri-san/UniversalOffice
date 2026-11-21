@@ -609,12 +609,18 @@ export default function App() {
         document.documentElement.style.setProperty('--app-h', `${vv.height}px`)
       }
     }
+    const onScroll = () => {
+      // iOS はキーボード表示時にページをスクロールして画面を押し上げることがあるので戻す
+      if (window.scrollY !== 0 || window.scrollX !== 0) window.scrollTo(0, 0)
+    }
     onResize()
     vv.addEventListener('resize', onResize)
+    vv.addEventListener('scroll', onScroll)
     vv.addEventListener('scroll', onResize)
     return () => {
       vv.removeEventListener('resize', onResize)
       vv.removeEventListener('scroll', onResize)
+      vv.removeEventListener('scroll', onScroll)
     }
   }, [])
   useEffect(() => {
