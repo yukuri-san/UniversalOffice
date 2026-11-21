@@ -19,6 +19,7 @@ export interface CalEvent {
   title: string
   memo: string
   repeat?: RepeatKind // 未指定は 'none' と同じ（既存データとの互換のため）
+  reminder?: number // 何日前に通知するか（0=当日、未指定は通知なし）
   createdAt: number
 }
 

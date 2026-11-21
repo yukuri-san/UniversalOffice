@@ -186,6 +186,10 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const [selected, setSelected] = useState({ r: 0, c: 0 })
   const [focused, setFocused] = useState<{ r: number; c: number } | null>(null)
   const [freeze, setFreeze] = useState(true)
+  const [chartOpen, setChartOpen] = useState(false)
+  const [chartRange, setChartRange] = useState('A1:B5')
+  const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar')
+  const [chartLabels, setChartLabels] = useState(true)
   const fileRef = useRef<HTMLInputElement>(null)
   const cellRefs = useRef(new Map<string, HTMLInputElement>())
   const [pendingFocus, setPendingFocus] = useState<{ r: number; c: number } | null>(null)
@@ -383,7 +387,22 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <button onClick={() => sortByColumn(-1)}>{t('sortDesc')}</button>
         <label className="check-inline"><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> {t('freeze')}</label>
         <span className="meta">{grid.length} 行 × {grid[0]?.length ?? 0} 列</span>
+        <button onClick={() => setChartOpen((v) => !v)}>📊 グラフ</button>
       </div>
+      {chartOpen && (
+        <div className="sheet-chart-panel">
+          <label>範囲 <input value={chartRange} onChange={(e) => setChartRange(e.target.value)} size={9} placeholder="A1:B5" /></label>
+          <label>種類
+            <select value={chartType} onChange={(e) => setChartType(e.target.value as 'bar' | 'line' | 'pie')}>
+              <option value="bar">棒グラフ</option>
+              <option value="line">折れ線</option>
+              <option value="pie">円グラフ</option>
+            </select>
+          </label>
+          <label className="check-inline"><input type="checkbox" checked={chartLabels} onChange={(e) => setChartLabels(e.target.checked)} /> 先頭列をラベルにする</label>
+          <SheetChart computed={computed} range={chartRange} type={chartType} useLabels={chartLabels} />
+        </div>
+      )}
       <div className="formula-bar">
         <span className="cell-addr">{colName(selected.c)}{selected.r + 1}</span>
         <span className="fx">fx</span>
@@ -430,5 +449,92 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
       </div>
       <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
     </section>
+  )
+}
+
+const CHART_COLORS = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#64748b']
+function parseRef(ref: string): { r: number; c: number } | null {
+  const m = ref.trim().toUpperCase().match(/^([A-Z]+)(\d+)$/)
+  if (!m) return null
+  let c = 0
+  for (const ch of m[1]) c = c * 26 + (ch.charCodeAt(0) - 64)
+  return { r: parseInt(m[2], 10) - 1, c: c - 1 }
+}
+function SheetChart({ computed, range, type, useLabels }: { computed: string[][]; range: string; type: 'bar' | 'line' | 'pie'; useLabels: boolean }) {
+  const parts = range.split(':')
+  const a = parseRef(parts[0] ?? '')
+  const b = parseRef(parts[1] ?? parts[0] ?? '')
+  if (!a || !b) return <p className="sheet-chart-empty">範囲の形式は A1:B5 のように指定してください</p>
+  const r0 = Math.min(a.r, b.r); const r1 = Math.max(a.r, b.r)
+  const c0 = Math.min(a.c, b.c); const c1 = Math.max(a.c, b.c)
+  const valueCol = useLabels ? c0 + 1 : c0
+  const items: { label: string; value: number }[] = []
+  for (let r = r0; r <= r1; r++) {
+    const raw = computed[r]?.[valueCol] ?? ''
+    const v = parseFloat(String(raw).replace(/[^0-9.\-]/g, ''))
+    if (!Number.isFinite(v)) continue
+    items.push({ label: useLabels ? String(computed[r]?.[c0] ?? `行${r + 1}`) : `行${r + 1}`, value: v })
+  }
+  if (items.length === 0) return <p className="sheet-chart-empty">数値データがありません（値の列を確認してください）</p>
+  const W = 520; const H = 240; const PAD = 34
+  const max = Math.max(...items.map((i) => i.value), 0)
+  const min = Math.min(...items.map((i) => i.value), 0)
+  const span = max - min || 1
+  const y = (v: number) => H - PAD - ((v - min) / span) * (H - PAD * 1.6)
+  if (type === 'pie') {
+    const total = items.reduce((s, i) => s + Math.max(0, i.value), 0) || 1
+    let acc = 0
+    const cx = 130; const cy = 120; const rad = 92
+    return (
+      <div className="sheet-chart-flex">
+        <svg viewBox={`0 0 ${W} ${H}`} className="sheet-chart-svg" role="img" aria-label="円グラフ">
+          {items.map((it, i) => {
+            const frac = Math.max(0, it.value) / total
+            const a0 = acc * Math.PI * 2 - Math.PI / 2
+            acc += frac
+            const a1 = acc * Math.PI * 2 - Math.PI / 2
+            const large = frac > 0.5 ? 1 : 0
+            const d = frac >= 0.999
+              ? `M ${cx} ${cy} m ${-rad} 0 a ${rad} ${rad} 0 1 0 ${rad * 2} 0 a ${rad} ${rad} 0 1 0 ${-rad * 2} 0`
+              : `M ${cx} ${cy} L ${cx + rad * Math.cos(a0)} ${cy + rad * Math.sin(a0)} A ${rad} ${rad} 0 ${large} 1 ${cx + rad * Math.cos(a1)} ${cy + rad * Math.sin(a1)} Z`
+            return <path key={i} d={d} fill={CHART_COLORS[i % CHART_COLORS.length]} stroke="#fff" strokeWidth={1.5} />
+          })}
+        </svg>
+        <ul className="sheet-chart-legend">{items.map((it, i) => <li key={i}><span style={{ background: CHART_COLORS[i % CHART_COLORS.length] }} />{it.label}: {it.value}</li>)}</ul>
+      </div>
+    )
+  }
+  const stepX = (W - PAD * 1.6) / Math.max(1, items.length)
+  const points = items.map((it, i) => `${PAD + stepX * (i + 0.5)},${y(it.value)}`).join(' ')
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} className="sheet-chart-svg" role="img" aria-label="グラフ">
+      <line x1={PAD} y1={y(0)} x2={W - 8} y2={y(0)} stroke="#94a3b8" strokeWidth={1} />
+      <text x={4} y={y(max) + 4} fontSize={10} fill="#64748b">{max}</text>
+      <text x={4} y={y(min) + 4} fontSize={10} fill="#64748b">{min}</text>
+      {type === 'bar' && items.map((it, i) => {
+        const bw = Math.min(52, stepX * 0.62)
+        const x = PAD + stepX * (i + 0.5) - bw / 2
+        const top = y(Math.max(it.value, 0)); const bottom = y(Math.min(it.value, 0))
+        return (
+          <g key={i}>
+            <rect x={x} y={top} width={bw} height={Math.max(1, bottom - top)} fill={CHART_COLORS[i % CHART_COLORS.length]} rx={3} />
+            <text x={x + bw / 2} y={H - 12} fontSize={10} textAnchor="middle" fill="#475569">{it.label.slice(0, 8)}</text>
+            <text x={x + bw / 2} y={top - 4} fontSize={10} textAnchor="middle" fill="#334155">{it.value}</text>
+          </g>
+        )
+      })}
+      {type === 'line' && (
+        <g>
+          <polyline points={points} fill="none" stroke="#3b82f6" strokeWidth={2.5} />
+          {items.map((it, i) => (
+            <g key={i}>
+              <circle cx={PAD + stepX * (i + 0.5)} cy={y(it.value)} r={4} fill="#3b82f6" />
+              <text x={PAD + stepX * (i + 0.5)} y={H - 12} fontSize={10} textAnchor="middle" fill="#475569">{it.label.slice(0, 8)}</text>
+              <text x={PAD + stepX * (i + 0.5)} y={y(it.value) - 9} fontSize={10} textAnchor="middle" fill="#334155">{it.value}</text>
+            </g>
+          ))}
+        </g>
+      )}
+    </svg>
   )
 }

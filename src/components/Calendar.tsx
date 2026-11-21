@@ -10,7 +10,7 @@ function weekdayNames(locale: string): string[] {
 
 // 繰り返し予定を指定範囲 [from, to]（YYYY-MM-DD）に展開する
 // 月表示で31日の予定は、その日が無い月はスキップする
-function expandEvents(events: CalEvent[], from: string, to: string): { date: string; event: CalEvent }[] {
+export function expandEvents(events: CalEvent[], from: string, to: string): { date: string; event: CalEvent }[] {
   const out: { date: string; event: CalEvent }[] = []
   for (const e of events) {
     const repeat: RepeatKind = e.repeat ?? 'none'
@@ -74,6 +74,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   const [formTitle, setFormTitle] = useState('')
   const [formMemo, setFormMemo] = useState('')
   const [formRepeat, setFormRepeat] = useState<RepeatKind>('none')
+  const [formReminder, setFormReminder] = useState(-1)
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
@@ -204,10 +205,12 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
       title: formTitle.trim(),
       memo: formMemo.trim(),
       ...(formRepeat !== 'none' ? { repeat: formRepeat } : {}),
+      ...(formReminder >= 0 ? { reminder: formReminder } : {}),
     })
     setFormTitle('')
     setFormMemo('')
     setFormRepeat('none')
+    setFormReminder(-1)
     setEditingId(null)
     await refresh()
   }
@@ -217,6 +220,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setFormTitle(e.title)
     setFormMemo(e.memo)
     setFormRepeat(e.repeat ?? 'none')
+    setFormReminder(e.reminder ?? -1)
   }
 
   const cancelEdit = () => {
@@ -338,6 +342,16 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                 <option value="daily">{t('repeatDaily')}</option>
                 <option value="weekly">{t('repeatWeekly')}</option>
                 <option value="monthly">{t('repeatMonthly')}</option>
+              </select>
+            </label>
+            <label className="cal-repeat-row">
+              <span>リマインダー</span>
+              <select value={formReminder} onChange={(e) => setFormReminder(Number(e.target.value))} aria-label="リマインダー">
+                <option value={-1}>なし</option>
+                <option value={0}>当日</option>
+                <option value={1}>前日</option>
+                <option value={3}>3日前</option>
+                <option value={7}>7日前</option>
               </select>
             </label>
             <button onClick={() => void addEvent()}>{editingId ? t('saveEvent') : t('addEvent')}</button>

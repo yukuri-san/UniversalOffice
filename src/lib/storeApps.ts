@@ -295,6 +295,26 @@ export const STORE_APPS: StoreAppDef[] = [
     notes: '新規追加：曲の取り込み・再生/一時停止・前後スキップ・シーク・音量・自動で次へ。端末内保存',
   },
   {
+    id: 'level', icon: '⚖', cls: 'level', name: '水平器',
+    desc: '端末の傾きを測る水平器', version: '1.0.0', category: 'tool',
+    notes: '新規追加（v1.22.0ex）。端末の傾きセンサーで前後・左右の角度と気泡を表示します。',
+  },
+  {
+    id: 'compass', icon: '🧭', cls: 'compass', name: 'コンパス',
+    desc: '方角を表示するコンパス', version: '1.0.0', category: 'tool',
+    notes: '新規追加（v1.22.0ex）。端末の向きから方角（度数と北・東・南・西）を表示します。',
+  },
+  {
+    id: 'noise', icon: '🔊', cls: 'noise', name: '騒音計',
+    desc: 'マイクで音の大きさを測る', version: '1.0.0', category: 'tool',
+    notes: '新規追加（v1.22.0ex）。マイク入力から音量の目安（dB）を表示します。音声は録音・送信されません。',
+  },
+  {
+    id: 'speedtest', icon: '🚀', cls: 'speedtest', name: '速度テスト',
+    desc: '通信速度（ping/下り/上り）を測定', version: '1.0.0', category: 'tool',
+    notes: '新規追加（v1.22.0ex）。Cloudflare の測定用サーバーで応答速度・ダウンロード・アップロードを測ります。',
+  },
+  {
     id: 'qr', icon: 'QR', cls: 'qr', name: 'QR・バーコード',
     desc: 'QRコードと各種バーコードの作成・読み取り。Wi-Fiや連絡先のQR、JANコードにも対応。',
     version: '1.0.0', category: 'tool',

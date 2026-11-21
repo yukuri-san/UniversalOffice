@@ -147,10 +147,6 @@ table.sheet td input:focus { outline: 2px solid #217346; outline-offset: -2px; }
 table.sheet td.sel-cell { outline: 2px solid #217346; outline-offset: -2px; }
 table.sheet thead th.sel-col, table.sheet tbody th.sel-row { background: #cdeeda; }
 table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
-.sheet-app .fmt-group { display: inline-flex; gap: 4px; align-items: center; border-left: 1px solid #dde3ec; padding-left: 10px; margin-left: 2px; }
-.sheet-app .fmt-group button.fmt-active { background: #217346; color: #fff; border-color: #217346; }
-.sheet-app .color-label { display: inline-flex; align-items: center; gap: 2px; font-size: 14px; cursor: pointer; padding: 4px 6px; border: 1px solid #c6d0dd; border-radius: 8px; background: #fff; }
-.sheet-app .color-label input[type="color"] { width: 26px; height: 22px; padding: 0; border: 0; background: transparent; cursor: pointer; }
 
 .app-icon.word { color: #2b579a; }
 .app-icon.sheet { color: #217346; }
@@ -1385,3 +1381,99 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 /* ===== v1.22.0b: ストアのキャッシュ更新バナー ===== */
 .store-stale { background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.45); border-radius: 14px; padding: 12px 14px; margin: 10px 0; }
 .store-stale p { margin: 6px 0 10px; font-size: 13px; color: #475569; }
+
+/* ==== v1.22.0ex: BIOS tabs / Recovery拡張 / 開発者 / カスタムアプリ ==== */
+.bios-tabs { display: flex; gap: 2px; padding: 0 10px; flex-wrap: wrap; }
+.bios-tab { background: #1e3a5f; color: #bcd3ee; border: 1px solid #3f6186; border-bottom: none; padding: 5px 14px; font: inherit; font-size: 13px; cursor: pointer; border-radius: 6px 6px 0 0; }
+.bios-tab.on { background: #f2f6fc; color: #123a6b; font-weight: 700; }
+.bios-lock { max-width: 520px; }
+.bios-lock-row { display: flex; gap: 8px; padding: 12px; align-items: center; }
+.bios-lock-row input { flex: 1; padding: 8px; font: inherit; background: #0d2138; color: #eaf2ff; border: 1px solid #3f6186; border-radius: 4px; }
+.bios-error { color: #ff9a9a; padding: 0 12px 12px; }
+.bios-progress { height: 10px; background: #0d2138; border: 1px solid #3f6186; margin: 6px 12px; }
+.bios-progress span { display: block; height: 100%; background: #7cc4ff; transition: width .06s linear; }
+.recovery-frame { max-width: 760px; }
+.recovery-h { font-size: 15px; margin: 20px 0 8px; }
+.recovery-row { display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: rgba(255, 255, 255, .06); border-radius: 6px; margin-bottom: 4px; font-size: 13px; }
+.recovery-row span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recovery-docs { max-height: 180px; overflow-y: auto; }
+.recovery-console { background: #0b0f14; color: #c9f7c9; font-family: ui-monospace, monospace; font-size: 12.5px; padding: 10px; border-radius: 8px; max-height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+.recovery-console-row { display: flex; gap: 6px; align-items: center; }
+.recovery-console-row input { flex: 1; background: transparent; border: none; outline: none; color: inherit; font: inherit; }
+.recovery-log { background: rgba(0, 0, 0, .35); padding: 10px; border-radius: 8px; font-size: 11.5px; overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+.custom-app-frame { width: 100%; height: 100%; border: none; background: #fff; }
+.dev-app .dev-code { width: 100%; min-height: 170px; font-family: ui-monospace, monospace; font-size: 13px; padding: 10px; border: 1px solid var(--hatch-widget-border, #d4d4d8); border-radius: 8px; background: var(--hatch-widget-surface, #fff); color: inherit; box-sizing: border-box; }
+.dev-output { background: #0b0f14; color: #d6f5d6; padding: 10px; border-radius: 8px; min-height: 70px; font-size: 12.5px; white-space: pre-wrap; word-break: break-all; }
+.dev-preview { width: 100%; height: 220px; border: 1px solid #d4d4d8; border-radius: 8px; background: #fff; }
+.dev-app-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+.dev-app-row { display: flex; align-items: center; gap: 8px; }
+.dev-app-icon { font-size: 20px; }
+.dev-app-name { flex: 1; font-weight: 600; }
+.dev-ls-list { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; max-height: 260px; overflow-y: auto; }
+.dev-ls-row { display: flex; align-items: center; gap: 8px; font-size: 12.5px; }
+.dev-ls-row code { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wxapp-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.sheet-chart-panel { display: flex; align-items: flex-start; gap: 14px; flex-wrap: wrap; padding: 10px 12px; background: var(--hatch-widget-surface-muted, #f4f4f5); border-bottom: 1px solid var(--hatch-widget-border, #e4e4e7); font-size: 13px; }
+.sheet-chart-svg { width: min(560px, 100%); height: auto; background: #fff; border-radius: 8px; }
+.sheet-chart-flex { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.sheet-chart-legend { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+.sheet-chart-legend li { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.sheet-chart-legend span { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+.sheet-chart-empty { font-size: 13px; opacity: .75; }
+.start-hits { border-top: 1px solid var(--hatch-widget-border, #e4e4e7); padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; max-height: 220px; overflow-y: auto; }
+.start-hits-h { font-size: 11px; opacity: .65; margin: 6px 0 2px; }
+.start-hit { display: flex; gap: 8px; align-items: center; background: transparent; border: none; padding: 6px 8px; border-radius: 6px; cursor: pointer; color: inherit; font: inherit; font-size: 13px; text-align: left; }
+.start-hit:hover { background: rgba(127, 127, 127, .14); }
+.sensor-app { align-items: center; text-align: center; }
+.sensor-big { font-size: 26px; font-weight: 700; margin: 10px 0; }
+.level-disc { position: relative; width: 190px; height: 190px; border-radius: 50%; border: 3px solid #a3a3a3; margin: 14px auto; background: radial-gradient(circle, rgba(59, 130, 246, .08), transparent 70%); }
+.level-disc.ok { border-color: #10b981; }
+.level-cross-h, .level-cross-v { position: absolute; background: rgba(127, 127, 127, .4); }
+.level-cross-h { left: 8px; right: 8px; top: 50%; height: 1px; }
+.level-cross-v { top: 8px; bottom: 8px; left: 50%; width: 1px; }
+.level-bubble { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; border-radius: 50%; background: rgba(59, 130, 246, .45); border: 2px solid #3b82f6; }
+.compass-disc { position: relative; width: 190px; height: 190px; margin: 14px auto; }
+.compass-dial { position: absolute; inset: 0; border-radius: 50%; border: 3px solid #a3a3a3; transition: transform .12s linear; }
+.compass-dial span { position: absolute; font-weight: 700; font-size: 15px; }
+.compass-n { top: 6px; left: 50%; transform: translateX(-50%); color: #ef4444; }
+.compass-s { bottom: 6px; left: 50%; transform: translateX(-50%); }
+.compass-e { right: 8px; top: 50%; transform: translateY(-50%); }
+.compass-w { left: 8px; top: 50%; transform: translateY(-50%); }
+.compass-needle { position: absolute; left: 50%; top: 12px; transform: translateX(-50%); width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 16px solid #ef4444; }
+.noise-bar { width: min(420px, 90%); height: 12px; background: rgba(127, 127, 127, .25); border-radius: 6px; overflow: hidden; margin: 10px auto; }
+.noise-bar span { display: block; height: 100%; background: linear-gradient(90deg, #10b981, #f59e0b, #ef4444); transition: width .15s; }
+.speed-results { display: flex; gap: 18px; justify-content: center; flex-wrap: wrap; margin: 12px 0; }
+.speed-results div { display: flex; flex-direction: column; gap: 2px; }
+.speed-results strong { font-size: 22px; }
+.wxapp-error { color: #dc2626; }
+.app-icon.level, .app-icon.compass, .app-icon.noise, .app-icon.speedtest { background: linear-gradient(135deg, #0ea5e9, #6366f1); }
+
+/* ==== v1.22.0ex テーマ: ミッドナイト／ラベンダー ==== */
+.os-root[data-theme='midnight'] .os-desktop { background: radial-gradient(40% 32% at 78% 8%, rgba(165, 180, 252, .28), transparent 60%), radial-gradient(30% 24% at 18% 22%, rgba(96, 165, 250, .18), transparent 60%), linear-gradient(170deg, #070b1d, #141033 55%, #1e1b4b); }
+.os-root[data-theme='midnight'] .os-taskbar, .os-root[data-theme='midnight'] .start-menu, .os-root[data-theme='midnight'] .shortcuts-modal { background: rgba(13, 17, 40, .78); color: #e0e7ff; border-color: rgba(129, 140, 248, .35); }
+.os-root[data-theme='midnight'] .start-app { background: rgba(99, 102, 241, .16); border-color: rgba(129, 140, 248, .3); color: #e0e7ff; }
+.os-root[data-theme='midnight'] .start-note, .os-root[data-theme='midnight'] .shortcuts-platform, .os-root[data-theme='midnight'] .shortcuts-note { color: #a5b4fc; }
+.os-root[data-theme='midnight'] .task-btn { color: #e0e7ff; background: rgba(30, 27, 75, .6); }
+.os-root[data-theme='midnight'] .task-btn.active { background: rgba(99, 102, 241, .4); }
+.os-root[data-theme='midnight'] .task-clock { color: #e0e7ff; }
+.os-root[data-theme='midnight'] .task-clock small { color: #a5b4fc; }
+.os-root[data-theme='midnight'] .os-window { background: #131736; border-color: rgba(129, 140, 248, .35); color: #e0e7ff; }
+.os-root[data-theme='midnight'] .os-titlebar { background: rgba(30, 27, 75, .9); border-bottom-color: rgba(129, 140, 248, .25); }
+.os-root[data-theme='midnight'] .os-title { color: #e0e7ff; }
+.os-root[data-theme='midnight'] .os-win-buttons button { background: rgba(49, 46, 105, .8); color: #e0e7ff; border-color: rgba(129, 140, 248, .3); }
+.os-root[data-theme='midnight'] .ribbon, .os-root[data-theme='midnight'] .toolbar, .os-root[data-theme='midnight'] .formula-bar, .os-root[data-theme='midnight'] .note-list, .os-root[data-theme='midnight'] .note-editor, .os-root[data-theme='midnight'] .cal-grid-wrap, .os-root[data-theme='midnight'] .cal-side, .os-root[data-theme='midnight'] .cal-toolbar, .os-root[data-theme='midnight'] .settings-section, .os-root[data-theme='midnight'] .explorer-storage, .os-root[data-theme='midnight'] .files-window, .os-root[data-theme='midnight'] .settings-app, .os-root[data-theme='midnight'] .fm-list li, .os-root[data-theme='midnight'] .file-action, .os-root[data-theme='midnight'] .theme-card, .os-root[data-theme='midnight'] .statusbar { background: #1a1e42; color: #e0e7ff; border-color: rgba(129, 140, 248, .22); }
+.os-root[data-theme='midnight'] .page-scroll { background: #0b0e27; }
+.os-root[data-theme='lavender'] .os-desktop { background: radial-gradient(55% 45% at 15% 10%, rgba(167, 139, 250, .35), transparent 60%), radial-gradient(55% 50% at 85% 15%, rgba(240, 171, 252, .3), transparent 60%), linear-gradient(165deg, #f5f3ff, #ede9fe 55%, #fdf4ff); }
+.os-root[data-theme='lavender'] .os-taskbar, .os-root[data-theme='lavender'] .start-menu, .os-root[data-theme='lavender'] .shortcuts-modal { background: rgba(255, 255, 255, .68); color: #3b0764; border-color: rgba(167, 139, 250, .35); }
+.os-root[data-theme='lavender'] .start-app { background: rgba(167, 139, 250, .13); border-color: rgba(167, 139, 250, .25); color: #3b0764; }
+.os-root[data-theme='lavender'] .start-note, .os-root[data-theme='lavender'] .shortcuts-platform, .os-root[data-theme='lavender'] .shortcuts-note { color: #7c3aed; }
+.os-root[data-theme='lavender'] .task-btn { color: #3b0764; background: rgba(255, 255, 255, .55); }
+.os-root[data-theme='lavender'] .task-btn.active { background: rgba(167, 139, 250, .3); }
+.os-root[data-theme='lavender'] .task-clock { color: #3b0764; }
+.os-root[data-theme='lavender'] .task-clock small { color: #7c3aed; }
+.os-root[data-theme='lavender'] .os-window { background: #fbfaff; border-color: rgba(167, 139, 250, .3); }
+.os-root[data-theme='lavender'] .os-titlebar { background: rgba(237, 233, 254, .9); border-bottom-color: rgba(167, 139, 250, .2); }
+.os-root[data-theme='lavender'] .os-title { color: #3b0764; }
+.os-root[data-theme='lavender'] .os-win-buttons button { background: rgba(255, 255, 255, .7); color: #3b0764; border-color: rgba(167, 139, 250, .25); }
+.os-root[data-theme='lavender'] .ribbon, .os-root[data-theme='lavender'] .toolbar, .os-root[data-theme='lavender'] .formula-bar, .os-root[data-theme='lavender'] .note-list, .os-root[data-theme='lavender'] .note-editor, .os-root[data-theme='lavender'] .cal-grid-wrap, .os-root[data-theme='lavender'] .cal-side, .os-root[data-theme='lavender'] .cal-toolbar, .os-root[data-theme='lavender'] .settings-section, .os-root[data-theme='lavender'] .explorer-storage, .os-root[data-theme='lavender'] .files-window, .os-root[data-theme='lavender'] .settings-app, .os-root[data-theme='lavender'] .fm-list li, .os-root[data-theme='lavender'] .file-action, .os-root[data-theme='lavender'] .theme-card, .os-root[data-theme='lavender'] .statusbar { background: #f3efff; color: #3b0764; border-color: rgba(167, 139, 250, .2); }
+.os-root[data-theme='lavender'] .page-scroll { background: #ede9fe; }

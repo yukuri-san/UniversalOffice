@@ -7,7 +7,7 @@ import { APP_VERSION } from '../lib/version'
 import { clearPin, getPin, setPin } from '../lib/pin'
 import { SETTINGS_KEYS as SETTINGS_KEYS_SHARED } from '../lib/reset'
 
-export type ThemeId = 'light' | 'dark' | 'ipados' | 'macos' | 'win11' | 'win7' | 'winxp' | 'win95' | 'cyber' | 'sakura' | 'ocean' | 'sunset' | 'forest' | 'candy'
+export type ThemeId = 'light' | 'dark' | 'ipados' | 'macos' | 'win11' | 'win7' | 'winxp' | 'win95' | 'cyber' | 'sakura' | 'ocean' | 'sunset' | 'forest' | 'candy' | 'midnight' | 'lavender'
 
 export const THEMES: { id: ThemeId; label: string; desc: string }[] = [
   { id: 'light', label: 'ライト', desc: '標準のガラス風テーマ' },
@@ -24,6 +24,8 @@ export const THEMES: { id: ThemeId; label: string; desc: string }[] = [
   { id: 'sunset', label: '夕焼け', desc: 'オレンジと紫の温かい配色' },
   { id: 'forest', label: 'フォレスト', desc: '深い緑と苔色の落ち着いたダーク' },
   { id: 'candy', label: 'キャンディ', desc: 'パステルカラーのポップで明るい配色' },
+  { id: 'midnight', label: 'ミッドナイト', desc: '深い紺と星明かりの夜空ダーク' },
+  { id: 'lavender', label: 'ラベンダー', desc: '柔らかい紫の明るい配色' },
 ]
 
 interface Props {

@@ -9,6 +9,7 @@ export const SETTINGS_KEYS = [
   'webx-pin-hash', 'webx-pin-len', 'webx-widget-config', 'webx-widget-note', 'webx-widget-agenda',
   'webx-boot-delay', 'webx-safe-mode', 'webx-boot-target', 'webx-widget-weather',
   'webx-permit-hwinfo', 'webx-setup-version', 'webx-ui-mode',
+  'webx-boot-default', 'webx-fast-boot', 'webx-dev-enabled', 'webx-bios-pin',
 ]
 
 /** 設定だけを初期化する（ドキュメントや予定などのデータは消えない。PINも消える） */

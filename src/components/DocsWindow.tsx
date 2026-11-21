@@ -2,10 +2,11 @@ import { marked } from 'marked'
 import licenseText from '../../LICENSE?raw'
 import readmeText from '../../README.md?raw'
 import changelogText from '../../CHANGELOG.md?raw'
+import architectureText from '../../ARCHITECTURE.md?raw'
 import { useMemo, useState } from 'react'
 import { useLang } from '../lib/i18n'
 
-export type DocKind = 'license' | 'readme' | 'changelog'
+export type DocKind = 'license' | 'readme' | 'changelog' | 'architecture'
 
 export default function DocsWindow() {
   const { t } = useLang()
@@ -16,7 +17,7 @@ export default function DocsWindow() {
 
   const html = useMemo(() => {
     if (doc === 'license') return ''
-    return marked.parse(doc === 'readme' ? (readmeText as string) : (changelogText as string)) as string
+    return marked.parse(doc === 'readme' ? (readmeText as string) : doc === 'architecture' ? (architectureText as string) : (changelogText as string)) as string
   }, [doc])
 
   return (
@@ -25,6 +26,7 @@ export default function DocsWindow() {
         <button className={doc === 'license' ? 'on' : ''} onClick={() => setDoc('license')}>LICENSE</button>
         <button className={doc === 'readme' ? 'on' : ''} onClick={() => setDoc('readme')}>README</button>
         <button className={doc === 'changelog' ? 'on' : ''} onClick={() => setDoc('changelog')}>{t('viewChangelog')}</button>
+        <button className={doc === 'architecture' ? 'on' : ''} onClick={() => setDoc('architecture')}>ARCHITECTURE</button>
       </div>
       {doc === 'license' ? (
         <pre className="docs-license">{licenseText as string}</pre>

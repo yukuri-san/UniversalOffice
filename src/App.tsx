@@ -28,6 +28,11 @@ import { DayCalc, Bmi, SplitBill, Currency, Wareki } from './components/store/To
 import { Pomodoro, Metronome, WhiteNoise, Flashcards } from './components/store/Life'
 import { TodoList } from './components/store/TodoList'
 import { Diary } from './components/store/Diary'
+import { CompassApp, LevelApp, NoiseApp, SpeedTestApp } from './components/store/Sensors'
+import DeveloperApp from './components/DeveloperApp'
+import CustomAppView from './components/CustomAppView'
+import { CUSTOM_APPS_EVENT, isCustomId, loadCustomApps, type CustomApp } from './lib/customApps'
+import { expandEvents } from './components/Calendar'
 import { WeatherApp } from './components/store/WeatherApp'
 import { GalleryApp } from './components/store/GalleryApp'
 import { MusicApp } from './components/store/MusicApp'
@@ -49,7 +54,7 @@ import { Minesweeper, Sudoku } from './components/games/Puzzle'
 import { Memory, Reversi, Gomoku } from './components/games/Board'
 import { Match3, Pong, Flappy, WhackMole } from './components/games/Arcade'
 import { Typing, Puzzle15, Hanoi, Blackjack, Slot, Runner } from './components/games/Mini'
-import { listEvents, requestPersist, type CalEvent } from './lib/store'
+import { listDocs, listEvents, requestPersist, type CalEvent, type LocalDoc } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import { compareVersions, fetchLatestVersion } from './lib/updateCheck'
 import { bundledGaps, fetchStoreCatalog, outdatedFromCatalog, type StoreCatalog } from './lib/storeCheck'
@@ -57,7 +62,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer'
 
 interface Win {
   id: WindowApp
@@ -135,6 +140,10 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   gallery: { icon: '🖼️', cls: 'gallery' },
   music: { icon: '🎵', cls: 'music' },
   qr: { icon: 'QR', cls: 'qr' },
+  level: { icon: '⚖', cls: 'level' },
+  compass: { icon: '🧭', cls: 'compass' },
+  noise: { icon: '🔊', cls: 'noise' },
+  speedtest: { icon: '🚀', cls: 'speedtest' },
   kakeibo: { icon: '家', cls: 'kakeibo' },
   habit: { icon: '継', cls: 'habit' },
   shopping: { icon: '買', cls: 'shopping' },
@@ -149,8 +158,9 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   taskman: { icon: '管', cls: 'taskman' },
   clipboard: { icon: '📋', cls: 'clipboard' },
   widgets: { icon: '🧩', cls: 'widgets' },
+  developer: { icon: '🛠', cls: 'developer' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'clipboard', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'sysinfo', 'taskman', 'widgets', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'clipboard', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'sysinfo', 'taskman', 'widgets', 'developer', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>(() => {
@@ -160,7 +170,7 @@ export default function App() {
       const v = JSON.parse(localStorage.getItem('webx-win-layout') ?? '[]')
       if (!Array.isArray(v)) return []
       return v
-        .filter((w) => w && typeof w.id === 'string' && w.id in APP_META)
+        .filter((w) => w && typeof w.id === 'string' && (w.id in APP_META || isCustomId(w.id)))
         .map((w) => ({
           id: w.id as WindowApp,
           ws: Number(w.ws) || 0,
@@ -179,6 +189,20 @@ export default function App() {
   const [activeId, setActiveId] = useState<WindowApp | null>(null)
   const [startOpen, setStartOpen] = useState(false)
   const [startQuery, setStartQuery] = useState('')
+  const [searchDocs, setSearchDocs] = useState<LocalDoc[]>([])
+  const [searchEvents, setSearchEvents] = useState<CalEvent[]>([])
+  useEffect(() => {
+    if (!startOpen || !startQuery.trim()) { setSearchDocs([]); setSearchEvents([]); return }
+    const q = startQuery.toLowerCase()
+    let alive = true
+    void (async () => {
+      const [docs, evs] = await Promise.all([listDocs(), listEvents()])
+      if (!alive) return
+      setSearchDocs(docs.filter((d) => !d.deletedAt && (d.name.toLowerCase().includes(q) || d.content.toLowerCase().includes(q))).slice(0, 6))
+      setSearchEvents(evs.filter((e) => e.title.toLowerCase().includes(q) || e.memo.toLowerCase().includes(q)).slice(0, 4))
+    })()
+    return () => { alive = false }
+  }, [startOpen, startQuery])
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [toast, setToast] = useState('')
   const [platform] = useState(detectPlatform)
@@ -199,6 +223,20 @@ export default function App() {
   const [uiMode, setUiModeState] = useState(() => localStorage.getItem('webx-ui-mode') ?? 'auto')
   const setUiMode = (v: string) => { setUiModeState(v); localStorage.setItem('webx-ui-mode', v) }
   const [recentsOpen, setRecentsOpen] = useState(false)
+  const [customApps, setCustomApps] = useState<CustomApp[]>(() => loadCustomApps())
+  useEffect(() => {
+    const onCustom = () => setCustomApps(loadCustomApps())
+    window.addEventListener(CUSTOM_APPS_EVENT, onCustom)
+    return () => window.removeEventListener(CUSTOM_APPS_EVENT, onCustom)
+  }, [])
+  const metaOf = (id: string): { icon: string; cls: string } => {
+    const meta = APP_META[id as WindowApp]
+    if (meta) return meta
+    const custom = customApps.find((c) => c.id === id)
+    if (custom) return { icon: custom.icon, cls: 'customapp' }
+    const sa = STORE_APPS.find((a) => a.id === id)
+    return sa ? { icon: sa.icon, cls: sa.cls } : { icon: '📦', cls: 'customapp' }
+  }
   const [closingIds, setClosingIds] = useState<string[]>([])
   const [minIds, setMinIds] = useState<string[]>([])
   const [maxAnimIds, setMaxAnimIds] = useState<string[]>([])
@@ -302,9 +340,39 @@ export default function App() {
     loadAgenda()
     // 予定が追加・編集・削除されたら即座に反映する
     window.addEventListener('webx-events-changed', loadAgenda)
+    // カレンダーのリマインダー（v1.22.0ex）: 通知日になった予定を一度だけ通知する
+    const checkReminders = async () => {
+      try {
+        const evs = await listEvents()
+        const today = new Date()
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+        const toDate = new Date(today.getTime() + 8 * 86400000)
+        const toStr = `${toDate.getFullYear()}-${String(toDate.getMonth() + 1).padStart(2, '0')}-${String(toDate.getDate()).padStart(2, '0')}`
+        const reminded: string[] = JSON.parse(localStorage.getItem('webx-reminded') ?? '[]') as string[]
+        let changed = false
+        for (const { date, event } of expandEvents(evs, todayStr, toStr)) {
+          if (event.reminder === undefined) continue
+          const occ = new Date(`${date}T00:00:00`)
+          const remindDay = new Date(occ.getTime() - event.reminder * 86400000)
+          const remindStr = `${remindDay.getFullYear()}-${String(remindDay.getMonth() + 1).padStart(2, '0')}-${String(remindDay.getDate()).padStart(2, '0')}`
+          const key = `${event.id}@${date}`
+          if (remindStr <= todayStr && date >= todayStr && !reminded.includes(key)) {
+            reminded.push(key)
+            changed = true
+            notifyOs(`📅 リマインダー：${event.title}（${date}${event.reminder > 0 ? `、${event.reminder}日後` : '、今日'}）`, 'calendar')
+          }
+        }
+        if (changed) localStorage.setItem('webx-reminded', JSON.stringify(reminded.slice(-200)))
+      } catch { /* ignore */ }
+    }
+    void checkReminders()
+    const remindIv = window.setInterval(() => { void checkReminders() }, 60000)
+    window.addEventListener('webx-events-changed', checkReminders)
     const iv = window.setInterval(loadAgenda, 60000)
     return () => {
       window.removeEventListener('webx-events-changed', loadAgenda)
+      window.removeEventListener('webx-events-changed', checkReminders)
+      window.clearInterval(remindIv)
       window.clearInterval(iv)
     }
   }, [widgetConfig.enabled.agenda, widgetConfig.enabled.minical])
@@ -324,7 +392,7 @@ export default function App() {
       return {}
     }
   })
-  const visibleApps: WindowApp[] = [...APP_ORDER, ...STORE_APPS.filter((a) => installedApps.includes(a.id)).map((a) => a.id as WindowApp)]
+  const visibleApps: WindowApp[] = [...APP_ORDER.filter((a) => a !== 'developer' || localStorage.getItem('webx-dev-enabled') !== 'off'), ...STORE_APPS.filter((a) => installedApps.includes(a.id)).map((a) => a.id as WindowApp), ...customApps.map((c) => c.id as WindowApp)]
   // ストア情報は OS の更新とは別に store.json から取得する
   const [storeCatalog, setStoreCatalog] = useState<StoreCatalog | null>(null)
   const updatableCount = outdatedFromCatalog(storeCatalog, installedApps, appVersions).length
@@ -377,8 +445,8 @@ export default function App() {
   // 起動ターゲット（bios / recovery）は電源メニュー等から localStorage 経由で指定される
   const [bootTarget, setBootTarget] = useState<string | null>(() => {
     const v = localStorage.getItem('webx-boot-target')
-    if (v) localStorage.removeItem('webx-boot-target')
-    return v
+    if (v) { localStorage.removeItem('webx-boot-target'); return v }
+    return localStorage.getItem('webx-boot-default') === 'recovery' ? 'recovery' : null
   })
   const [safeMode] = useState(() => {
     const v = localStorage.getItem('webx-safe-mode')
@@ -387,8 +455,9 @@ export default function App() {
   })
 
   useEffect(() => {
-    const delay = Number(localStorage.getItem('webx-boot-delay'))
-    const timer = window.setTimeout(() => setBooted(true), Number.isFinite(delay) && delay >= 0 ? delay : 1100)
+    const rawDelay = Number(localStorage.getItem('webx-boot-delay'))
+    const delay = localStorage.getItem('webx-fast-boot') === 'on' ? 0 : (Number.isFinite(rawDelay) && rawDelay >= 0 ? rawDelay : 1100)
+    const timer = window.setTimeout(() => setBooted(true), delay)
     return () => window.clearTimeout(timer)
   }, [])
 
@@ -407,15 +476,17 @@ export default function App() {
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('ykr-lang') as Lang) || 'ja')
   const [theme, setTheme] = useState<ThemeId>(() => (localStorage.getItem('ykr-theme') as ThemeId) || 'light')
   const t = (key: string) => translate(lang, key)
-  const appName = (app: WindowApp) => STORE_APPS.find((a) => a.id === app)?.name ?? t(app)
+  const appName = (app: WindowApp) => customApps.find((c) => c.id === app)?.name ?? STORE_APPS.find((a) => a.id === app)?.name ?? t(app)
   const appInfoOf = (id: string): LauncherAppInfo | null => {
     const meta = APP_META[id as WindowApp]
     if (meta) return { id, name: appName(id as WindowApp), icon: meta.icon, cls: meta.cls }
     const sa = STORE_APPS.find((a) => a.id === id)
-    return sa ? { id, name: sa.name, icon: sa.icon, cls: sa.cls } : null
+    if (sa) return { id, name: sa.name, icon: sa.icon, cls: sa.cls }
+    const custom = customApps.find((c) => c.id === id)
+    return custom ? { id, name: custom.name, icon: custom.icon, cls: 'customapp' } : null
   }
   const launcherAppsInfo = widgetConfig.launcherApps.flatMap((id) => { const info = appInfoOf(id); return info ? [info] : [] })
-  const allAppsInfo = [...APP_ORDER, ...STORE_APPS.map((a) => a.id)].flatMap((id) => { const info = appInfoOf(id); return info ? [info] : [] })
+  const allAppsInfo = [...APP_ORDER, ...STORE_APPS.map((a) => a.id), ...customApps.map((c) => c.id)].flatMap((id) => { const info = appInfoOf(id); return info ? [info] : [] })
 
   useEffect(() => {
     localStorage.setItem('ykr-lang', lang)
@@ -762,6 +833,7 @@ export default function App() {
   }, [windows, activeId, platform, openApp, focusWin])
 
   const renderContent = (app: WindowApp) => {
+    if (isCustomId(app)) return <CustomAppView id={app} />
     switch (app) {
       case 'word': return <WordProcessor onSwitch={openApp} />
       case 'sheet': return <Spreadsheet onSwitch={openApp} />
@@ -811,10 +883,16 @@ export default function App() {
       case 'trash': return <TrashWindow />
       case 'clipboard': return <ClipboardApp />
       case 'widgets': return <WidgetsApp config={widgetConfig} onChange={setWidgetConfig} appsInfo={allAppsInfo} />
+      case 'developer': return <DeveloperApp openApp={(id) => openApp(id as WindowApp)} />
       case 'calculator': return <Calculator />
       case 'clock': return <ClockApp />
       case 'paint': return <Paint />
-      case 'terminal': return <Terminal openApp={openApp} onClose={() => closeWin('terminal')} />
+      case 'terminal': return <Terminal openApp={(id) => openApp(id as WindowApp)} onClose={() => closeWin('terminal')} setTheme={(id) => setTheme(id as ThemeId)} action={(name) => {
+        if (name === 'lock') setLocked(true)
+        else if (name === 'reboot') location.reload()
+        else if (name === 'bios') { localStorage.setItem('webx-boot-target', 'bios'); location.reload() }
+        else if (name === 'recovery') { localStorage.setItem('webx-boot-target', 'recovery'); location.reload() }
+      }} />
       case 'docs': return <DocsWindow />
       case 'memodb': return <MemoDb />
       case 'about': return <AboutWindow openDocs={(doc) => { localStorage.setItem('webx-docs-initial', doc); openApp('docs') }} />
@@ -883,6 +961,10 @@ export default function App() {
       case 'gallery': return <GalleryApp />
       case 'music': return <MusicApp />
       case 'qr': return <QrApp />
+      case 'level': return <LevelApp />
+      case 'compass': return <CompassApp />
+      case 'noise': return <NoiseApp />
+      case 'speedtest': return <SpeedTestApp />
       case 'kakeibo': return <Kakeibo />
       case 'habit': return <HabitTracker />
       case 'shopping': return <ShoppingList />
@@ -899,7 +981,7 @@ export default function App() {
           windows={windows}
           activeId={activeId}
           nameOf={(id) => appName(id as WindowApp)}
-          iconOf={(id) => APP_META[id as WindowApp]}
+          iconOf={(id) => metaOf(id)}
           onFocus={(id) => focusWin(id as WindowApp)}
           onMinimize={(id) => minimizeWin(id as WindowApp)}
           onClose={(id) => closeWin(id as WindowApp)}
@@ -950,7 +1032,7 @@ export default function App() {
               onClick={(e) => { e.stopPropagation(); setSelectedIcon(app); if (iconClick === 'single') openApp(app) }}
               onDoubleClick={(e) => { e.stopPropagation(); openApp(app) }}
             >
-              <span className={`app-icon big ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
+              <span className={`app-icon big ${metaOf(app).cls}`}>{metaOf(app).icon}</span>
               <span className="desktop-icon-label">{appName(app)}</span>
               {app === 'store' && updatableCount > 0 && <span className="icon-badge">{updatableCount}</span>}
             </button>
@@ -979,7 +1061,7 @@ export default function App() {
           </div>
         )}
         {windows.map((win) => {
-          const meta = APP_META[win.id]
+          const meta = metaOf(win.id)
           const full = win.maximized || !wide || isMxui
           // 最小化中・別デスクトップのウィンドウも描画し続ける（YouTube等の再生を止めないため、見えないだけにする）
           const hiddenWin = (win.minimized || win.ws !== ws) && !minIds.includes(win.id)
@@ -1050,12 +1132,30 @@ export default function App() {
           <div className="start-apps">
             {visibleApps.filter((app) => !startQuery || appName(app).toLowerCase().includes(startQuery.toLowerCase())).map((app) => (
               <button key={app} className="start-app" onClick={() => openApp(app)}>
-                <span className={`app-icon ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
+                <span className={`app-icon ${metaOf(app).cls}`}>{metaOf(app).icon}</span>
                 <span>{appName(app)}</span>
                 {app === 'store' && updatableCount > 0 && <span className="icon-badge">{updatableCount}</span>}
               </button>
             ))}
           </div>
+          {startQuery.trim() && (searchDocs.length > 0 || searchEvents.length > 0) && (
+            <div className="start-hits">
+              {searchDocs.length > 0 && <p className="start-hits-h">ファイル</p>}
+              {searchDocs.map((d) => (
+                <button key={d.id} className="start-hit" onClick={() => { localStorage.setItem('uo-pending-open', d.id); openApp(d.kind === 'memo' ? 'memodb' : d.kind); setStartOpen(false) }}>
+                  <span>{d.kind === 'word' ? '📄' : d.kind === 'sheet' ? '📊' : d.kind === 'memo' ? '🗂' : '📝'}</span>
+                  <span>{d.name}</span>
+                </button>
+              ))}
+              {searchEvents.length > 0 && <p className="start-hits-h">予定</p>}
+              {searchEvents.map((e) => (
+                <button key={e.id} className="start-hit" onClick={() => { openApp('calendar'); setStartOpen(false) }}>
+                  <span>📅</span>
+                  <span>{e.date} {e.title}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <p className="start-note">
             あなたの環境：{platformLabel(platform)}（{modLabel(platform)} キー対応）<br />
             {t('dataLocal')}
@@ -1149,7 +1249,7 @@ export default function App() {
         <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={(e) => e.stopPropagation()}>
           {visibleApps.map((app) => (
             <button key={app} onClick={() => { openApp(app); setCtxMenu(null) }}>
-              <span className={`app-icon tiny ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
+              <span className={`app-icon tiny ${metaOf(app).cls}`}>{metaOf(app).icon}</span>
               {appName(app)}
             </button>
           ))}
@@ -1271,7 +1371,7 @@ export default function App() {
               className={`task-btn${activeId === win.id && !win.minimized ? ' active' : ''}`}
               onClick={() => (win.minimized || activeId !== win.id ? focusWin(win.id) : minimizeWin(win.id))}
             >
-              <span className={`app-icon tiny ${APP_META[win.id].cls}`}>{APP_META[win.id].icon}</span>
+              <span className={`app-icon tiny ${metaOf(win.id).cls}`}>{metaOf(win.id).icon}</span>
               {appName(win.id)}
             </button>
           ))}
@@ -1320,7 +1420,7 @@ export default function App() {
           <div className="mx-dock">
             {(['word', 'sheet', 'calendar', 'store'] as WindowApp[]).map((app) => (
               <button key={app} className="mx-dock-btn" onClick={() => openApp(app)}>
-                <span className={`app-icon ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
+                <span className={`app-icon ${metaOf(app).cls}`}>{metaOf(app).icon}</span>
               </button>
             ))}
             <span className="mx-dock-sep" />
@@ -1338,7 +1438,7 @@ export default function App() {
             {windows.map((win) => (
               <div key={win.id} className="mx-recent-card">
                 <button className="mx-recent-main" onClick={() => { setWs(win.ws); focusWin(win.id); setRecentsOpen(false) }}>
-                  <span className={`app-icon ${APP_META[win.id].cls}`}>{APP_META[win.id].icon}</span>
+                  <span className={`app-icon ${metaOf(win.id).cls}`}>{metaOf(win.id).icon}</span>
                   <span>{appName(win.id)}</span>
                 </button>
                 <button className="mx-recent-close" onClick={() => closeWin(win.id)}>✕</button>
