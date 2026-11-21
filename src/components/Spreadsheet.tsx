@@ -238,9 +238,46 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const [chartRange, setChartRange] = useState('A1:B5')
   const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar')
   const [chartLabels, setChartLabels] = useState(true)
+  const [findOpen, setFindOpen] = useState(false)
+  const [findText, setFindText] = useState('')
+  const [replaceText, setReplaceText] = useState('')
+  const [findStatus, setFindStatus] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const cellRefs = useRef(new Map<string, HTMLInputElement>())
   const [pendingFocus, setPendingFocus] = useState<{ r: number; c: number } | null>(null)
+
+  /** 元に戻す・やり直しの履歴。{grid, styles} のスナップショットを最大50件保持する（メモリ内のみ） */
+  type HistoryEntry = { grid: string[][]; styles: StyleMap; key?: string }
+  const HISTORY_LIMIT = 50
+  const pastRef = useRef<HistoryEntry[]>([])
+  const futureRef = useRef<HistoryEntry[]>([])
+  const [, setHistVer] = useState(0)
+  const bumpHist = () => setHistVer((v) => v + 1)
+  /** 編集前の状態を履歴に積む（やり直しは破棄される）。同じ key の連続操作（書式変更など）は1件にまとめる */
+  const pushHistory = (g: string[][], s: StyleMap, key?: string) => {
+    const p = pastRef.current
+    if (key && p.length > 0) {
+      const top = p[p.length - 1]
+      if (top.key === key && top.grid === g) {
+        futureRef.current = []
+        bumpHist()
+        return
+      }
+    }
+    pastRef.current = [...p.slice(-(HISTORY_LIMIT - 1)), { grid: g, styles: s, key }]
+    futureRef.current = []
+    bumpHist()
+  }
+  /** セル編集中の開始時点スナップショット。フォーカス時に取り、離れるときに変化があれば履歴へ */
+  const editSnapRef = useRef<HistoryEntry | null>(null)
+  const beginEdit = () => {
+    if (!editSnapRef.current) editSnapRef.current = { grid, styles }
+  }
+  const commitEdit = () => {
+    const snap = editSnapRef.current
+    editSnapRef.current = null
+    if (snap && JSON.stringify(snap.grid) !== JSON.stringify(grid)) pushHistory(snap.grid, snap.styles)
+  }
 
   useEffect(() => {
     if (!pendingFocus) return
@@ -282,6 +319,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
 
   /** 選択中のセルの書式を更新する。patch が null なら書式をすべて消す */
   const updateStyle = (patch: Partial<CellStyle> | null) => {
+    pushHistory(grid, styles, 'style')
     const key = styleKey(selected.r, selected.c)
     setStyles((prev) => {
       if (patch === null) {
@@ -306,28 +344,126 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   }
   const curStyle = styles[styleKey(selected.r, selected.c)]
 
+  /** 選択位置をグリッド内に収める（行・列の増減を伴う操作の後用） */
+  const clampSelection = (g: string[][]) => {
+    const r = Math.min(selected.r, Math.max(0, g.length - 1))
+    const c = Math.min(selected.c, Math.max(0, (g[0]?.length ?? 1) - 1))
+    setSelected({ r: Math.max(0, r), c: Math.max(0, c) })
+  }
+  const undo = () => {
+    const p = pastRef.current
+    if (p.length === 0) return
+    const prev = p[p.length - 1]
+    pastRef.current = p.slice(0, -1)
+    futureRef.current = [{ grid, styles }, ...futureRef.current].slice(0, HISTORY_LIMIT)
+    setGrid(prev.grid)
+    setStyles(prev.styles)
+    clampSelection(prev.grid)
+    bumpHist()
+  }
+  const redo = () => {
+    const f = futureRef.current
+    if (f.length === 0) return
+    const next = f[0]
+    futureRef.current = f.slice(1)
+    pastRef.current = [...pastRef.current, { grid, styles }].slice(-HISTORY_LIMIT)
+    setGrid(next.grid)
+    setStyles(next.styles)
+    clampSelection(next.grid)
+    bumpHist()
+  }
+
+  const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const countMatches = (q: string) => {
+    let n = 0
+    for (const row of grid) for (const cell of row) {
+      const lower = cell.toLowerCase()
+      let i = lower.indexOf(q)
+      while (i !== -1) { n++; i = lower.indexOf(q, i + q.length) }
+    }
+    return n
+  }
+  /** 選択中のセルの次から検索し、最初に見つかった位置を返す（末尾まで行ったら先頭へ回る） */
+  const findNextPos = (q: string): { r: number; c: number } | null => {
+    const cols = grid[0]?.length ?? 0
+    const total = grid.length * cols
+    if (total === 0) return null
+    for (let step = 1; step <= total; step++) {
+      const idx = (selected.r * cols + selected.c + step) % total
+      const r = Math.floor(idx / cols)
+      const c = idx % cols
+      if (String(grid[r]?.[c] ?? '').toLowerCase().includes(q)) return { r, c }
+    }
+    return null
+  }
+  const findNext = () => {
+    const q = findText.trim().toLowerCase()
+    if (!q) { setFindStatus(''); return }
+    const pos = findNextPos(q)
+    if (!pos) { setFindStatus(t('findNotFound')); return }
+    setSelected(pos)
+    setPendingFocus(pos)
+    setFindStatus(t('findMatches').replace('{n}', String(countMatches(q))))
+  }
+  /** 選択中のセルに検索文字があれば置換し、次の一致へ移動する。無ければ次を検索するだけ */
+  const replaceOne = () => {
+    const q = findText
+    if (!q) return
+    const cur = grid[selected.r]?.[selected.c] ?? ''
+    if (cur.toLowerCase().includes(q.toLowerCase())) {
+      pushHistory(grid, styles)
+      setCell(selected.r, selected.c, cur.replace(new RegExp(escapeRegExp(q), 'gi'), replaceText))
+      setFindStatus(t('replacedCount').replace('{n}', '1'))
+      const pos = findNextPos(q.toLowerCase())
+      if (pos) { setSelected(pos); setPendingFocus(pos) }
+      return
+    }
+    findNext()
+  }
+  const replaceAll = () => {
+    const q = findText
+    if (!q) return
+    const lower = q.toLowerCase()
+    const re = new RegExp(escapeRegExp(q), 'gi')
+    let count = 0
+    const next = grid.map((row) => row.map((cell) => {
+      if (!cell.toLowerCase().includes(lower)) return cell
+      return cell.replace(re, () => { count++; return replaceText })
+    }))
+    if (count === 0) { setFindStatus(t('findNotFound')); return }
+    pushHistory(grid, styles)
+    setGrid(next)
+    setFindStatus(t('replacedCount').replace('{n}', String(count)))
+  }
+
   /** キーボードでセル間を移動する。端を超えたら行・列を自動追加する */
   const moveSelection = (dr: number, dc: number) => {
     const cols = grid[0]?.length ?? 1
     let r = Math.max(0, selected.r + dr)
     let c = Math.max(0, selected.c + dc)
-    if (r >= grid.length) { addRow(); r = grid.length }
-    if (c >= cols) { addCol(); c = cols }
+    if (r >= grid.length) { addRowInternal(); r = grid.length }
+    if (c >= cols) { addColInternal(); c = cols }
     setSelected({ r, c })
     setPendingFocus({ r, c })
   }
 
   const onCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') { e.preventDefault(); moveSelection(e.shiftKey ? -1 : 1, 0) }
-    else if (e.key === 'Tab') { e.preventDefault(); moveSelection(0, e.shiftKey ? -1 : 1) }
-    else if (e.key === 'ArrowDown') { e.preventDefault(); moveSelection(1, 0) }
-    else if (e.key === 'ArrowUp') { e.preventDefault(); moveSelection(-1, 0) }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); commitEdit(); if (e.shiftKey) redo(); else undo() }
+    else if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); commitEdit(); redo() }
+    else if (e.key === 'Enter') { e.preventDefault(); commitEdit(); moveSelection(e.shiftKey ? -1 : 1, 0) }
+    else if (e.key === 'Tab') { e.preventDefault(); commitEdit(); moveSelection(0, e.shiftKey ? -1 : 1) }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); commitEdit(); moveSelection(1, 0) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); commitEdit(); moveSelection(-1, 0) }
   }
 
-  const addRow = () => setGrid((prev) => [...prev, Array(prev[0]?.length ?? 1).fill('')])
-  const addCol = () => setGrid((prev) => prev.map((row) => [...row, '']))
+  /** 移動時の自動追加は履歴に積まない（空の行・列の追加は操作ではないため） */
+  const addRowInternal = () => setGrid((prev) => [...prev, Array(prev[0]?.length ?? 1).fill('')])
+  const addColInternal = () => setGrid((prev) => prev.map((row) => [...row, '']))
+  const addRow = () => { pushHistory(grid, styles); addRowInternal() }
+  const addCol = () => { pushHistory(grid, styles); addColInternal() }
   const deleteRow = () => {
     if (grid.length <= 1) return
+    pushHistory(grid, styles)
     setGrid((prev) => prev.filter((_, i) => i !== selected.r))
     setStyles((prev) => remapStyles(prev, (r, c) => (r === selected.r ? null : r > selected.r ? { r: r - 1, c } : { r, c })))
     // 末尾の行を消したとき選択位置が範囲外に残らないよう詰める
@@ -338,6 +474,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const deleteCol = () => {
     const cols = grid[0]?.length ?? 1
     if (cols <= 1) return
+    pushHistory(grid, styles)
     setGrid((prev) => prev.map((row) => row.filter((_, i) => i !== selected.c)))
     setStyles((prev) => remapStyles(prev, (r, c) => (c === selected.c ? null : c > selected.c ? { r, c: c - 1 } : { r, c })))
     // 末尾の列を消したとき選択位置が範囲外に残らないよう詰める
@@ -346,6 +483,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     setPendingFocus({ r: selected.r, c })
   }
   const insertRow = () => {
+    pushHistory(grid, styles)
     setGrid((prev) => {
       const cols = prev[0]?.length ?? 1
       return [...prev.slice(0, selected.r), Array(cols).fill(''), ...prev.slice(selected.r)]
@@ -353,15 +491,18 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     setStyles((prev) => remapStyles(prev, (r, c) => (r >= selected.r ? { r: r + 1, c } : { r, c })))
   }
   const insertCol = () => {
+    pushHistory(grid, styles)
     setGrid((prev) => prev.map((row) => [...row.slice(0, selected.c), '', ...row.slice(selected.c)]))
     setStyles((prev) => remapStyles(prev, (r, c) => (c >= selected.c ? { r, c: c + 1 } : { r, c })))
   }
   const clear = () => {
+    pushHistory(grid, styles)
     setGrid((prev) => prev.map((row) => row.map(() => '')))
     setStyles({})
   }
 
   const sortByColumn = (dir: 1 | -1) => {
+    pushHistory(grid, styles)
     const [head, ...body] = grid
     // 並び替え前後の行番号の対応表を作り、書式も行について回らせる（先頭行は固定）
     const order = body.map((_, i) => i).sort((ia, ib) => {
@@ -385,6 +526,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     const result = Papa.parse<string[]>(text, { skipEmptyLines: false })
     const rows = (result.data as unknown[][]).map((row) => row.map((v) => String(v ?? '')))
     if (rows.length > 0) {
+      pushHistory(grid, styles)
       const width = Math.max(...rows.map((r) => r.length))
       setGrid(rows.map((r) => [...r, ...Array(width - r.length).fill('')]))
       setFilename(file.name)
@@ -442,6 +584,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
                 return
               }
               try {
+                pushHistory(grid, styles)
                 setGrid(JSON.parse(doc.content) as string[][])
                 setFilename(`${doc.name}.csv`)
               } catch { /* ignore */ }
@@ -469,6 +612,9 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         />
         <button onClick={saveCsv}>{t('csvDl')}</button>
         <button onClick={printSheet}>{t('printPdf')}</button>
+        <button onClick={undo} disabled={pastRef.current.length === 0} title={t('undo')}>↩ {t('undo')}</button>
+        <button onClick={redo} disabled={futureRef.current.length === 0} title={t('redo')}>↪ {t('redo')}</button>
+        <button onClick={() => setFindOpen((v) => !v)}>{t('findReplace')}</button>
         <button onClick={addRow}>{t('addRow')}</button>
         <button onClick={addCol}>{t('addCol')}</button>
         <button onClick={insertRow}>{t('insertRow')}</button>
@@ -491,6 +637,17 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <span className="meta">{grid.length} 行 × {grid[0]?.length ?? 0} 列</span>
         <button onClick={() => setChartOpen((v) => !v)}>📊 グラフ</button>
       </div>
+      {findOpen && (
+        <div className="sheet-find-panel">
+          <label>{t('findPh')} <input value={findText} onChange={(e) => setFindText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); findNext() } }} /></label>
+          <label>{t('replacePh')} <input value={replaceText} onChange={(e) => setReplaceText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); replaceOne() } }} /></label>
+          <button onClick={findNext}>{t('findNext')}</button>
+          <button onClick={replaceOne}>{t('replaceOne')}</button>
+          <button onClick={replaceAll}>{t('replaceAllBtn')}</button>
+          {findStatus && <span className="find-status">{findStatus}</span>}
+          <button onClick={() => setFindOpen(false)}>{t('close')}</button>
+        </div>
+      )}
       {chartOpen && (
         <div className="sheet-chart-panel">
           <label>範囲 <input value={chartRange} onChange={(e) => setChartRange(e.target.value)} size={9} placeholder="A1:B5" /></label>
@@ -511,7 +668,13 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <input
           value={selectedRaw}
           onChange={(e) => setCell(selected.r, selected.c, e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); moveSelection(1, 0) } }}
+          onFocus={beginEdit}
+          onBlur={commitEdit}
+          onKeyDown={(e) => {
+            if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); commitEdit(); if (e.shiftKey) redo(); else undo() }
+            else if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); commitEdit(); redo() }
+            else if (e.key === 'Enter') { e.preventDefault(); commitEdit(); moveSelection(1, 0) }
+          }}
           placeholder={t('formulaPh')}
           aria-label="数式バー"
         />
@@ -537,8 +700,8 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
                         ref={(el) => { if (el) cellRefs.current.set(`${r}-${c}`, el); else cellRefs.current.delete(`${r}-${c}`) }}
                         value={isFocused ? cell : (computed[r]?.[c] ?? cell)}
                         style={styleToCss(styles[styleKey(r, c)])}
-                        onFocus={() => { setSelected({ r, c }); setFocused({ r, c }) }}
-                        onBlur={() => setFocused(null)}
+                        onFocus={() => { setSelected({ r, c }); setFocused({ r, c }); beginEdit() }}
+                        onBlur={() => { setFocused(null); commitEdit() }}
                         onChange={(e) => setCell(r, c, e.target.value)}
                         onKeyDown={onCellKeyDown}
                       />
@@ -550,7 +713,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </tbody>
         </table>
       </div>
-      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
+      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
     </section>
   )
 }
