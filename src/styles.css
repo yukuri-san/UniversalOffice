@@ -545,6 +545,7 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .calc-keys button.op { background: #f59e0b; color: #fff; font-weight: 700; }
 .calc-keys button:active { filter: brightness(1.25); }
 .calc-history { list-style: none; margin: 14px 0 0; padding: 0; color: #8fa1ba; font-size: 13px; }
+.calc-hint { margin-top: 12px; color: #8fa1ba; font-size: 12px; text-align: center; }
 .calc-history li { padding: 4px 2px; border-top: 1px solid rgba(255,255,255,.07); text-align: right; }
 
 .clock-app { padding: 14px; background: #f6f8fb; height: 100%; overflow: auto; }
@@ -668,5 +669,23 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 
 .yt-home-btn { align-self: flex-start; border: 1px solid rgba(255,255,255,.25); background: #1c1c22; color: #f2f4f8; border-radius: 999px; padding: 7px 16px; font-size: 13px; cursor: pointer; }
 
-.os-resize-handle { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; cursor: nwse-resize; touch-action: none; z-index: 6; }
+.os-resize-handle { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; cursor: nwse-resize; touch-action: none; z-index: 7; }
+.os-resize-edge { position: absolute; touch-action: none; z-index: 6; }
+.os-resize-edge.right { right: 0; top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; }
+.os-resize-edge.bottom { bottom: 0; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
+.os-window-body { container-type: size; }
+@container (max-width: 680px) {
+  .memodb-app { flex-direction: column; }
+  .memodb-side { width: 100%; max-height: 42%; border-right: 0; border-bottom: 1px solid #e3e8f0; }
+  .paint-main { flex-direction: column; }
+  .paint-layers { width: 100%; border-left: 0; border-top: 1px solid #d5dce8; }
+  .note-body { flex-direction: column; }
+  .note-list { width: 100%; max-height: 180px; }
+  .cal-body { flex-direction: column; }
+  .cal-side { width: 100%; }
+  .page-flex { flex-direction: column; }
+  .outline { width: 100%; position: static; max-height: 180px; }
+  .backstage { flex-direction: column; }
+  .backstage-side { width: 100%; }
+}
 .os-resize-handle::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 10px; height: 10px; border-right: 2px solid rgba(90,110,140,.65); border-bottom: 2px solid rgba(90,110,140,.65); border-bottom-right-radius: 6px; }

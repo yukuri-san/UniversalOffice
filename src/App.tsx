@@ -33,7 +33,6 @@ interface Win {
   y: number
   w: number
   h: number
-  scale: number // 画像のように比率を保って拡縮する（レイアウトは崩れない）
 }
 
 const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
@@ -166,20 +165,25 @@ export default function App() {
   const desktopRef = useRef<HTMLDivElement>(null)
   const zRef = useRef(10)
   const dragRef = useRef<{ id: WindowApp; dx: number; dy: number } | null>(null)
-  const resizeRef = useRef<{ id: WindowApp; startX: number; startY: number; startScale: number; baseW: number; baseH: number } | null>(null)
+  const resizeRef = useRef<{ id: WindowApp; startX: number; startY: number; startW: number; startH: number; edge: 'corner' | 'right' | 'bottom' } | null>(null)
 
-  const onResizePointerDown = (e: React.PointerEvent, win: Win) => {
+  const onResizePointerDown = (e: React.PointerEvent, win: Win, edge: 'corner' | 'right' | 'bottom') => {
     e.stopPropagation()
     focusWin(win.id)
-    resizeRef.current = { id: win.id, startX: e.clientX, startY: e.clientY, startScale: win.scale, baseW: win.w, baseH: win.h }
+    resizeRef.current = { id: win.id, startX: e.clientX, startY: e.clientY, startW: win.w, startH: win.h, edge }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
   const onResizePointerMove = (e: React.PointerEvent) => {
     const r = resizeRef.current
     if (!r) return
-    const factor = 1 + ((e.clientX - r.startX) / r.baseW + (e.clientY - r.startY) / r.baseH) / 2
-    const scale = Math.min(1.8, Math.max(0.35, r.startScale * factor))
-    setWindows((prev) => prev.map((w) => (w.id === r.id ? { ...w, scale } : w)))
+    setWindows((prev) =>
+      prev.map((w) => {
+        if (w.id !== r.id) return w
+        const nextW = r.edge === 'bottom' ? w.w : Math.min(Math.max(r.startW + (e.clientX - r.startX), 340), Math.max(340, desktop.w - w.x - 4))
+        const nextH = r.edge === 'right' ? w.h : Math.min(Math.max(r.startH + (e.clientY - r.startY), 240), Math.max(240, desktop.h - w.y - 4))
+        return { ...w, w: nextW, h: nextH }
+      })
+    )
   }
   const onResizePointerUp = () => {
     resizeRef.current = null
@@ -232,7 +236,6 @@ export default function App() {
           y: Math.max(6, (desktop.h - h) / 2 + offset - 30),
           w,
           h,
-          scale: 1,
         },
       ]
     })
@@ -420,15 +423,7 @@ export default function App() {
           const full = win.maximized || !wide
           const style: React.CSSProperties = full
             ? { inset: 0, width: '100%', height: '100%', zIndex: win.z }
-            : {
-                left: win.x,
-                top: win.y,
-                width: win.w,
-                height: win.h,
-                zIndex: win.z,
-                transform: win.scale !== 1 ? `scale(${win.scale})` : undefined,
-                transformOrigin: 'top left',
-              }
+            : { left: win.x, top: win.y, width: win.w, height: win.h, zIndex: win.z }
           return (
             <section
               key={win.id}
@@ -453,12 +448,26 @@ export default function App() {
               </div>
               <div className="os-window-body">{renderContent(win.id)}</div>
               {!full && wide && (
-                <div
-                  className="os-resize-handle"
-                  onPointerDown={(e) => onResizePointerDown(e, win)}
-                  onPointerMove={onResizePointerMove}
-                  onPointerUp={onResizePointerUp}
-                />
+                <>
+                  <div
+                    className="os-resize-edge right"
+                    onPointerDown={(e) => onResizePointerDown(e, win, 'right')}
+                    onPointerMove={onResizePointerMove}
+                    onPointerUp={onResizePointerUp}
+                  />
+                  <div
+                    className="os-resize-edge bottom"
+                    onPointerDown={(e) => onResizePointerDown(e, win, 'bottom')}
+                    onPointerMove={onResizePointerMove}
+                    onPointerUp={onResizePointerUp}
+                  />
+                  <div
+                    className="os-resize-handle"
+                    onPointerDown={(e) => onResizePointerDown(e, win, 'corner')}
+                    onPointerMove={onResizePointerMove}
+                    onPointerUp={onResizePointerUp}
+                  />
+                </>
               )}
             </section>
           )
