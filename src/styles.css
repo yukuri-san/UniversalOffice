@@ -157,6 +157,8 @@ table.sheet td input:focus { outline: 2px solid #217346; outline-offset: -2px; }
 .formula-bar .col-sum { font-size: 13px; color: #526173; white-space: nowrap; }
 .check-inline { display: flex; gap: 6px; align-items: center; font-size: 13px; }
 table.sheet td.sel-cell { outline: 2px solid #217346; outline-offset: -2px; }
+table.sheet td.in-range { background: #dbeafe; }
+table.sheet td.sel-cell.in-range { background: #bfdbfe; }
 table.sheet thead th.sel-col, table.sheet tbody th.sel-row { background: #cdeeda; }
 table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 
@@ -439,6 +441,8 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .os-root[data-theme='dark'] .note-editor textarea { background: transparent; }
 .os-root[data-theme='dark'] table.sheet thead th, .os-root[data-theme='dark'] table.sheet tbody th { background: #26314a; color: #c6d3e6; }
 .os-root[data-theme='dark'] table.sheet th, .os-root[data-theme='dark'] table.sheet td { border-color: rgba(255,255,255,.1); }
+.os-root[data-theme='dark'] table.sheet td.in-range { background: #1e3a5f; }
+.os-root[data-theme='dark'] table.sheet td.sel-cell.in-range { background: #274b73; }
 .os-root[data-theme='dark'] .sheet-wrap { background: #1c2536; border-color: rgba(255,255,255,.12); }
 .os-root[data-theme='dark'] .cal-cell { background: #1c2536; border-color: rgba(255,255,255,.08); color: #e6ecf5; }
 .os-root[data-theme='dark'] .cal-search-results, .os-root[data-theme='dark'] .cal-search-list button { background: #1c2536; border-color: rgba(255,255,255,.12); color: #e6ecf5; }

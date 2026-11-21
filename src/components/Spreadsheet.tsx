@@ -61,6 +61,31 @@ function remapRowHeights(heights: RowHeightMap, mapRow: (r: number) => number | 
   return next
 }
 
+const MERGE_KEY = 'universal-office-sheet-merges'
+/** セルの結合。キーは結合の左上 `${row},${col}`、値は結合する行数・列数 */
+type MergeMap = Record<string, { rs: number; cs: number }>
+
+function loadMerges(): MergeMap {
+  try {
+    const saved = localStorage.getItem(MERGE_KEY)
+    if (saved) return JSON.parse(saved) as MergeMap
+  } catch { /* ignore */ }
+  return {}
+}
+
+/** 行・列の挿入／削除／ソートに合わせて結合を付け替える。null を返すとその結合は解除される */
+function remapMerges(merges: MergeMap, mapPos: (r: number, c: number, rs: number, cs: number) => { r: number; c: number; rs: number; cs: number } | null): MergeMap {
+  const next: MergeMap = {}
+  for (const [key, m] of Object.entries(merges)) {
+    const [r, c] = key.split(',').map(Number)
+    const p = mapPos(r, c, m.rs, m.cs)
+    if (!p || p.rs <= 0 || p.cs <= 0) continue
+    if (p.rs === 1 && p.cs === 1) continue // 1セルになった結合は解除
+    next[`${p.r},${p.c}`] = { rs: p.rs, cs: p.cs }
+  }
+  return next
+}
+
 /** セルの書式。キーは `${row},${col}`。fmt は数値書式（未指定＝標準） */
 type NumFmt = 'number' | 'currency' | 'percent'
 type CellStyle = { b?: boolean; i?: boolean; color?: string; bg?: string; align?: 'left' | 'center' | 'right'; fmt?: NumFmt }
@@ -297,8 +322,13 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const [styles, setStyles] = useState<StyleMap>(loadStyles)
   const [colWidths, setColWidths] = useState<ColWidthMap>(loadColWidths)
   const [rowHeights, setRowHeights] = useState<RowHeightMap>(loadRowHeights)
+  const [merges, setMerges] = useState<MergeMap>(loadMerges)
   const [homeOpen, setHomeOpen] = useState(false)
   const [selected, setSelected] = useState({ r: 0, c: 0 })
+  /** 範囲選択（Shift+クリック）。結合の対象になる矩形。null は単独セル選択 */
+  const [range, setRange] = useState<{ r1: number; c1: number; r2: number; c2: number } | null>(null)
+  /** 範囲選択の起点。キーボード移動・単独クリックで更新される */
+  const anchorRef = useRef({ r: 0, c: 0 })
   const [focused, setFocused] = useState<{ r: number; c: number } | null>(null)
   const [freeze, setFreeze] = useState(true)
   const [chartOpen, setChartOpen] = useState(false)
@@ -313,15 +343,15 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const cellRefs = useRef(new Map<string, HTMLInputElement>())
   const [pendingFocus, setPendingFocus] = useState<{ r: number; c: number } | null>(null)
 
-  /** 元に戻す・やり直しの履歴。{grid, styles} のスナップショットを最大50件保持する（メモリ内のみ） */
-  type HistoryEntry = { grid: string[][]; styles: StyleMap; key?: string }
+  /** 元に戻す・やり直しの履歴。{grid, styles, merges} のスナップショットを最大50件保持する（メモリ内のみ） */
+  type HistoryEntry = { grid: string[][]; styles: StyleMap; merges?: MergeMap; key?: string }
   const HISTORY_LIMIT = 50
   const pastRef = useRef<HistoryEntry[]>([])
   const futureRef = useRef<HistoryEntry[]>([])
   const [, setHistVer] = useState(0)
   const bumpHist = () => setHistVer((v) => v + 1)
   /** 編集前の状態を履歴に積む（やり直しは破棄される）。同じ key の連続操作（書式変更など）は1件にまとめる */
-  const pushHistory = (g: string[][], s: StyleMap, key?: string) => {
+  const pushHistory = (g: string[][], s: StyleMap, key?: string, m: MergeMap = merges) => {
     const p = pastRef.current
     if (key && p.length > 0) {
       const top = p[p.length - 1]
@@ -331,19 +361,19 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         return
       }
     }
-    pastRef.current = [...p.slice(-(HISTORY_LIMIT - 1)), { grid: g, styles: s, key }]
+    pastRef.current = [...p.slice(-(HISTORY_LIMIT - 1)), { grid: g, styles: s, merges: m, key }]
     futureRef.current = []
     bumpHist()
   }
   /** セル編集中の開始時点スナップショット。フォーカス時に取り、離れるときに変化があれば履歴へ */
   const editSnapRef = useRef<HistoryEntry | null>(null)
   const beginEdit = () => {
-    if (!editSnapRef.current) editSnapRef.current = { grid, styles }
+    if (!editSnapRef.current) editSnapRef.current = { grid, styles, merges }
   }
   const commitEdit = () => {
     const snap = editSnapRef.current
     editSnapRef.current = null
-    if (snap && JSON.stringify(snap.grid) !== JSON.stringify(grid)) pushHistory(snap.grid, snap.styles)
+    if (snap && JSON.stringify(snap.grid) !== JSON.stringify(grid)) pushHistory(snap.grid, snap.styles, undefined, snap.merges)
   }
 
   useEffect(() => {
@@ -367,8 +397,31 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     localStorage.setItem(ROWHEIGHT_KEY, JSON.stringify(rowHeights))
   }, [rowHeights])
   useEffect(() => {
+    localStorage.setItem(MERGE_KEY, JSON.stringify(merges))
+  }, [merges])
+  useEffect(() => {
     localStorage.setItem(NAME_KEY, filename)
   }, [filename])
+
+  /** 結合に覆われるセルを「左上 → 結合情報」で引ける表。左上以外の被覆セルは描画しない */
+  type CoverInfo = { or: number; oc: number; rs: number; cs: number }
+  const coverMap = useMemo(() => {
+    const map = new Map<string, CoverInfo>()
+    for (const [key, m] of Object.entries(merges)) {
+      const [or, oc] = key.split(',').map(Number)
+      for (let r = or; r < or + m.rs; r++) {
+        for (let c = oc; c < oc + m.cs; c++) map.set(`${r},${c}`, { or, oc, rs: m.rs, cs: m.cs })
+      }
+    }
+    return map
+  }, [merges])
+  const coverAt = (r: number, c: number) => coverMap.get(`${r},${c}`)
+  /** 結合の左上セル。範囲選択中の矩形（正規化済み） */
+  const rangeRect = range ? { r1: Math.min(range.r1, range.r2), r2: Math.max(range.r1, range.r2), c1: Math.min(range.c1, range.c2), c2: Math.max(range.c1, range.c2) } : null
+  /** 選択中の範囲が2セル以上なら結合できる */
+  const canMerge = !!rangeRect && (rangeRect.r1 !== rangeRect.r2 || rangeRect.c1 !== rangeRect.c2)
+  /** 選択中のセルを含む結合（なければ undefined） */
+  const selectedMerge = coverAt(selected.r, selected.c)
 
   // ホーム画面で文書が選ばれたら開く
   useEffect(() => {
@@ -380,6 +433,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         localStorage.removeItem('uo-pending-open')
         try {
           setGrid(JSON.parse(doc.content) as string[][])
+          setMerges({})
           setFilename(doc.name.endsWith('.csv') ? doc.name : `${doc.name}.csv`)
         } catch { /* ignore */ }
       }
@@ -487,20 +541,24 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   }
   const resetRowHeights = () => setRowHeights({})
 
-  /** 選択位置をグリッド内に収める（行・列の増減を伴う操作の後用） */
+  /** 選択位置をグリッド内に収める（行・列の増減を伴う操作の後用）。結合の被覆セルなら左上へ寄せる */
   const clampSelection = (g: string[][]) => {
-    const r = Math.min(selected.r, Math.max(0, g.length - 1))
-    const c = Math.min(selected.c, Math.max(0, (g[0]?.length ?? 1) - 1))
-    setSelected({ r: Math.max(0, r), c: Math.max(0, c) })
+    let r = Math.min(selected.r, Math.max(0, g.length - 1))
+    let c = Math.min(selected.c, Math.max(0, (g[0]?.length ?? 1) - 1))
+    r = Math.max(0, r); c = Math.max(0, c)
+    const cov = coverMap.get(`${r},${c}`)
+    if (cov) { r = cov.or; c = cov.oc }
+    setSelected({ r, c })
   }
   const undo = () => {
     const p = pastRef.current
     if (p.length === 0) return
     const prev = p[p.length - 1]
     pastRef.current = p.slice(0, -1)
-    futureRef.current = [{ grid, styles }, ...futureRef.current].slice(0, HISTORY_LIMIT)
+    futureRef.current = [{ grid, styles, merges }, ...futureRef.current].slice(0, HISTORY_LIMIT)
     setGrid(prev.grid)
     setStyles(prev.styles)
+    setMerges(prev.merges ?? {})
     clampSelection(prev.grid)
     bumpHist()
   }
@@ -509,9 +567,10 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     if (f.length === 0) return
     const next = f[0]
     futureRef.current = f.slice(1)
-    pastRef.current = [...pastRef.current, { grid, styles }].slice(-HISTORY_LIMIT)
+    pastRef.current = [...pastRef.current, { grid, styles, merges }].slice(-HISTORY_LIMIT)
     setGrid(next.grid)
     setStyles(next.styles)
+    setMerges(next.merges ?? {})
     clampSelection(next.grid)
     bumpHist()
   }
@@ -544,6 +603,8 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     if (!q) { setFindStatus(''); return }
     const pos = findNextPos(q)
     if (!pos) { setFindStatus(t('findNotFound')); return }
+    anchorRef.current = pos
+    setRange(null)
     setSelected(pos)
     setPendingFocus(pos)
     setFindStatus(t('findMatches').replace('{n}', String(countMatches(q))))
@@ -579,13 +640,25 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     setFindStatus(t('replacedCount').replace('{n}', String(count)))
   }
 
-  /** キーボードでセル間を移動する。端を超えたら行・列を自動追加する */
+  /** キーボードでセル間を移動する。端を超えたら行・列を自動追加する。結合の被覆セルには入らず、その結合を飛び越える */
   const moveSelection = (dr: number, dc: number) => {
     const cols = grid[0]?.length ?? 1
     let r = Math.max(0, selected.r + dr)
     let c = Math.max(0, selected.c + dc)
     if (r >= grid.length) { addRowInternal(); r = grid.length }
     if (c >= cols) { addColInternal(); c = cols }
+    const cov = coverMap.get(`${r},${c}`)
+    if (cov) {
+      if (dr > 0) r = cov.or + cov.rs
+      else if (dr < 0) r = cov.or - 1
+      else if (dc > 0) c = cov.oc + cov.cs
+      else if (dc < 0) c = cov.oc - 1
+      r = Math.max(0, r); c = Math.max(0, c)
+      if (r >= grid.length) { addRowInternal(); r = grid.length }
+      if (c >= cols) { addColInternal(); c = cols }
+    }
+    anchorRef.current = { r, c }
+    setRange(null)
     setSelected({ r, c })
     setPendingFocus({ r, c })
   }
@@ -609,6 +682,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     pushHistory(grid, styles)
     setGrid((prev) => prev.filter((_, i) => i !== selected.r))
     setStyles((prev) => remapStyles(prev, (r, c) => (r === selected.r ? null : r > selected.r ? { r: r - 1, c } : { r, c })))
+    setMerges((prev) => remapMerges(prev, (r, c, rs, cs) => (r === selected.r ? null : r > selected.r ? { r: r - 1, c, rs, cs } : r < selected.r && selected.r < r + rs ? { r, c, rs: rs - 1, cs } : { r, c, rs, cs })))
     setRowHeights((prev) => remapRowHeights(prev, (r) => (r === selected.r ? null : r > selected.r ? r - 1 : r)))
     // 末尾の行を消したとき選択位置が範囲外に残らないよう詰める
     const r = Math.min(selected.r, grid.length - 2)
@@ -621,6 +695,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     pushHistory(grid, styles)
     setGrid((prev) => prev.map((row) => row.filter((_, i) => i !== selected.c)))
     setStyles((prev) => remapStyles(prev, (r, c) => (c === selected.c ? null : c > selected.c ? { r, c: c - 1 } : { r, c })))
+    setMerges((prev) => remapMerges(prev, (r, c, rs, cs) => (c === selected.c ? null : c > selected.c ? { r, c: c - 1, rs, cs } : c < selected.c && selected.c < c + cs ? { r, c, rs, cs: cs - 1 } : { r, c, rs, cs })))
     setColWidths((prev) => remapColWidths(prev, (c) => (c === selected.c ? null : c > selected.c ? c - 1 : c)))
     // 末尾の列を消したとき選択位置が範囲外に残らないよう詰める
     const c = Math.min(selected.c, cols - 2)
@@ -634,18 +709,21 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
       return [...prev.slice(0, selected.r), Array(cols).fill(''), ...prev.slice(selected.r)]
     })
     setStyles((prev) => remapStyles(prev, (r, c) => (r >= selected.r ? { r: r + 1, c } : { r, c })))
+    setMerges((prev) => remapMerges(prev, (r, c, rs, cs) => (r >= selected.r ? { r: r + 1, c, rs, cs } : r < selected.r && selected.r < r + rs ? { r, c, rs: rs + 1, cs } : { r, c, rs, cs })))
     setRowHeights((prev) => remapRowHeights(prev, (r) => (r >= selected.r ? r + 1 : r)))
   }
   const insertCol = () => {
     pushHistory(grid, styles)
     setGrid((prev) => prev.map((row) => [...row.slice(0, selected.c), '', ...row.slice(selected.c)]))
     setStyles((prev) => remapStyles(prev, (r, c) => (c >= selected.c ? { r, c: c + 1 } : { r, c })))
+    setMerges((prev) => remapMerges(prev, (r, c, rs, cs) => (c >= selected.c ? { r, c: c + 1, rs, cs } : c < selected.c && selected.c < c + cs ? { r, c, rs, cs: cs + 1 } : { r, c, rs, cs })))
     setColWidths((prev) => remapColWidths(prev, (c) => (c >= selected.c ? c + 1 : c)))
   }
   const clear = () => {
     pushHistory(grid, styles)
     setGrid((prev) => prev.map((row) => row.map(() => '')))
     setStyles({})
+    setMerges({})
   }
 
   const sortByColumn = (dir: 1 | -1) => {
@@ -666,11 +744,48 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
       const newBodyIdx = order.indexOf(r - 1)
       return newBodyIdx < 0 ? null : { r: newBodyIdx + 1, c }
     }))
+    // 複数行にまたがる結合は行の並べ替えで崩れるため解除し、1行だけの結合は行について回らせる
+    setMerges((prev) => remapMerges(prev, (r, c, rs, cs) => {
+      if (r === 0 || rs > 1) return rs > 1 ? null : { r, c, rs, cs }
+      const newBodyIdx = order.indexOf(r - 1)
+      return newBodyIdx < 0 ? null : { r: newBodyIdx + 1, c, rs, cs }
+    }))
     setRowHeights((prev) => remapRowHeights(prev, (r) => {
       if (r === 0) return 0
       const newBodyIdx = order.indexOf(r - 1)
       return newBodyIdx < 0 ? null : newBodyIdx + 1
     }))
+  }
+
+  /** 選択中の範囲を1つのセルに結合する。重なる既存の結合は解除してから結合し直す */
+  const mergeSelected = () => {
+    if (!canMerge || !rangeRect) return
+    const { r1, r2, c1, c2 } = rangeRect
+    pushHistory(grid, styles)
+    const next: MergeMap = {}
+    for (const [key, m] of Object.entries(merges)) {
+      const [or, oc] = key.split(',').map(Number)
+      const overlaps = or <= r2 && or + m.rs - 1 >= r1 && oc <= c2 && oc + m.cs - 1 >= c1
+      if (!overlaps) next[key] = m
+    }
+    next[`${r1},${c1}`] = { rs: r2 - r1 + 1, cs: c2 - c1 + 1 }
+    setMerges(next)
+    anchorRef.current = { r: r1, c: c1 }
+    setRange(null)
+    setSelected({ r: r1, c: c1 })
+    setPendingFocus({ r: r1, c: c1 })
+  }
+  /** 選択中のセルを含む結合を解除する（隠れていたセルの値はそのまま残る） */
+  const unmergeSelected = () => {
+    const cov = selectedMerge
+    if (!cov) return
+    pushHistory(grid, styles)
+    setMerges((prev) => {
+      const next = { ...prev }
+      delete next[`${cov.or},${cov.oc}`]
+      return next
+    })
+    setRange(null)
   }
 
   const openCsv = async (file: File) => {
@@ -681,6 +796,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
       pushHistory(grid, styles)
       const width = Math.max(...rows.map((r) => r.length))
       setGrid(rows.map((r) => [...r, ...Array(width - r.length).fill('')]))
+      setMerges({})
       setFilename(file.name)
     }
   }
@@ -696,10 +812,25 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
       const w = `width:${colWidth(c)}px`
       return base ? base.replace(/"$/, `;${w}"`) : ` style="${w}"`
     }
-    const head = computed[0]?.map((c, ci) => `<th${cellAttr(0, ci)}>${escapeHtml(formatCellValue(c, styles[styleKey(0, ci)]?.fmt))}</th>`).join('') ?? ''
+    /** 印刷用セルの結合属性。被覆セル（左上以外）は null を返して描画しない */
+    const spanAttr = (r: number, c: number): string | null => {
+      const cov = coverAt(r, c)
+      if (!cov) return ''
+      if (cov.or !== r || cov.oc !== c) return null
+      return ` rowspan="${cov.rs}" colspan="${cov.cs}"`
+    }
+    const head = computed[0]?.map((c, ci) => {
+      const span = spanAttr(0, ci)
+      if (span === null) return ''
+      return `<th${span}${cellAttr(0, ci)}>${escapeHtml(formatCellValue(c, styles[styleKey(0, ci)]?.fmt))}</th>`
+    }).join('') ?? ''
     const body = computed
       .slice(1)
-      .map((row, ri) => `<tr style="height:${rowHeight(ri + 1)}px">${row.map((c, ci) => `<td${cellAttr(ri + 1, ci)}>${escapeHtml(formatCellValue(c, styles[styleKey(ri + 1, ci)]?.fmt))}</td>`).join('')}</tr>`)
+      .map((row, ri) => `<tr style="height:${rowHeight(ri + 1)}px">${row.map((c, ci) => {
+        const span = spanAttr(ri + 1, ci)
+        if (span === null) return ''
+        return `<td${span}${cellAttr(ri + 1, ci)}>${escapeHtml(formatCellValue(c, styles[styleKey(ri + 1, ci)]?.fmt))}</td>`
+      }).join('')}</tr>`)
       .join('')
     printHtml(filename.replace(/\.csv$/i, ''), `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`)
   }
@@ -744,6 +875,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
               try {
                 pushHistory(grid, styles)
                 setGrid(JSON.parse(doc.content) as string[][])
+                setMerges({})
                 setFilename(`${doc.name}.csv`)
               } catch { /* ignore */ }
             }}
@@ -781,6 +913,8 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <button onClick={deleteCol}>{t('delCol')}</button>
         <button onClick={() => sortByColumn(1)}>{t('sortAsc')}</button>
         <button onClick={() => sortByColumn(-1)}>{t('sortDesc')}</button>
+        <button onClick={mergeSelected} disabled={!canMerge} title={t('mergeCells')}>{t('mergeCells')}</button>
+        <button onClick={unmergeSelected} disabled={!selectedMerge} title={t('unmergeCells')}>{t('unmergeCells')}</button>
         <button onClick={resetColWidths} title={t('colWidthResetHint')}>{t('colWidthReset')}</button>
         <button onClick={resetRowHeights} title={t('rowHeightResetHint')}>{t('rowHeightReset')}</button>
         <span className="fmt-group" role="group" aria-label="セル書式">
@@ -880,9 +1014,13 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
                   />
                 </th>
                 {row.map((cell, c) => {
+                  const cov = coverAt(r, c)
+                  // 結合に覆われたセル（左上以外）は描画しない
+                  if (cov && (cov.or !== r || cov.oc !== c)) return null
                   const isFocused = focused?.r === r && focused?.c === c
+                  const inRange = !!rangeRect && r >= rangeRect.r1 && r <= rangeRect.r2 && c >= rangeRect.c1 && c <= rangeRect.c2
                   return (
-                    <td key={c} className={r === selected.r && c === selected.c ? 'sel-cell' : ''}>
+                    <td key={c} rowSpan={cov?.rs} colSpan={cov?.cs} className={`${r === selected.r && c === selected.c ? 'sel-cell' : ''}${inRange ? ' in-range' : ''}`}>
                       <input
                         ref={(el) => { if (el) cellRefs.current.set(`${r}-${c}`, el); else cellRefs.current.delete(`${r}-${c}`) }}
                         value={isFocused ? cell : formatCellValue(computed[r]?.[c] ?? cell, styles[styleKey(r, c)]?.fmt)}
@@ -891,6 +1029,15 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
                         onBlur={() => { setFocused(null); commitEdit() }}
                         onChange={(e) => setCell(r, c, e.target.value)}
                         onKeyDown={onCellKeyDown}
+                        onClick={(e) => {
+                          if (e.shiftKey) {
+                            const a = anchorRef.current
+                            setRange({ r1: a.r, c1: a.c, r2: r, c2: c })
+                          } else {
+                            anchorRef.current = { r, c }
+                            setRange(null)
+                          }
+                        }}
                       />
                     </td>
                   )
@@ -900,7 +1047,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </tbody>
         </table>
       </div>
-      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。行の高さ：行見出し（1・2・3…）の下端をドラッグすると行の高さを変えられます。下端をダブルクリックすると既定の高さに戻ります。高さは端末内に保存され、行の挿入／削除・ソートに追従し、印刷にも反映されます。「行の高さをリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
+      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。行の高さ：行見出し（1・2・3…）の下端をドラッグすると行の高さを変えられます。下端をダブルクリックすると既定の高さに戻ります。高さは端末内に保存され、行の挿入／削除・ソートに追従し、印刷にも反映されます。「行の高さをリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。セルの結合：セルをクリックしてから Shift+クリックで範囲を選び、ツールバーの「セルを結合」で1つのセルにまとめられます。表示されるのは左上のセルの値で、結合したセルは行・列の挿入／削除に追従し、印刷にも反映されます。「結合を解除」で元のセルに戻ります（隠れていたセルの値は残ります）。</p>
     </section>
   )
 }
