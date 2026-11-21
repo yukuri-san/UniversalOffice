@@ -762,6 +762,10 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .sa-flashcard { min-height: 150px; width: 100%; border: 1px solid #d5dce8; border-radius: 14px; background: linear-gradient(180deg, #ffffff, #f2f6fc); font-size: 24px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 18px; color: inherit; }
 .sa-flash-hint { font-size: 12px; color: #7a879c; font-weight: 400; }
 .sa-cardrow { display: flex; justify-content: space-between; align-items: center; gap: 10px; background: #f6f8fb; border: 1px solid #e1e7f0; border-radius: 8px; padding: 7px 10px; }
+.sa-todo-label { display: flex; align-items: center; gap: 8px; min-width: 0; cursor: pointer; }
+.sa-todo-label input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; accent-color: #16a34a; }
+.sa-todo-label span { overflow-wrap: anywhere; }
+.sa-todo-done { text-decoration: line-through; color: #7a879c; }
 .btn.small { padding: 3px 9px; font-size: 12px; }
 .app-icon.pomodoro { background: linear-gradient(135deg, #ef4444, #f97316); }
 .app-icon.metronome { background: linear-gradient(135deg, #8b5cf6, #6366f1); }
@@ -780,6 +784,7 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .app-icon.splitbill { background: linear-gradient(135deg, #f97316, #facc15); }
 .app-icon.currency { background: linear-gradient(135deg, #16a34a, #065f46); }
 .app-icon.wareki { background: linear-gradient(135deg, #be185d, #7c2d12); }
+.app-icon.todo { background: linear-gradient(135deg, #22c55e, #059669); }
 
 /* ===== v1.14.0: animations ===== */
 @keyframes win-in { from { opacity: 0; transform: scale(.96) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }

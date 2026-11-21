@@ -26,6 +26,7 @@ import { Dice, Janken, NumGuess, Omikuji } from './components/store/Games'
 import { PassGen, TextCount, ColorPicker, Morse } from './components/store/ToolsA'
 import { DayCalc, Bmi, SplitBill, Currency, Wareki } from './components/store/ToolsB'
 import { Pomodoro, Metronome, WhiteNoise, Flashcards } from './components/store/Life'
+import { TodoList } from './components/store/TodoList'
 import Tetris from './components/games/Tetris'
 import Suika from './components/games/Suika'
 import { Game2048, Snake, Breakout } from './components/games/Classics'
@@ -40,7 +41,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'updateinfo'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'updateinfo'
 
 interface Win {
   id: WindowApp
@@ -111,6 +112,7 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   blackjack: { icon: '♠', cls: 'blackjack' },
   slot: { icon: '🎰', cls: 'slot' },
   runner: { icon: '🦖', cls: 'runner' },
+  todo: { icon: '✓', cls: 'todo' },
 }
 const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'settings']
 
@@ -640,6 +642,7 @@ export default function App() {
       case 'blackjack': return <Blackjack />
       case 'slot': return <Slot />
       case 'runner': return <Runner />
+      case 'todo': return <TodoList />
     }
   }
 

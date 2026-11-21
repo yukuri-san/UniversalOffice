@@ -216,4 +216,9 @@ export const STORE_APPS: StoreAppDef[] = [
     desc: 'ジャンプでサボテンを避け続けるエンドレスラン。', version: '1.0.1', notes: 'Space キーでのジャンプに対応しました。',
     category: 'game',
   },
+  {
+    id: 'todo', icon: '✓', cls: 'todo', name: 'TODOリスト',
+    desc: 'やることを追加してチェックで管理。完了・未完了で絞り込みでき、端末内に保存されます。', version: '1.0.0', notes: '新規アプリです。やることの追加・完了チェック・絞り込み・完了の一括削除ができます。',
+    category: 'life',
+  },
 ]
