@@ -186,6 +186,14 @@ export default function YoutubeApp() {
   const [listState, setListState] = useState<'idle' | 'loading' | 'error'>('idle')
   const titlesRef = useRef<Record<string, string>>(loadTitles())
   const playerRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  const goHome = () => {
+    setTarget(null)
+    setOpenFolder(null)
+    setError('')
+    rootRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   // フォルダ内の操作で再生が始まったら、プレイヤーまで自動でスクロールする
   useEffect(() => {
@@ -279,7 +287,7 @@ export default function YoutubeApp() {
     : ''
 
   return (
-    <div className="youtube-app">
+    <div className="youtube-app" ref={rootRef}>
       <form
         className="browser-bar"
         onSubmit={(e) => {
@@ -291,6 +299,9 @@ export default function YoutubeApp() {
         <button type="submit">{t('ytPlay')}</button>
       </form>
       <p className="browser-note">{t('ytNote')}</p>
+      {target && (
+        <button className="yt-home-btn" onClick={goHome}>🏠 {t('home')}</button>
+      )}
       {error && <p className="yt-error">{error}</p>}
       {target ? (
         <div className="yt-player" ref={playerRef}>
