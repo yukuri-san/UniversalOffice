@@ -12,6 +12,43 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // 起動ウォッチドッグ：アプリ本体（JSバンドル）が一定時間内に起動しなかったら、
+      // データを消さずに復旧できる画面を出す。Service Worker やキャッシュの不整合で
+      // 「PWAが開かない」状態になっても、サイトデータを全削除しなくて済むようにするため。
+      window.__webxBootTimer = setTimeout(function () {
+        if (window.__webxBooted) return
+        var old = document.getElementById('webx-boot-fallback')
+        if (old) return
+        var box = document.createElement('div')
+        box.id = 'webx-boot-fallback'
+        box.setAttribute('style', 'position:fixed;inset:0;z-index:99999;background:#0f1522;color:#e8edf5;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,sans-serif;')
+        box.innerHTML =
+          '<div style="max-width:420px;text-align:center;">' +
+          '<div style="font-size:40px;margin-bottom:12px;">🛠</div>' +
+          '<div style="font-size:18px;font-weight:700;margin-bottom:10px;">WebX を起動できませんでした</div>' +
+          '<p style="font-size:14px;line-height:1.7;color:#aeb9c9;margin:0 0 18px;">アプリのキャッシュが古いまま残っていると、こうなることがあります。下の「キャッシュだけ消して再読み込み」は、文書や設定などのデータには触れずに復旧を試みます。</p>' +
+          '<button id="webx-boot-reload" style="display:block;width:100%;padding:12px;margin-bottom:10px;border:0;border-radius:10px;background:#2b3750;color:#e8edf5;font-size:15px;cursor:pointer;">再読み込み</button>' +
+          '<button id="webx-boot-recover" style="display:block;width:100%;padding:12px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">キャッシュだけ消して再読み込み（データは消えません）</button>' +
+          '<p id="webx-boot-status" style="font-size:12px;color:#8fa0b8;margin:14px 0 0;min-height:16px;"></p>' +
+          '</div>'
+        document.body.appendChild(box)
+        document.getElementById('webx-boot-reload').addEventListener('click', function () { location.reload() })
+        document.getElementById('webx-boot-recover').addEventListener('click', function () {
+          var status = document.getElementById('webx-boot-status')
+          status.textContent = 'キャッシュを消しています…'
+          var jobs = []
+          if (window.caches) {
+            jobs.push(caches.keys().then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k) })) }).catch(function () {}))
+          }
+          if (navigator.serviceWorker) {
+            jobs.push(navigator.serviceWorker.getRegistrations().then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister() })) }).catch(function () {}))
+          }
+          Promise.all(jobs).then(function () { location.reload() })
+          setTimeout(function () { location.reload() }, 3000)
+        })
+      }, 12000)
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
