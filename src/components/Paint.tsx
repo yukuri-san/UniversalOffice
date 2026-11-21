@@ -76,6 +76,7 @@ export default function Paint() {
   const { t } = useLang()
   const layersRef = useRef<Layer[]>([])
   const undoRef = useRef<Map<number, string[]>>(new Map())
+  const redoRef = useRef<Map<number, string[]>>(new Map())
   const [, setRenderTick] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
@@ -172,6 +173,8 @@ export default function Paint() {
     stack.push(layer.canvas.toDataURL())
     if (stack.length > 25) stack.shift()
     undoRef.current.set(layer.id, stack)
+    // 新しい操作をしたらやり直し履歴は無効になる
+    redoRef.current.set(layer.id, [])
   }
 
   const undo = () => {
@@ -179,6 +182,10 @@ export default function Paint() {
     const stack = undoRef.current.get(active.id) ?? []
     const prev = stack.pop()
     if (!prev) return
+    const redoStack = redoRef.current.get(active.id) ?? []
+    redoStack.push(active.canvas.toDataURL())
+    if (redoStack.length > 25) redoStack.shift()
+    redoRef.current.set(active.id, redoStack)
     const img = new Image()
     img.onload = () => {
       const ctx = active.canvas.getContext('2d')!
@@ -187,6 +194,25 @@ export default function Paint() {
       rerender()
     }
     img.src = prev
+  }
+
+  const redo = () => {
+    if (!active) return
+    const stack = redoRef.current.get(active.id) ?? []
+    const next = stack.pop()
+    if (!next) return
+    const undoStack = undoRef.current.get(active.id) ?? []
+    undoStack.push(active.canvas.toDataURL())
+    if (undoStack.length > 25) undoStack.shift()
+    undoRef.current.set(active.id, undoStack)
+    const img = new Image()
+    img.onload = () => {
+      const ctx = active.canvas.getContext('2d')!
+      ctx.clearRect(0, 0, W, H)
+      ctx.drawImage(img, 0, 0)
+      rerender()
+    }
+    img.src = next
   }
 
   // 選択中のレイヤーをクリア（元に戻すで復旧できる）
@@ -208,19 +234,27 @@ export default function Paint() {
     ctx.fillRect(0, 0, W, H)
     layerSeq = 1
     layersRef.current = [{ id: 0, name: 'レイヤー 1', visible: true, opacity: 1, canvas: base }]
+    undoRef.current.clear()
+    redoRef.current.clear()
     setActiveId(0)
     setSavedAt(null)
     setSaveState('idle')
     setRenderTick((v) => v + 1)
   }
 
-  // Ctrl+Z / Cmd+Z で元に戻す（テキスト入力中は入力欄の操作を優先）
+  // Ctrl+Z / Cmd+Z で元に戻す、Ctrl+Y / Cmd+Y・Ctrl+Shift+Z でやり直す（テキスト入力中は入力欄の操作を優先）
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return
+    if (!(e.ctrlKey || e.metaKey)) return
     const ae = document.activeElement as HTMLElement | null
     if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return
-    e.preventDefault()
-    undo()
+    const key = e.key.toLowerCase()
+    if (key === 'y' || (key === 'z' && e.shiftKey)) {
+      e.preventDefault()
+      redo()
+    } else if (key === 'z') {
+      e.preventDefault()
+      undo()
+    }
   }
 
   const composite = (): HTMLCanvasElement => {
@@ -535,7 +569,8 @@ export default function Paint() {
           <button onClick={() => setZoom((z) => ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, ZOOM_STEPS.indexOf(z) + 1)])} aria-label={t('zoomIn')}>＋</button>
           <button onClick={() => setZoom(1)}>{t('zoomFit')}</button>
         </div>
-        <button onClick={undo}>{t('undo')}</button>
+        <button onClick={undo} disabled={(undoRef.current.get(active?.id ?? -1) ?? []).length === 0}>{t('undo')}</button>
+        <button onClick={redo} disabled={(redoRef.current.get(active?.id ?? -1) ?? []).length === 0}>{t('redo')}</button>
         <button onClick={clearLayer}>{t('clearLayer')}</button>
         <button onClick={() => void newCanvas()}>{t('paintNew')}</button>
         <span className="paint-save-state">{saveState === 'saving' ? t('paintSaving') : saveState === 'saved' && savedAt ? `${t('paintSaved')} ${new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
