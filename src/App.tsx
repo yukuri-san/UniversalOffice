@@ -14,12 +14,14 @@ import Calculator from './components/Calculator'
 import ClockApp from './components/ClockApp'
 import Paint from './components/Paint'
 import Terminal from './components/Terminal'
+import MemoDb from './components/MemoDb'
+import AboutWindow from './components/AboutWindow'
 import { requestPersist } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about'
 
 interface Win {
   id: WindowApp
@@ -47,8 +49,10 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   paint: { icon: '絵', cls: 'paint' },
   terminal: { icon: '＞', cls: 'terminal' },
   docs: { icon: '文', cls: 'docs' },
+  memodb: { icon: 'デ', cls: 'memodb' },
+  about: { icon: 'W', cls: 'about' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>([])
@@ -60,6 +64,7 @@ export default function App() {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
   const [notes, setNotes] = useState<{ id: number; text: string; time: string }[]>([])
   const [notesOpen, setNotesOpen] = useState(false)
+  const [selectedIcon, setSelectedIcon] = useState<WindowApp | null>(null)
   const [booted, setBooted] = useState(false)
 
   useEffect(() => {
@@ -91,6 +96,28 @@ export default function App() {
   }, [theme])
   useEffect(() => {
     void requestPersist()
+  }, [])
+  // ソフトウェアキーボード開閉後にページ領域外が見える問題への対策：
+  // visualViewport の高さにアプリの高さを同期し、閉じたときはスクロール位置を戻す
+  useEffect(() => {
+    const vv = window.visualViewport
+    if (!vv) return
+    let maxH = vv.height
+    const onResize = () => {
+      maxH = Math.max(maxH, vv.height)
+      document.documentElement.style.setProperty('--app-h', `${vv.height}px`)
+      if (vv.height >= maxH - 4) {
+        window.scrollTo(0, 0)
+        document.documentElement.style.setProperty('--app-h', `${vv.height}px`)
+      }
+    }
+    onResize()
+    vv.addEventListener('resize', onResize)
+    vv.addEventListener('scroll', onResize)
+    return () => {
+      vv.removeEventListener('resize', onResize)
+      vv.removeEventListener('scroll', onResize)
+    }
   }, [])
   useEffect(() => {
     const onWallpaper = (e: Event) => {
@@ -291,6 +318,7 @@ export default function App() {
             localStorage.setItem('webx-docs-initial', doc)
             openApp('docs')
           }}
+          openAbout={() => openApp('about')}
         />
       )
       case 'youtube': return <YoutubeApp />
@@ -300,6 +328,8 @@ export default function App() {
       case 'paint': return <Paint />
       case 'terminal': return <Terminal openApp={openApp} />
       case 'docs': return <DocsWindow />
+      case 'memodb': return <MemoDb />
+      case 'about': return <AboutWindow openDocs={(doc) => { localStorage.setItem('webx-docs-initial', doc); openApp('docs') }} />
     }
   }
 
@@ -321,7 +351,12 @@ export default function App() {
       >
         <div className="desktop-icons">
           {APP_ORDER.map((app) => (
-            <button key={app} className="desktop-icon" onClick={(e) => { e.stopPropagation(); openApp(app) }}>
+            <button
+              key={app}
+              className={selectedIcon === app ? 'desktop-icon selected' : 'desktop-icon'}
+              onClick={(e) => { e.stopPropagation(); setSelectedIcon(app) }}
+              onDoubleClick={(e) => { e.stopPropagation(); openApp(app) }}
+            >
               <span className={`app-icon big ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
               <span className="desktop-icon-label">{appName(app)}</span>
             </button>
@@ -388,7 +423,7 @@ export default function App() {
             あなたの環境：{platformLabel(platform)}（{modLabel(platform)} キー対応）<br />
             {t('dataLocal')}
           </p>
-          <p className="start-version">WebX v{APP_VERSION}</p>
+          <button className="start-version" onClick={() => { openApp('about'); setStartOpen(false) }}>WebX v{APP_VERSION} — {t('aboutWebX')}</button>
           <button className="start-shortcuts" onClick={() => { setStartOpen(false); setShortcutsOpen(true) }}>
             {t('shortcuts')}（{modLabel(platform)} + /）
           </button>

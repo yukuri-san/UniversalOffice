@@ -4,7 +4,7 @@ import OpfsWorkerCtor from '../workers/opfs.worker.ts?worker'
 export interface LocalDoc {
   id: string
   name: string
-  kind: 'word' | 'sheet' | 'note'
+  kind: 'word' | 'sheet' | 'note' | 'memo'
   folder: string // '' = ルート
   content: string
   updatedAt: number

@@ -320,6 +320,7 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
             currentName={title}
             getContent={() => editor.getHTML()}
             onOpen={(doc) => {
+              if (doc.kind === 'memo') return
               if (doc.kind !== 'word') {
                 localStorage.setItem('uo-pending-open', doc.id)
                 onSwitch(doc.kind)

@@ -18,10 +18,17 @@ function extractId(input: string): string | null {
   return null
 }
 
+function extractList(input: string): string | null {
+  const m = input.trim().match(/[?&]list=([A-Za-z0-9_-]+)/)
+  return m ? m[1] : null
+}
+
+type PlayTarget = { type: 'video'; id: string; list?: string } | { type: 'playlist'; list: string }
+
 export default function YoutubeApp() {
   const { t } = useLang()
   const [input, setInput] = useState('')
-  const [videoId, setVideoId] = useState<string | null>(null)
+  const [target, setTarget] = useState<PlayTarget | null>(null)
   const [error, setError] = useState('')
   const [history, setHistory] = useState<string[]>(() => {
     try {
@@ -33,18 +40,30 @@ export default function YoutubeApp() {
 
   const play = (raw: string) => {
     const id = extractId(raw)
-    if (!id) {
+    const list = extractList(raw)
+    if (!id && !list) {
       setError(t('ytInvalid'))
       return
     }
     setError('')
-    setVideoId(id)
-    setHistory((prev) => {
-      const next = [id, ...prev.filter((x) => x !== id)].slice(0, 10)
-      localStorage.setItem('webx-youtube-history', JSON.stringify(next))
-      return next
-    })
+    if (id) {
+      setTarget({ type: 'video', id, list: list ?? undefined })
+      setHistory((prev) => {
+        const next = [id, ...prev.filter((x) => x !== id)].slice(0, 10)
+        localStorage.setItem('webx-youtube-history', JSON.stringify(next))
+        return next
+      })
+    } else if (list) {
+      setTarget({ type: 'playlist', list })
+      setError(t('ytPlaylistOk'))
+    }
   }
+
+  const embedSrc = target
+    ? target.type === 'video'
+      ? `https://www.youtube-nocookie.com/embed/${target.id}?rel=0${target.list ? `&list=${target.list}` : ''}`
+      : `https://www.youtube-nocookie.com/embed/videoseries?list=${target.list}&rel=0`
+    : ''
 
   return (
     <div className="youtube-app">
@@ -60,12 +79,13 @@ export default function YoutubeApp() {
       </form>
       <p className="browser-note">{t('ytNote')}</p>
       {error && <p className="yt-error">{error}</p>}
-      {videoId ? (
+      {target ? (
         <div className="yt-player">
           <iframe
-            key={videoId}
-            src={`https://www.youtube-nocookie.com/embed/${videoId}?rel=0`}
+            key={embedSrc}
+            src={embedSrc}
             title="YouTube"
+            sandbox="allow-scripts allow-same-origin allow-presentation"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
           />
@@ -76,7 +96,7 @@ export default function YoutubeApp() {
             <h4>{t('ytHistory')}</h4>
             <div className="yt-grid">
               {history.map((id) => (
-                <button key={id} onClick={() => setVideoId(id)}>
+                <button key={id} onClick={() => setTarget({ type: 'video', id })}>
                   <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt={id} loading="lazy" />
                   <span>{id}</span>
                 </button>
@@ -85,12 +105,12 @@ export default function YoutubeApp() {
           </div>
         )
       )}
-      {videoId && history.length > 1 && (
+      {target && history.length > 1 && (
         <div className="yt-history">
           <h4>{t('ytHistory')}</h4>
           <div className="yt-grid">
-            {history.filter((id) => id !== videoId).map((id) => (
-              <button key={id} onClick={() => setVideoId(id)}>
+            {history.filter((id) => !(target?.type === 'video' && id === target.id)).map((id) => (
+              <button key={id} onClick={() => setTarget({ type: 'video', id })}>
                 <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt={id} loading="lazy" />
                 <span>{id}</span>
               </button>

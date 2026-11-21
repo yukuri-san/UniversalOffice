@@ -8,12 +8,12 @@ export type ThemeId = 'light' | 'dark' | 'ipados' | 'macos' | 'win11' | 'win7' |
 export const THEMES: { id: ThemeId; label: string; desc: string }[] = [
   { id: 'light', label: 'ライト', desc: '標準のガラス風テーマ' },
   { id: 'dark', label: 'ダーク', desc: '暗いガラス風テーマ' },
-  { id: 'ipados', label: 'iPadOS 27', desc: '明るく透明感のある Liquid Glass' },
-  { id: 'macos', label: 'macOS 27', desc: '信号機ボタンと半透明メニュー' },
-  { id: 'win11', label: 'Windows 11', desc: 'Fluent 風の淡いグレーと青' },
-  { id: 'win7', label: 'Windows 7', desc: 'Aero グラスの青い光沢' },
-  { id: 'winxp', label: 'Windows XP', desc: 'Luna の青と緑のスタート' },
-  { id: 'win95', label: 'Windows 95', desc: 'クラシックグレーと立体ボタン' },
+  { id: 'ipados', label: 'パッド 27', desc: '明るく透明感のあるグラス風デザイン' },
+  { id: 'macos', label: 'デスクトップ 27', desc: '丸いウィンドウボタンと半透明メニュー' },
+  { id: 'win11', label: 'フラット 11', desc: '淡いグレーと青のフラットデザイン' },
+  { id: 'win7', label: 'グラス 7', desc: 'ガラス質感の青い光沢' },
+  { id: 'winxp', label: 'グリーンヒル', desc: '青空と緑の丘のなつかしい配色' },
+  { id: 'win95', label: 'クラシック 95', desc: 'クラシックグレーと立体ボタン' },
 ]
 
 interface Props {
@@ -29,6 +29,7 @@ interface Props {
   onUseCustom: () => void
   onRemoveCustom: () => void
   openDocs: (doc: 'license' | 'readme' | 'changelog') => void
+  openAbout: () => void
 }
 
 export const WALLPAPERS: { id: string; key: string }[] = [
@@ -63,7 +64,7 @@ async function fileToWallpaper(file: File): Promise<string> {
   }
 }
 
-export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs }: Props) {
+export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout }: Props) {
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
   const [ownBytes, setOwnBytes] = useState(0)
   const wpFileRef = useRef<HTMLInputElement>(null)
@@ -166,6 +167,7 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
         <h3>{translate(lang, 'about')}</h3>
         <p className="settings-note">WebX / {translate(lang, 'versionLabel')} {APP_VERSION}</p>
         <div className="settings-options" style={{ marginTop: 10 }}>
+          <button className="opt" onClick={() => openAbout()}>{translate(lang, 'aboutWebX')}</button>
           <button className="opt" onClick={() => openDocs('license')}>{translate(lang, 'viewLicense')}</button>
           <button className="opt" onClick={() => openDocs('readme')}>{translate(lang, 'viewReadme')}</button>
           <button className="opt" onClick={() => openDocs('changelog')}>{translate(lang, 'viewChangelog')}</button>

@@ -5,7 +5,7 @@ import {
 import { notifyOs } from '../lib/notify'
 import { LOCALES, useLang } from '../lib/i18n'
 
-const KIND_ICON: Record<LocalDoc['kind'], string> = { word: 'W', sheet: 'S', note: 'メ' }
+const KIND_ICON: Record<LocalDoc['kind'], string> = { word: 'W', sheet: 'S', note: 'メ', memo: 'デ' }
 
 export default function TrashWindow() {
   const { lang, t } = useLang()

@@ -293,6 +293,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
             currentName={filename.replace(/\.csv$/i, '')}
             getContent={() => JSON.stringify(grid)}
             onOpen={(doc) => {
+              if (doc.kind === 'memo') return
               if (doc.kind !== 'sheet') {
                 localStorage.setItem('uo-pending-open', doc.id)
                 onSwitch(doc.kind)

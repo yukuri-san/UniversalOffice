@@ -23,7 +23,7 @@ export default function FileManager({ kind, currentName, getContent, onOpen }: P
   const [message, setMessage] = useState('')
 
   const refresh = useCallback(async () => {
-    setDocs(await listDocs())
+    setDocs((await listDocs()).filter((d) => d.kind !== 'memo'))
     setFolders(await listFolders())
   }, [])
 

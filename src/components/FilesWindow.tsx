@@ -12,8 +12,17 @@ const KIND_LABEL: Record<LocalDoc['kind'], string> = {
   word: 'ワードプロセッサ',
   sheet: 'スプレッドシート',
   note: 'メモ帳',
+  memo: 'メモDB',
 }
-const KIND_ICON: Record<LocalDoc['kind'], string> = { word: 'W', sheet: 'S', note: 'メ' }
+const KIND_ICON: Record<LocalDoc['kind'], string> = { word: 'W', sheet: 'S', note: 'メ', memo: 'デ' }
+
+function stripText(content: string): string {
+  try {
+    const parsed = JSON.parse(content) as { body?: string }
+    if (typeof parsed.body === 'string') return parsed.body
+  } catch { /* not JSON */ }
+  return content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
+}
 
 function formatBytes(n: number): string {
   if (n >= 1024 * 1024 * 1024) return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`
@@ -22,12 +31,13 @@ function formatBytes(n: number): string {
   return `${n} B`
 }
 
-export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void }) {
+export default function FilesWindow({ openApp }: { openApp: (app: AppId | 'memodb') => void }) {
   const { t } = useLang()
   const [docs, setDocs] = useState<LocalDoc[]>([])
   const [folders, setFolders] = useState<string[]>([])
   const [eventCount, setEventCount] = useState(0)
   const [filter, setFilter] = useState('__all__')
+  const [query, setQuery] = useState('')
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
   const [ownBytes, setOwnBytes] = useState(0)
   const [msg, setMsg] = useState('')
@@ -49,13 +59,16 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
     return () => window.clearInterval(t)
   }, [refresh])
 
-  const visible = docs.filter((d) => filter === '__all__' || d.folder === filter)
+  const q = query.trim().toLowerCase()
+  const visible = q
+    ? docs.filter((d) => d.name.toLowerCase().includes(q) || stripText(d.content).toLowerCase().includes(q))
+    : docs.filter((d) => filter === '__all__' || d.folder === filter)
   const docsSize = docs.reduce((sum, d) => sum + new Blob([d.content]).size, 0)
   const usagePct = info && info.quota > 0 ? Math.min(100, (ownBytes / info.quota) * 100) : 0
 
   const open = (doc: LocalDoc) => {
     localStorage.setItem('uo-pending-open', doc.id)
-    openApp(doc.kind)
+    openApp(doc.kind === 'memo' ? 'memodb' : doc.kind)
   }
 
   const remove = async (doc: LocalDoc) => {
@@ -125,6 +138,10 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId) => void
         )}
       </section>
 
+      <div className="explorer-search">
+        <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('fileSearch')} />
+        {q && <span>{visible.length} 件</span>}
+      </div>
       <div className="fm-folders">
         <button className={filter === '__all__' ? 'chip on' : 'chip'} onClick={() => setFilter('__all__')}>{t('all')}</button>
         <button className={filter === '' ? 'chip on' : 'chip'} onClick={() => setFilter('')}>{t('root')}</button>
