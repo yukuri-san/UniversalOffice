@@ -30,6 +30,7 @@ import { TodoList } from './components/store/TodoList'
 import { Diary } from './components/store/Diary'
 import { CompassApp, LevelApp, NoiseApp, SpeedTestApp } from './components/store/Sensors'
 import YmmDic from './components/store/YmmDic'
+import Feedback from './components/Feedback'
 import DeveloperApp from './components/DeveloperApp'
 import CustomAppView from './components/CustomAppView'
 import { CUSTOM_APPS_EVENT, isCustomId, loadCustomApps, type CustomApp } from './lib/customApps'
@@ -63,7 +64,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback'
 
 interface Win {
   id: WindowApp
@@ -161,8 +162,9 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   clipboard: { icon: '📋', cls: 'clipboard' },
   widgets: { icon: '🧩', cls: 'widgets' },
   developer: { icon: '🛠', cls: 'developer' },
+  feedback: { icon: '📮', cls: 'feedback' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'clipboard', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'sysinfo', 'taskman', 'widgets', 'developer', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'clipboard', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'sysinfo', 'taskman', 'widgets', 'developer', 'feedback', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>(() => {
@@ -549,6 +551,22 @@ export default function App() {
         notifyOs(`ストアに新しいアプリが ${newAppCount} 本あります（ストアでキャッシュを更新すると表示されます）`, 'store')
       }
     }
+    // アップデート後の初回起動：前回とバージョンが違い、更新メッセージがあれば通知する
+    void (async () => {
+      try {
+        const seen = localStorage.getItem('webx-last-seen-version')
+        if (seen && seen !== APP_VERSION) {
+          const res = await fetch(`release-notes.json?ts=${Date.now()}`, { cache: 'no-store' })
+          if (res.ok) {
+            const data = (await res.json()) as { version?: string; notes?: string }
+            if (data.version === APP_VERSION && data.notes) {
+              notifyOs(`WebX v${APP_VERSION} にアップデートしました：${data.notes}`, 'store')
+            }
+          }
+        }
+        if (seen !== APP_VERSION) localStorage.setItem('webx-last-seen-version', APP_VERSION)
+      } catch { /* ignore */ }
+    })()
     const first = window.setTimeout(() => { void checkUpdates() }, 2500)
     let timer = 0
     const arm = () => {
@@ -886,6 +904,7 @@ export default function App() {
       case 'clipboard': return <ClipboardApp />
       case 'widgets': return <WidgetsApp config={widgetConfig} onChange={setWidgetConfig} appsInfo={allAppsInfo} />
       case 'developer': return <DeveloperApp openApp={(id) => openApp(id as WindowApp)} />
+      case 'feedback': return <Feedback />
       case 'calculator': return <Calculator />
       case 'clock': return <ClockApp />
       case 'paint': return <Paint />
