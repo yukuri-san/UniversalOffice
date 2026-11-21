@@ -30,6 +30,8 @@ interface Props {
   onRemoveCustom: () => void
   openDocs: (doc: 'license' | 'readme' | 'changelog') => void
   openAbout: () => void
+  uiScale: string
+  onUiScale: (value: string) => void
 }
 
 export const WALLPAPERS: { id: string; key: string }[] = [
@@ -64,7 +66,7 @@ async function fileToWallpaper(file: File): Promise<string> {
   }
 }
 
-export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout }: Props) {
+export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, uiScale, onUiScale }: Props) {
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
   const [ownBytes, setOwnBytes] = useState(0)
   const wpFileRef = useRef<HTMLInputElement>(null)
@@ -103,6 +105,18 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
             </button>
           ))}
         </div>
+      </section>
+
+      <section className="settings-section">
+        <h3>{translate(lang, 'uiScale')}</h3>
+        <div className="settings-options">
+          {['auto', '70', '80', '90', '100', '110', '125'].map((v) => (
+            <button key={v} className={uiScale === v ? 'opt on' : 'opt'} onClick={() => onUiScale(v)}>
+              {v === 'auto' ? translate(lang, 'uiAuto') : `${v}%`}
+            </button>
+          ))}
+        </div>
+        <p className="settings-note">{translate(lang, 'uiScaleNote')}</p>
       </section>
 
       <section className="settings-section">

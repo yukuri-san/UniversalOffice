@@ -65,6 +65,19 @@ export default function App() {
   const [notes, setNotes] = useState<{ id: number; text: string; time: string }[]>([])
   const [notesOpen, setNotesOpen] = useState(false)
   const [selectedIcon, setSelectedIcon] = useState<WindowApp | null>(null)
+  const [uiScaleSetting, setUiScaleSetting] = useState<string>(() => localStorage.getItem('webx-ui-scale') ?? 'auto')
+  const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight })
+  useEffect(() => {
+    const onWinResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight })
+    window.addEventListener('resize', onWinResize)
+    return () => window.removeEventListener('resize', onWinResize)
+  }, [])
+  const uiScale = uiScaleSetting === 'auto'
+    ? viewport.h <= 470 || viewport.w <= 560 ? 0.7
+      : viewport.h <= 580 ? 0.8
+      : viewport.h <= 700 ? 0.9
+      : 1
+    : Number(uiScaleSetting) / 100
   const [booted, setBooted] = useState(false)
 
   useEffect(() => {
@@ -319,6 +332,11 @@ export default function App() {
             openApp('docs')
           }}
           openAbout={() => openApp('about')}
+          uiScale={uiScaleSetting}
+          onUiScale={(value: string) => {
+            setUiScaleSetting(value)
+            localStorage.setItem('webx-ui-scale', value)
+          }}
         />
       )
       case 'youtube': return <YoutubeApp />
@@ -338,7 +356,7 @@ export default function App() {
 
   return (
     <LangContext.Provider value={lang}>
-    <div className="os-root" data-theme={theme} data-wallpaper={wpUseCustom ? 'custom' : wpPreset}>
+    <div className="os-root" data-theme={theme} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ zoom: uiScale } as React.CSSProperties}>
       <div
         className="os-desktop"
         ref={desktopRef}
