@@ -3,7 +3,7 @@ import { ownUsageBytes, requestPersist, storageInfo } from '../lib/store'
 import { useEffect, useRef, useState } from 'react'
 import { APP_VERSION } from '../lib/version'
 
-export type ThemeId = 'light' | 'dark' | 'ipados' | 'macos' | 'win11' | 'win7' | 'winxp' | 'win95'
+export type ThemeId = 'light' | 'dark' | 'ipados' | 'macos' | 'win11' | 'win7' | 'winxp' | 'win95' | 'cyber' | 'sakura' | 'ocean' | 'sunset'
 
 export const THEMES: { id: ThemeId; label: string; desc: string }[] = [
   { id: 'light', label: 'ライト', desc: '標準のガラス風テーマ' },
@@ -14,6 +14,10 @@ export const THEMES: { id: ThemeId; label: string; desc: string }[] = [
   { id: 'win7', label: 'グラス 7', desc: 'ガラス質感の青い光沢' },
   { id: 'winxp', label: 'グリーンヒル', desc: '青空と緑の丘のなつかしい配色' },
   { id: 'win95', label: 'クラシック 95', desc: 'クラシックグレーと立体ボタン' },
+  { id: 'cyber', label: 'サイバーパンク', desc: 'ネオンが光る近未来ダーク' },
+  { id: 'sakura', label: '桜', desc: '淡いピンクのやさしい配色' },
+  { id: 'ocean', label: '深海', desc: '深い青とティールのダーク' },
+  { id: 'sunset', label: '夕焼け', desc: 'オレンジと紫の温かい配色' },
 ]
 
 interface Props {

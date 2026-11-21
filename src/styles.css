@@ -773,3 +773,164 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .app-icon.splitbill { background: linear-gradient(135deg, #f97316, #facc15); }
 .app-icon.currency { background: linear-gradient(135deg, #16a34a, #065f46); }
 .app-icon.wareki { background: linear-gradient(135deg, #be185d, #7c2d12); }
+
+/* ===== v1.14.0: animations ===== */
+@keyframes win-in { from { opacity: 0; transform: scale(.96) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+.os-window { animation: win-in .16s ease; }
+@keyframes menu-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.start-menu, .ctx-menu, .notes-panel { animation: menu-in .15s ease; }
+.start-search { width: 100%; padding: 8px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.14); color: inherit; margin-bottom: 10px; }
+.start-search::placeholder { color: rgba(127,139,155,.9); }
+
+/* ===== v1.14.0: new themes ===== */
+.os-root[data-theme='cyber'] .os-desktop { background: radial-gradient(55% 45% at 12% 8%, rgba(236,72,153,.4), transparent 60%), radial-gradient(50% 45% at 88% 12%, rgba(34,211,238,.38), transparent 60%), linear-gradient(160deg, #0d0217, #160a2e 60%, #05010d); }
+.os-root[data-theme='cyber'] .os-taskbar, .os-root[data-theme='cyber'] .start-menu, .os-root[data-theme='cyber'] .shortcuts-modal { background: rgba(24,6,44,.72); color: #f5e9ff; border-color: rgba(236,72,153,.45); box-shadow: 0 0 24px rgba(236,72,153,.25); }
+.os-root[data-theme='cyber'] .start-app { background: rgba(236,72,153,.12); border-color: rgba(34,211,238,.3); color: #f5e9ff; }
+.os-root[data-theme='cyber'] .start-note, .os-root[data-theme='cyber'] .shortcuts-platform, .os-root[data-theme='cyber'] .shortcuts-note { color: #c4b0e0; }
+.os-root[data-theme='cyber'] .task-btn { color: #f5e9ff; background: rgba(255,255,255,.08); }
+.os-root[data-theme='cyber'] .task-btn.active { background: rgba(34,211,238,.3); }
+.os-root[data-theme='cyber'] .task-clock { color: #f5e9ff; }
+.os-root[data-theme='cyber'] .task-clock small { color: #c4b0e0; }
+.os-root[data-theme='cyber'] .os-window { background: #1b0f30; border-color: rgba(236,72,153,.4); }
+.os-root[data-theme='cyber'] .os-titlebar { background: rgba(30,10,55,.9); border-bottom-color: rgba(34,211,238,.25); }
+.os-root[data-theme='cyber'] .os-title { color: #f5e9ff; }
+.os-root[data-theme='cyber'] .os-win-buttons button { background: rgba(255,255,255,.1); color: #f5e9ff; border-color: rgba(255,255,255,.15); }
+.os-root[data-theme='cyber'] .ribbon, .os-root[data-theme='cyber'] .toolbar, .os-root[data-theme='cyber'] .formula-bar, .os-root[data-theme='cyber'] .note-list, .os-root[data-theme='cyber'] .note-editor, .os-root[data-theme='cyber'] .cal-grid-wrap, .os-root[data-theme='cyber'] .cal-side, .os-root[data-theme='cyber'] .cal-toolbar, .os-root[data-theme='cyber'] .settings-section, .os-root[data-theme='cyber'] .explorer-storage, .os-root[data-theme='cyber'] .files-window, .os-root[data-theme='cyber'] .settings-app, .os-root[data-theme='cyber'] .fm-list li, .os-root[data-theme='cyber'] .file-action, .os-root[data-theme='cyber'] .theme-card, .os-root[data-theme='cyber'] .statusbar { background: #241344; color: #f5e9ff; border-color: rgba(236,72,153,.25); }
+.os-root[data-theme='cyber'] .page-scroll { background: #12081f; }
+
+.os-root[data-theme='ocean'] .os-desktop { background: radial-gradient(55% 45% at 15% 10%, rgba(8,145,178,.45), transparent 60%), radial-gradient(50% 45% at 85% 15%, rgba(13,84,104,.55), transparent 60%), linear-gradient(165deg, #02141f, #04263b 60%, #01101c); }
+.os-root[data-theme='ocean'] .os-taskbar, .os-root[data-theme='ocean'] .start-menu, .os-root[data-theme='ocean'] .shortcuts-modal { background: rgba(3,32,48,.7); color: #e0f4fb; border-color: rgba(103,232,249,.3); }
+.os-root[data-theme='ocean'] .start-app { background: rgba(103,232,249,.1); border-color: rgba(103,232,249,.22); color: #e0f4fb; }
+.os-root[data-theme='ocean'] .start-note, .os-root[data-theme='ocean'] .shortcuts-platform, .os-root[data-theme='ocean'] .shortcuts-note { color: #93b8c7; }
+.os-root[data-theme='ocean'] .task-btn { color: #e0f4fb; background: rgba(255,255,255,.07); }
+.os-root[data-theme='ocean'] .task-btn.active { background: rgba(103,232,249,.28); }
+.os-root[data-theme='ocean'] .task-clock { color: #e0f4fb; }
+.os-root[data-theme='ocean'] .task-clock small { color: #93b8c7; }
+.os-root[data-theme='ocean'] .os-window { background: #07293d; border-color: rgba(103,232,249,.25); }
+.os-root[data-theme='ocean'] .os-titlebar { background: rgba(4,38,56,.9); border-bottom-color: rgba(103,232,249,.18); }
+.os-root[data-theme='ocean'] .os-title { color: #e0f4fb; }
+.os-root[data-theme='ocean'] .os-win-buttons button { background: rgba(255,255,255,.09); color: #e0f4fb; border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='ocean'] .ribbon, .os-root[data-theme='ocean'] .toolbar, .os-root[data-theme='ocean'] .formula-bar, .os-root[data-theme='ocean'] .note-list, .os-root[data-theme='ocean'] .note-editor, .os-root[data-theme='ocean'] .cal-grid-wrap, .os-root[data-theme='ocean'] .cal-side, .os-root[data-theme='ocean'] .cal-toolbar, .os-root[data-theme='ocean'] .settings-section, .os-root[data-theme='ocean'] .explorer-storage, .os-root[data-theme='ocean'] .files-window, .os-root[data-theme='ocean'] .settings-app, .os-root[data-theme='ocean'] .fm-list li, .os-root[data-theme='ocean'] .file-action, .os-root[data-theme='ocean'] .theme-card, .os-root[data-theme='ocean'] .statusbar { background: #0a3549; color: #e0f4fb; border-color: rgba(103,232,249,.18); }
+.os-root[data-theme='ocean'] .page-scroll { background: #03141f; }
+
+.os-root[data-theme='sakura'] .os-desktop { background: radial-gradient(55% 45% at 15% 10%, rgba(249,168,212,.55), transparent 60%), radial-gradient(50% 45% at 85% 15%, rgba(253,224,235,.8), transparent 60%), linear-gradient(160deg, #fff1f5, #ffe4ee 60%, #ffd6e7); }
+.os-root[data-theme='sakura'] .os-taskbar, .os-root[data-theme='sakura'] .start-menu, .os-root[data-theme='sakura'] .shortcuts-modal { background: rgba(255,240,246,.78); color: #6d214f; border-color: rgba(219,112,147,.35); }
+.os-root[data-theme='sakura'] .start-app { background: rgba(255,255,255,.65); border-color: rgba(219,112,147,.25); color: #6d214f; }
+.os-root[data-theme='sakura'] .start-note, .os-root[data-theme='sakura'] .shortcuts-platform, .os-root[data-theme='sakura'] .shortcuts-note { color: #a05a7d; }
+.os-root[data-theme='sakura'] .task-btn { color: #6d214f; background: rgba(255,255,255,.55); }
+.os-root[data-theme='sakura'] .task-btn.active { background: rgba(244,114,182,.3); }
+.os-root[data-theme='sakura'] .task-clock { color: #6d214f; }
+.os-root[data-theme='sakura'] .task-clock small { color: #a05a7d; }
+.os-root[data-theme='sakura'] .os-window { background: #fff7fa; border-color: rgba(219,112,147,.3); }
+.os-root[data-theme='sakura'] .os-titlebar { background: rgba(255,228,238,.9); border-bottom-color: rgba(219,112,147,.2); }
+.os-root[data-theme='sakura'] .os-title { color: #6d214f; }
+.os-root[data-theme='sakura'] .os-win-buttons button { background: rgba(255,255,255,.7); color: #6d214f; border-color: rgba(219,112,147,.25); }
+.os-root[data-theme='sakura'] .ribbon, .os-root[data-theme='sakura'] .toolbar, .os-root[data-theme='sakura'] .formula-bar, .os-root[data-theme='sakura'] .note-list, .os-root[data-theme='sakura'] .note-editor, .os-root[data-theme='sakura'] .cal-grid-wrap, .os-root[data-theme='sakura'] .cal-side, .os-root[data-theme='sakura'] .cal-toolbar, .os-root[data-theme='sakura'] .settings-section, .os-root[data-theme='sakura'] .explorer-storage, .os-root[data-theme='sakura'] .files-window, .os-root[data-theme='sakura'] .settings-app, .os-root[data-theme='sakura'] .fm-list li, .os-root[data-theme='sakura'] .file-action, .os-root[data-theme='sakura'] .theme-card, .os-root[data-theme='sakura'] .statusbar { background: #fff0f5; color: #6d214f; border-color: rgba(219,112,147,.2); }
+.os-root[data-theme='sakura'] .page-scroll { background: #ffe9f1; }
+
+.os-root[data-theme='sunset'] .os-desktop { background: radial-gradient(55% 45% at 15% 10%, rgba(251,146,60,.55), transparent 60%), radial-gradient(55% 50% at 85% 15%, rgba(168,85,247,.5), transparent 60%), linear-gradient(165deg, #2b0f2e, #571d3d 55%, #8a2b3d); }
+.os-root[data-theme='sunset'] .os-taskbar, .os-root[data-theme='sunset'] .start-menu, .os-root[data-theme='sunset'] .shortcuts-modal { background: rgba(51,18,40,.72); color: #ffedd5; border-color: rgba(251,146,60,.4); }
+.os-root[data-theme='sunset'] .start-app { background: rgba(251,146,60,.14); border-color: rgba(251,146,60,.28); color: #ffedd5; }
+.os-root[data-theme='sunset'] .start-note, .os-root[data-theme='sunset'] .shortcuts-platform, .os-root[data-theme='sunset'] .shortcuts-note { color: #e0a58f; }
+.os-root[data-theme='sunset'] .task-btn { color: #ffedd5; background: rgba(255,255,255,.08); }
+.os-root[data-theme='sunset'] .task-btn.active { background: rgba(251,146,60,.32); }
+.os-root[data-theme='sunset'] .task-clock { color: #ffedd5; }
+.os-root[data-theme='sunset'] .task-clock small { color: #e0a58f; }
+.os-root[data-theme='sunset'] .os-window { background: #33182a; border-color: rgba(251,146,60,.32); }
+.os-root[data-theme='sunset'] .os-titlebar { background: rgba(64,22,44,.9); border-bottom-color: rgba(251,146,60,.2); }
+.os-root[data-theme='sunset'] .os-title { color: #ffedd5; }
+.os-root[data-theme='sunset'] .os-win-buttons button { background: rgba(255,255,255,.09); color: #ffedd5; border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='sunset'] .ribbon, .os-root[data-theme='sunset'] .toolbar, .os-root[data-theme='sunset'] .formula-bar, .os-root[data-theme='sunset'] .note-list, .os-root[data-theme='sunset'] .note-editor, .os-root[data-theme='sunset'] .cal-grid-wrap, .os-root[data-theme='sunset'] .cal-side, .os-root[data-theme='sunset'] .cal-toolbar, .os-root[data-theme='sunset'] .settings-section, .os-root[data-theme='sunset'] .explorer-storage, .os-root[data-theme='sunset'] .files-window, .os-root[data-theme='sunset'] .settings-app, .os-root[data-theme='sunset'] .fm-list li, .os-root[data-theme='sunset'] .file-action, .os-root[data-theme='sunset'] .theme-card, .os-root[data-theme='sunset'] .statusbar { background: #47203a; color: #ffedd5; border-color: rgba(251,146,60,.2); }
+.os-root[data-theme='sunset'] .page-scroll { background: #241021; }
+
+/* ===== v1.14.0: store categories ===== */
+.store-cats { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.chip { border: 1px solid #d1d5db; background: #fff; color: #374151; border-radius: 999px; padding: 5px 12px; font-size: 12.5px; cursor: pointer; }
+.chip.on { background: #2563eb; border-color: #2563eb; color: #fff; font-weight: 600; }
+
+/* ===== v1.14.0: games ===== */
+.game-app { height: 100%; display: flex; gap: 14px; padding: 14px; overflow: auto; background: #f8fafc; color: #1f2937; }
+.game-app.col { flex-direction: column; align-items: center; }
+.game-app.center { align-items: center; }
+.game-side { display: flex; flex-direction: column; gap: 10px; min-width: 130px; }
+.game-main { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.game-bar { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; justify-content: center; }
+.game-bar.center { justify-content: center; }
+.game-stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 6px 12px; font-size: 12px; color: #6b7280; display: flex; flex-direction: column; }
+.game-stat.inline { flex-direction: row; gap: 6px; align-items: baseline; }
+.game-stat b { font-size: 16px; color: #111827; }
+.game-over { color: #dc2626; font-weight: 700; }
+.game-win { color: #16a34a; font-weight: 700; }
+.game-msg { font-size: 13.5px; color: #374151; margin: 0; text-align: center; }
+.game-help { font-size: 12px; color: #6b7280; max-width: 340px; text-align: center; margin: 0; }
+.game-canvas { background: #0f172a; border-radius: 10px; max-width: 100%; height: auto; touch-action: none; }
+.game-canvas.suika { background: #fef9ec; }
+.game-pad { display: flex; gap: 8px; }
+.game-pad .btn { min-width: 46px; font-size: 16px; }
+.game-pad.wide { flex-wrap: wrap; justify-content: center; }
+.g2048 { display: grid; grid-template-columns: repeat(4, 64px); gap: 8px; background: #bbada0; padding: 8px; border-radius: 10px; }
+.g2048-cell { height: 64px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; }
+.mine-grid { display: grid; grid-template-columns: repeat(10, 30px); gap: 2px; }
+.mine-cell { width: 30px; height: 30px; border: 1px solid #d1d5db; background: #e5e7eb; font-size: 14px; font-weight: 700; cursor: pointer; border-radius: 4px; padding: 0; }
+.mine-cell.open { background: #fff; cursor: default; }
+.sudoku { display: grid; grid-template-columns: repeat(9, 32px); border: 2px solid #374151; }
+.sudoku-cell { width: 32px; height: 32px; border: 0.5px solid #d1d5db; background: #fff; font-size: 16px; cursor: pointer; padding: 0; }
+.sudoku-cell.sel { background: #dbeafe; }
+.sudoku-cell.br { border-right: 2px solid #374151; }
+.sudoku-cell.bb { border-bottom: 2px solid #374151; }
+.memory-grid { display: grid; grid-template-columns: repeat(4, 64px); gap: 8px; }
+.memory-card { height: 64px; font-size: 30px; border-radius: 10px; border: 1px solid #c7d2fe; background: linear-gradient(135deg, #6366f1, #8b5cf6); cursor: pointer; }
+.memory-card.open { background: #fff; }
+.reversi { display: grid; grid-template-columns: repeat(8, 34px); gap: 2px; background: #166534; padding: 6px; border-radius: 8px; }
+.reversi-cell { width: 34px; height: 34px; background: #15803d; border: 1px solid #14532d; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.stone { width: 26px; height: 26px; border-radius: 50%; display: block; }
+.stone.black { background: radial-gradient(circle at 35% 30%, #4b5563, #030712); }
+.stone.white { background: radial-gradient(circle at 35% 30%, #ffffff, #d1d5db); }
+.stone.hint { width: 10px; height: 10px; background: rgba(255,255,255,.45); }
+.gomoku { display: grid; grid-template-columns: repeat(12, 24px); gap: 1px; background: #d6a756; padding: 6px; border-radius: 8px; }
+.gomoku-cell { width: 24px; height: 24px; background: #e9c883; border: 1px solid #b98d3e; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.gomoku-cell .stone { width: 19px; height: 19px; }
+.match3 { display: grid; grid-template-columns: repeat(8, 36px); gap: 3px; }
+.match3-cell { width: 36px; height: 36px; font-size: 21px; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; cursor: pointer; padding: 0; }
+.match3-cell.sel { border-color: #2563eb; box-shadow: 0 0 0 2px #93c5fd; }
+.mole-grid { display: grid; grid-template-columns: repeat(3, 84px); gap: 10px; }
+.mole-hole { height: 84px; font-size: 40px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 50%; cursor: pointer; }
+.typing-word { font-size: 34px; font-weight: 700; letter-spacing: 3px; font-family: ui-monospace, monospace; }
+.typing-input { width: min(320px, 90%); padding: 10px 14px; font-size: 17px; border: 1px solid #d1d5db; border-radius: 10px; text-align: center; }
+.puzzle15 { display: grid; grid-template-columns: repeat(4, 62px); gap: 5px; }
+.p15 { height: 62px; font-size: 20px; font-weight: 700; background: linear-gradient(135deg, #38bdf8, #2563eb); color: #fff; border: none; border-radius: 10px; cursor: pointer; }
+.p15.blank { background: #e5e7eb; cursor: default; }
+.hanoi { display: flex; gap: 12px; }
+.hanoi-peg { width: 130px; height: 190px; background: #fff; border: 2px solid #e5e7eb; border-radius: 10px; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; cursor: pointer; padding: 8px; }
+.hanoi-peg.sel { border-color: #2563eb; box-shadow: 0 0 0 2px #93c5fd; }
+.hanoi-disks { display: flex; flex-direction: column; align-items: center; gap: 4px; width: 100%; }
+.hanoi-disk { height: 24px; border-radius: 6px; color: #111827; font-weight: 700; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+.hanoi-base { width: 100%; height: 8px; background: #92400e; border-radius: 4px; margin-top: 6px; }
+.bj-row { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.bj-label { font-size: 12.5px; color: #6b7280; font-weight: 600; }
+.bj-card { display: inline-block; background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 10px 8px; margin: 0 3px; font-size: 18px; font-weight: 700; min-width: 44px; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+.slot-reels { display: flex; gap: 10px; }
+.slot-reel { font-size: 52px; background: #fff; border: 2px solid #f59e0b; border-radius: 14px; width: 86px; height: 86px; display: flex; align-items: center; justify-content: center; }
+
+/* ===== v1.14.0: elaborate app icons ===== */
+.app-icon { box-shadow: inset 0 1px 0 rgba(255,255,255,.45), inset 0 -6px 12px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.18); border: 1px solid rgba(255,255,255,.35); }
+.app-icon.tetris { background: linear-gradient(135deg, #06b6d4, #3b82f6 55%, #8b5cf6); }
+.app-icon.suika { background: linear-gradient(135deg, #4ade80, #16a34a 60%, #15803d); }
+.app-icon.g2048 { background: linear-gradient(135deg, #f59e0b, #edc22e 60%, #d97706); }
+.app-icon.snake { background: linear-gradient(135deg, #22c55e, #059669); }
+.app-icon.breakout { background: linear-gradient(135deg, #f97316, #dc2626); }
+.app-icon.minesweeper { background: linear-gradient(135deg, #6b7280, #111827); }
+.app-icon.sudoku { background: linear-gradient(135deg, #f8fafc, #cbd5e1); color: #1e3a8a; }
+.app-icon.memory { background: linear-gradient(135deg, #6366f1, #a855f7); }
+.app-icon.reversi { background: linear-gradient(135deg, #16a34a, #14532d); }
+.app-icon.gomoku { background: linear-gradient(135deg, #e9c883, #b45309); color: #451a03; }
+.app-icon.match3 { background: linear-gradient(135deg, #ec4899, #8b5cf6); }
+.app-icon.pong { background: linear-gradient(135deg, #0f766e, #052e16); }
+.app-icon.flappy { background: linear-gradient(135deg, #7dd3fc, #0284c7); }
+.app-icon.mole { background: linear-gradient(135deg, #fbbf24, #b45309); }
+.app-icon.typing { background: linear-gradient(135deg, #475569, #0f172a); }
+.app-icon.puzzle15 { background: linear-gradient(135deg, #38bdf8, #1d4ed8); }
+.app-icon.hanoi { background: linear-gradient(135deg, #f87171, #facc15 55%, #4ade80); color: #111827; }
+.app-icon.blackjack { background: linear-gradient(135deg, #065f46, #022c22); }
+.app-icon.slot { background: linear-gradient(135deg, #f59e0b, #dc2626 70%); }
+.app-icon.runner { background: linear-gradient(135deg, #fde68a, #f59e0b); }

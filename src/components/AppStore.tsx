@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { STORE_APPS } from '../lib/storeApps'
+import { STORE_APPS, STORE_CATEGORIES, type StoreCategory } from '../lib/storeApps'
 import { notifyOs } from '../lib/notify'
 import { APP_VERSION } from '../lib/version'
 import { compareVersions, fetchLatestVersion, performUpdate } from '../lib/updateCheck'
@@ -19,6 +19,7 @@ type CheckState = 'idle' | 'checking' | 'done' | 'error'
 // WebX 本体の更新確認・適用もここで行う（設定からは移管済み）。
 export default function AppStore({ installed, versions, coreApps, onInstall, onUninstall, onUpdateApp }: Props) {
   const [check, setCheck] = useState<CheckState>('idle')
+  const [category, setCategory] = useState<StoreCategory | 'all'>('all')
   const [latest, setLatest] = useState('')
   const [summary, setSummary] = useState('')
 
@@ -72,8 +73,16 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
 
       <h3 className="store-head">ストアアプリ</h3>
       <p className="store-note">インストールしたアプリだけがデスクトップやスタートメニューに表示されます。更新はアプリごとに個別に行います。</p>
+      <div className="store-cats">
+        <button className={category === 'all' ? 'chip on' : 'chip'} onClick={() => setCategory('all')}>すべて（{STORE_APPS.length}）</button>
+        {STORE_CATEGORIES.map((c) => (
+          <button key={c.id} className={category === c.id ? 'chip on' : 'chip'} onClick={() => setCategory(c.id)}>
+            {c.label}（{STORE_APPS.filter((a) => a.category === c.id).length}）
+          </button>
+        ))}
+      </div>
       <div className="store-list">
-        {STORE_APPS.map((app) => {
+        {STORE_APPS.filter((a) => category === 'all' || a.category === category).map((app) => {
           const isIn = installed.includes(app.id)
           const cur = versions[app.id]
           const outdated = isIn && cur !== app.version

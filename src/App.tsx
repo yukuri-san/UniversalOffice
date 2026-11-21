@@ -24,6 +24,13 @@ import { Dice, Janken, NumGuess, Omikuji } from './components/store/Games'
 import { PassGen, TextCount, ColorPicker, Morse } from './components/store/ToolsA'
 import { DayCalc, Bmi, SplitBill, Currency, Wareki } from './components/store/ToolsB'
 import { Pomodoro, Metronome, WhiteNoise, Flashcards } from './components/store/Life'
+import Tetris from './components/games/Tetris'
+import Suika from './components/games/Suika'
+import { Game2048, Snake, Breakout } from './components/games/Classics'
+import { Minesweeper, Sudoku } from './components/games/Puzzle'
+import { Memory, Reversi, Gomoku } from './components/games/Board'
+import { Match3, Pong, Flappy, WhackMole } from './components/games/Arcade'
+import { Typing, Puzzle15, Hanoi, Blackjack, Slot, Runner } from './components/games/Mini'
 import { requestPersist } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import { compareVersions, fetchLatestVersion } from './lib/updateCheck'
@@ -31,7 +38,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner'
 
 interface Win {
   id: WindowApp
@@ -81,6 +88,26 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   splitbill: { icon: '勘', cls: 'splitbill' },
   currency: { icon: '¥', cls: 'currency' },
   wareki: { icon: '暦', cls: 'wareki' },
+  tetris: { icon: '🧩', cls: 'tetris' },
+  suika: { icon: '🍉', cls: 'suika' },
+  g2048: { icon: '🔢', cls: 'g2048' },
+  snake: { icon: '🐍', cls: 'snake' },
+  breakout: { icon: '🧱', cls: 'breakout' },
+  minesweeper: { icon: '💣', cls: 'minesweeper' },
+  sudoku: { icon: '数', cls: 'sudoku' },
+  memory: { icon: '🃏', cls: 'memory' },
+  reversi: { icon: '⚫', cls: 'reversi' },
+  gomoku: { icon: '五', cls: 'gomoku' },
+  match3: { icon: '💎', cls: 'match3' },
+  pong: { icon: '🏓', cls: 'pong' },
+  flappy: { icon: '🐤', cls: 'flappy' },
+  mole: { icon: '🐹', cls: 'mole' },
+  typing: { icon: '⌨️', cls: 'typing' },
+  puzzle15: { icon: '15', cls: 'puzzle15' },
+  hanoi: { icon: '🗼', cls: 'hanoi' },
+  blackjack: { icon: '♠', cls: 'blackjack' },
+  slot: { icon: '🎰', cls: 'slot' },
+  runner: { icon: '🦖', cls: 'runner' },
 }
 const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'settings']
 
@@ -88,6 +115,7 @@ export default function App() {
   const [windows, setWindows] = useState<Win[]>([])
   const [activeId, setActiveId] = useState<WindowApp | null>(null)
   const [startOpen, setStartOpen] = useState(false)
+  const [startQuery, setStartQuery] = useState('')
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
   const [toast, setToast] = useState('')
   const [platform] = useState(detectPlatform)
@@ -502,6 +530,26 @@ export default function App() {
       case 'splitbill': return <SplitBill />
       case 'currency': return <Currency />
       case 'wareki': return <Wareki />
+      case 'tetris': return <Tetris />
+      case 'suika': return <Suika />
+      case 'g2048': return <Game2048 />
+      case 'snake': return <Snake />
+      case 'breakout': return <Breakout />
+      case 'minesweeper': return <Minesweeper />
+      case 'sudoku': return <Sudoku />
+      case 'memory': return <Memory />
+      case 'reversi': return <Reversi />
+      case 'gomoku': return <Gomoku />
+      case 'match3': return <Match3 />
+      case 'pong': return <Pong />
+      case 'flappy': return <Flappy />
+      case 'mole': return <WhackMole />
+      case 'typing': return <Typing />
+      case 'puzzle15': return <Puzzle15 />
+      case 'hanoi': return <Hanoi />
+      case 'blackjack': return <Blackjack />
+      case 'slot': return <Slot />
+      case 'runner': return <Runner />
     }
   }
 
@@ -606,8 +654,15 @@ export default function App() {
       {startOpen && (
         <div className="start-menu">
           <h2>WebX</h2>
+          <input
+            className="start-search"
+            type="search"
+            placeholder="アプリを検索"
+            value={startQuery}
+            onChange={(e) => setStartQuery(e.target.value)}
+          />
           <div className="start-apps">
-            {visibleApps.map((app) => (
+            {visibleApps.filter((app) => !startQuery || appName(app).toLowerCase().includes(startQuery.toLowerCase())).map((app) => (
               <button key={app} className="start-app" onClick={() => openApp(app)}>
                 <span className={`app-icon ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
                 <span>{appName(app)}</span>
