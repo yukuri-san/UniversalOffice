@@ -663,3 +663,5 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .yt-folder-head small { color: #7a8798; font-weight: 400; }
 .yt-folder-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
 .yt-folder-actions button { border: 1px solid #c6d0dd; background: #fff; border-radius: 999px; padding: 5px 12px; font-size: 12.5px; cursor: pointer; }
+
+.app-icon.manual { background: linear-gradient(135deg, #0891b2, #155e75); color: #fff; }

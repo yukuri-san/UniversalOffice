@@ -3,12 +3,12 @@ import { ownUsageBytes, storageInfo } from '../lib/store'
 import { APP_VERSION } from '../lib/version'
 import type { AppId } from './Backstage'
 
-export type ShellApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs'
+export type ShellApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'manual' | 'memodb'
 
 const APP_NAMES: Record<string, string> = {
   word: 'ワードプロセッサ', sheet: 'スプレッドシート', note: 'メモ帳', calendar: 'カレンダー',
   browser: 'ブラウザ', youtube: 'YouTube', files: 'エクスプローラー', trash: 'ゴミ箱',
-  settings: '設定', calculator: '電卓', clock: '時計', paint: 'ペイント', terminal: 'ターミナル',
+  settings: '設定', calculator: '電卓', clock: '時計', paint: 'ペイント', terminal: 'ターミナル', manual: '取扱説明書', memodb: 'メモDB',
 }
 
 export default function Terminal({ openApp }: { openApp: (app: ShellApp) => void }) {

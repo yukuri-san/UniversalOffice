@@ -16,12 +16,13 @@ import Paint from './components/Paint'
 import Terminal from './components/Terminal'
 import MemoDb from './components/MemoDb'
 import AboutWindow from './components/AboutWindow'
+import ManualWindow from './components/ManualWindow'
 import { requestPersist } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual'
 
 interface Win {
   id: WindowApp
@@ -51,8 +52,9 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   docs: { icon: '文', cls: 'docs' },
   memodb: { icon: 'デ', cls: 'memodb' },
   about: { icon: 'W', cls: 'about' },
+  manual: { icon: '説', cls: 'manual' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>([])
@@ -348,6 +350,7 @@ export default function App() {
       case 'docs': return <DocsWindow />
       case 'memodb': return <MemoDb />
       case 'about': return <AboutWindow openDocs={(doc) => { localStorage.setItem('webx-docs-initial', doc); openApp('docs') }} />
+      case 'manual': return <ManualWindow />
     }
   }
 
