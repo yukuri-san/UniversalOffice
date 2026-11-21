@@ -205,6 +205,28 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pageW, zoomManual])
 
+  // モバイル（狭い画面）では、入力位置（キャレット）がページ表示領域の見える範囲に来るよう自動スクロールする
+  useEffect(() => {
+    if (!editor) return
+    let raf = 0
+    const ensureCaretVisible = () => {
+      if (window.innerWidth > 820) return
+      const sc = pageScrollRef.current
+      if (!sc) return
+      try {
+        const pos = editor.view.coordsAtPos(editor.state.selection.from)
+        const rect = sc.getBoundingClientRect()
+        const target = rect.top + rect.height * 0.35
+        const delta = pos.top - target
+        if (Math.abs(delta) > 24) sc.scrollTop += delta
+      } catch { /* ignore */ }
+    }
+    const onSel = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(ensureCaretVisible) }
+    editor.on('selectionUpdate', onSel)
+    editor.on('focus', onSel)
+    return () => { editor.off('selectionUpdate', onSel); editor.off('focus', onSel); cancelAnimationFrame(raf) }
+  }, [editor])
+
   if (!editor) return null
 
   const chain = () => editor.chain().focus()

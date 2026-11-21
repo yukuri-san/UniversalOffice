@@ -271,7 +271,9 @@ export default function App() {
   const setSaverOn = (v: boolean) => { setSaverOnState(v); localStorage.setItem('webx-screensaver', v ? 'on' : 'off') }
   const setBrightness = (v: number) => { setBrightnessState(v); localStorage.setItem('webx-brightness', String(v)) }
   const [ws, setWs] = useState(0)
-  const [locked, setLocked] = useState(false)
+  // PIN が設定されていれば、起動時はまずロック画面から入る
+  const [locked, setLocked] = useState(() => !!localStorage.getItem('webx-pin-hash'))
+  const [kbOpen, setKbOpen] = useState(false)
   const [pinInput, setPinInput] = useState('')
   const [pinError, setPinError] = useState(false)
   const [pinForgot, setPinForgot] = useState(false)
@@ -599,6 +601,8 @@ export default function App() {
     let maxH = vv.height
     const onResize = () => {
       maxH = Math.max(maxH, vv.height)
+      // ビューポートが大きく縮んだらキーボード表示中とみなす
+      setKbOpen(vv.height < maxH * 0.72)
       document.documentElement.style.setProperty('--app-h', `${vv.height}px`)
       if (vv.height >= maxH - 4) {
         window.scrollTo(0, 0)
@@ -1041,7 +1045,7 @@ export default function App() {
 
   return (
     <LangContext.Provider value={lang}>
-    <div className="os-root" data-theme={theme} data-ui={resolvedUi} data-iconsize={iconSize} data-motion={reduceMotion || safeMode ? 'reduced' : undefined} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
+    <div className={`os-root${kbOpen ? ' kb-open' : ''}`} data-theme={theme} data-ui={resolvedUi} data-iconsize={iconSize} data-motion={reduceMotion || safeMode ? 'reduced' : undefined} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
       <div
         className="os-desktop"
         ref={desktopRef}

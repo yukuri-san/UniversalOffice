@@ -1615,3 +1615,55 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 @media (pointer: coarse) and (max-width: 820px) {
   .word-app .ProseMirror { font-size: 16px; }
 }
+
+/* ===== v1.32.0 モバイルモード（画面幅で判定。UI種別の設定に依存しない） ===== */
+/* キーボード表示中は下部ナビ／ドックとデスクトップウィジェットを隠して入力領域を確保 */
+.os-root.kb-open .mx-navbar, .os-root.kb-open .mx-dock, .os-root.kb-open .mx-homebar,
+.os-root.kb-open .desktop-widgets, .os-root.kb-open .taskbar { display: none !important; }
+
+@media (max-width: 820px) {
+  /* ワープロ：ルーラーを隠し、リボンは横スクロール＋大きめのタップ領域に */
+  .word-app .ruler-scale { display: none; }
+  .word-app .ribbon-row { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .word-app .ribbon .rbtn, .word-app .ribbon button { min-height: 38px; }
+  .word-app .page-scroll { padding: 8px 2px 20px; }
+  .word-app .statusbar { font-size: 11px; gap: 8px; overflow-x: auto; white-space: nowrap; }
+  .word-app .outline-aside { width: 100%; max-height: 180px; }
+
+  /* メモDB：サイドバーを上部に */
+  .memodb-body { flex-direction: column; }
+  .memodb-side { width: auto; max-height: 38%; border-right: 0; border-bottom: 1px solid var(--border, #d5dce8); }
+
+  /* ペイント：レイヤーパネルを下部に */
+  .paint-main { flex-direction: column; }
+  .paint-layers { width: auto; border-left: 0; border-top: 1px solid #d5dce8; max-height: 190px; }
+  .paint-toolbar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .paint-toolbar button { min-height: 38px; }
+
+  /* カレンダー：フォームを下に回す */
+  .cal-body { flex-direction: column; }
+  .cal-form { width: auto; }
+
+  /* 表計算：ツールバーは横スクロール */
+  .sheet-toolbar { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .sheet-toolbar button { min-height: 36px; white-space: nowrap; }
+
+  /* エクスプローラー：操作ボタンは折り返し */
+  .explorer-actions { flex-wrap: wrap; }
+  .explorer-actions button { min-height: 36px; }
+
+  /* 設定：テーマは3列、選択肢は大きめに */
+  .settings-themes { grid-template-columns: repeat(3, 1fr); }
+  .settings-options .opt { min-height: 38px; }
+
+  /* ストア：2列グリッド */
+  .store-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+
+  /* スタートメニューとダイアログは画面幅いっぱいに */
+  .start-menu { width: min(94vw, 420px); }
+  .modal-card { max-width: 94vw; }
+
+  /* 全アプリ共通：主要ボタンのタップ領域を確保 */
+  .win-body button { min-height: 32px; }
+  .win-body input, .win-body textarea, .win-body select { min-height: 36px; }
+}
