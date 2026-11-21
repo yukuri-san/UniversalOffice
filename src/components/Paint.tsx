@@ -417,6 +417,39 @@ export default function Paint() {
     rerender()
   }
 
+  // 選択中のレイヤーを左右・上下に反転する（元に戻すで復旧できる）
+  const flipLayer = (horizontal: boolean) => {
+    if (!active) return
+    pushUndo(active)
+    const temp = makeCanvas()
+    temp.getContext('2d')!.drawImage(active.canvas, 0, 0)
+    const ctx = active.canvas.getContext('2d')!
+    ctx.clearRect(0, 0, W, H)
+    ctx.save()
+    if (horizontal) { ctx.translate(W, 0); ctx.scale(-1, 1) } else { ctx.translate(0, H); ctx.scale(1, -1) }
+    ctx.drawImage(temp, 0, 0)
+    ctx.restore()
+    rerender()
+  }
+
+  // 選択中のレイヤーを90°回転する（キャンバス内に収まるよう縮小して中央配置）
+  const rotateLayer = (dir: 1 | -1) => {
+    if (!active) return
+    pushUndo(active)
+    const temp = makeCanvas()
+    temp.getContext('2d')!.drawImage(active.canvas, 0, 0)
+    const ctx = active.canvas.getContext('2d')!
+    ctx.clearRect(0, 0, W, H)
+    ctx.save()
+    ctx.translate(W / 2, H / 2)
+    ctx.rotate((dir * Math.PI) / 2)
+    const s = Math.min(W / H, H / W)
+    ctx.scale(s, s)
+    ctx.drawImage(temp, -W / 2, -H / 2)
+    ctx.restore()
+    rerender()
+  }
+
   const moveLayer = (dir: 1 | -1) => {
     if (!active) return
     const idx = layers.findIndex((l) => l.id === active.id)
@@ -570,6 +603,10 @@ export default function Paint() {
             <button onClick={addLayer}>{t('addLayer')}</button>
             <button onClick={duplicateLayer}>{t('duplicateLayer')}</button>
             <button onClick={mergeDown}>{t('mergeDown')}</button>
+            <button onClick={() => flipLayer(true)}>{t('flipH')}</button>
+            <button onClick={() => flipLayer(false)}>{t('flipV')}</button>
+            <button onClick={() => rotateLayer(1)}>{t('rotateRight')}</button>
+            <button onClick={() => rotateLayer(-1)}>{t('rotateLeft')}</button>
             <button onClick={() => moveLayer(1)}>↑</button>
             <button onClick={() => moveLayer(-1)}>↓</button>
             <button onClick={deleteLayer}>{t('deleteBtn')}</button>

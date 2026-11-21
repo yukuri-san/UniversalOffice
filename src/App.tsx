@@ -76,6 +76,7 @@ interface Win {
   y: number
   w: number
   h: number
+  scale?: number
 }
 
 const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
@@ -230,6 +231,8 @@ export default function App() {
   const [androidWinMove, setAndroidWinMoveState] = useState(() => localStorage.getItem('webx-android-winmove') === 'on')
   const setAndroidWinMove = (v: boolean) => { setAndroidWinMoveState(v); localStorage.setItem('webx-android-winmove', v ? 'on' : 'off') }
   const isAndroidOs = /Android/i.test(navigator.userAgent)
+  const [resizeMode, setResizeModeState] = useState(() => localStorage.getItem('webx-resize-mode') ?? 'image')
+  const setResizeMode = (v: string) => { setResizeModeState(v); localStorage.setItem('webx-resize-mode', v) }
   const setUiMode = (v: string) => { setUiModeState(v); localStorage.setItem('webx-ui-mode', v) }
   const [recentsOpen, setRecentsOpen] = useState(false)
   const [customApps, setCustomApps] = useState<CustomApp[]>(() => loadCustomApps())
@@ -706,12 +709,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   const dragRef = useRef<{ id: WindowApp; dx: number; dy: number } | null>(null)
-  const resizeRef = useRef<{ id: WindowApp; startX: number; startY: number; startW: number; startH: number; edge: 'corner' | 'right' | 'bottom' } | null>(null)
+  const resizeRef = useRef<{ id: WindowApp; startX: number; startY: number; startW: number; startH: number; startScale: number; edge: 'corner' | 'right' | 'bottom' } | null>(null)
 
   const onResizePointerDown = (e: React.PointerEvent, win: Win, edge: 'corner' | 'right' | 'bottom') => {
     e.stopPropagation()
     focusWin(win.id)
-    resizeRef.current = { id: win.id, startX: e.clientX, startY: e.clientY, startW: win.w, startH: win.h, edge }
+    resizeRef.current = { id: win.id, startX: e.clientX, startY: e.clientY, startW: win.w, startH: win.h, startScale: win.scale ?? 1, edge }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
   const onResizePointerMove = (e: React.PointerEvent) => {
@@ -720,9 +723,19 @@ export default function App() {
     setWindows((prev) =>
       prev.map((w) => {
         if (w.id !== r.id) return w
+        if (resizeMode === 'image') {
+          // 画像式スケーリング：レイアウトは変えず、比率を保ったまま拡縮する（v1.10.0 の方式を復活）
+          const baseW = r.startW / r.startScale
+          const baseH = r.startH / r.startScale
+          const ratio = r.edge === 'bottom'
+            ? (r.startH + (e.clientY - r.startY)) / r.startH
+            : (r.startW + (e.clientX - r.startX)) / r.startW
+          const ns = Math.min(1.8, Math.max(0.35, r.startScale * ratio))
+          return { ...w, w: Math.round(baseW * ns), h: Math.round(baseH * ns), scale: ns }
+        }
         const nextW = r.edge === 'bottom' ? w.w : Math.min(Math.max(r.startW + (e.clientX - r.startX), 340), Math.max(340, desktop.w - w.x - 4))
         const nextH = r.edge === 'right' ? w.h : Math.min(Math.max(r.startH + (e.clientY - r.startY), 240), Math.max(240, desktop.h - w.y - 4))
-        return { ...w, w: nextW, h: nextH }
+        return { ...w, w: nextW, h: nextH, scale: 1 }
       })
     )
   }
@@ -955,6 +968,7 @@ export default function App() {
           permitHw={permitHw} setPermitHw={setPermitHw}
           uiMode={uiMode} setUiMode={setUiMode}
           androidWinMove={androidWinMove} setAndroidWinMove={setAndroidWinMove}
+          resizeMode={resizeMode} setResizeMode={setResizeMode}
         />
       )
       case 'youtube': return <YoutubeApp />
@@ -1176,7 +1190,9 @@ export default function App() {
             ? isMxui
               ? { position: 'fixed', top: resolvedUi === 'mxui-liquid' ? 56 : 30, bottom: kbOpen ? 0 : resolvedUi === 'mxui-liquid' ? 104 : 54, left: 0, right: 0, zIndex: win.z }
               : { inset: 0, width: '100%', height: '100%', zIndex: win.z }
-            : { left: win.x, top: win.y, width: win.w, height: win.h, zIndex: win.z }
+            : resizeMode === 'image' && (win.scale ?? 1) !== 1
+              ? { left: win.x, top: win.y, width: win.w / (win.scale ?? 1), height: win.h / (win.scale ?? 1), transform: `scale(${win.scale ?? 1})`, transformOrigin: '0 0', zIndex: win.z }
+              : { left: win.x, top: win.y, width: win.w, height: win.h, zIndex: win.z }
           const style: React.CSSProperties = hiddenWin ? { ...baseStyle, visibility: 'hidden', pointerEvents: 'none' } : baseStyle
           return (
             <section

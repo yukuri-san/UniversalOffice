@@ -76,6 +76,8 @@ interface Props {
   setUiMode: (v: string) => void
   androidWinMove: boolean
   setAndroidWinMove: (v: boolean) => void
+  resizeMode: string
+  setResizeMode: (v: string) => void
 }
 
 export const WALLPAPERS: { id: string; key: string }[] = [
@@ -110,7 +112,7 @@ async function fileToWallpaper(file: File): Promise<string> {
   }
 }
 
-export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale, userName, setUserName, timezone, setTimezone, iconSize, setIconSize, iconClick, setIconClick, onShowSetup, clock24h, setClock24h, clockSec, setClockSec, reduceMotion, setReduceMotion, restoreWin, setRestoreWin, widgetAgenda, setWidgetAgenda, nightLight, setNightLight, muteNotes, setMuteNotes, saverOn, setSaverOn, permitHw, setPermitHw, uiMode, setUiMode, androidWinMove, setAndroidWinMove }: Props) {
+export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale, userName, setUserName, timezone, setTimezone, iconSize, setIconSize, iconClick, setIconClick, onShowSetup, clock24h, setClock24h, clockSec, setClockSec, reduceMotion, setReduceMotion, restoreWin, setRestoreWin, widgetAgenda, setWidgetAgenda, nightLight, setNightLight, muteNotes, setMuteNotes, saverOn, setSaverOn, permitHw, setPermitHw, uiMode, setUiMode, androidWinMove, setAndroidWinMove, resizeMode, setResizeMode }: Props) {
   const [pinDraft, setPinDraft] = useState('')
   const [pinSetNow, setPinSetNow] = useState(() => getPin() !== null)
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
@@ -239,6 +241,11 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
           </span>
         </div>
         <p className="settings-note">{translate(lang, 'androidWinMoveNote')}</p>
+        <label className="settings-label">{translate(lang, 'setResizeMode')}</label>
+        <div className="settings-options">
+          <button className={resizeMode === 'image' ? 'opt on' : 'opt'} onClick={() => setResizeMode('image')}>{translate(lang, 'resizeImage')}</button>
+          <button className={resizeMode === 'responsive' ? 'opt on' : 'opt'} onClick={() => setResizeMode('responsive')}>{translate(lang, 'resizeResponsive')}</button>
+        </div>
       </section>
 
       <section className="settings-section">
