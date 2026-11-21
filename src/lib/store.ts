@@ -11,11 +11,14 @@ export interface LocalDoc {
   deletedAt?: number | null // ゴミ箱に入っている場合の日時
 }
 
+export type RepeatKind = 'none' | 'daily' | 'weekly' | 'monthly'
+
 export interface CalEvent {
   id: string
   date: string // YYYY-MM-DD
   title: string
   memo: string
+  repeat?: RepeatKind // 未指定は 'none' と同じ（既存データとの互換のため）
   createdAt: number
 }
 
@@ -352,6 +355,8 @@ export async function saveEvent(input: Omit<CalEvent, 'id' | 'createdAt'> & { id
   const event: CalEvent = { ...input, id: input.id ?? crypto.randomUUID(), createdAt: Date.now() }
   if (await useOpfs()) await opfsWriteJson('events', `${event.id}.json`, event)
   else await set(event.id, event, eventsStore)
+  // ウィジェット等へ即時反映するための通知
+  window.dispatchEvent(new Event('webx-events-changed'))
   return event
 }
 
@@ -359,6 +364,7 @@ export async function deleteEvent(id: string): Promise<void> {
   await migrateIfNeeded()
   if (await useOpfs()) await opfsDelete('events', `${id}.json`)
   else await del(id, eventsStore)
+  window.dispatchEvent(new Event('webx-events-changed'))
 }
 
 /* ================= バックアップ ================= */

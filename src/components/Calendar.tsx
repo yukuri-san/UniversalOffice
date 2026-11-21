@@ -1,11 +1,57 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Backstage, { type AppId } from './Backstage'
 import { LOCALES, useLang } from '../lib/i18n'
-import { deleteEvent, listEvents, saveEvent, type CalEvent } from '../lib/store'
+import { deleteEvent, listEvents, saveEvent, type CalEvent, type RepeatKind } from '../lib/store'
 
 function weekdayNames(locale: string): string[] {
   const fmt = new Intl.DateTimeFormat(locale, { weekday: 'short' })
   return [0, 1, 2, 3, 4, 5, 6].map((i) => fmt.format(new Date(2023, 0, 1 + i)))
+}
+
+// 繰り返し予定を指定範囲 [from, to]（YYYY-MM-DD）に展開する
+// 月表示で31日の予定は、その日が無い月はスキップする
+function expandEvents(events: CalEvent[], from: string, to: string): { date: string; event: CalEvent }[] {
+  const out: { date: string; event: CalEvent }[] = []
+  for (const e of events) {
+    const repeat: RepeatKind = e.repeat ?? 'none'
+    if (repeat === 'none' || e.date > to) {
+      if (e.date >= from && e.date <= to) out.push({ date: e.date, event: e })
+      continue
+    }
+    const start = new Date(`${from}T00:00:00`)
+    const end = new Date(`${to}T00:00:00`)
+    if (repeat === 'daily') {
+      const d = new Date(`${e.date}T00:00:00`)
+      if (d < start) d.setTime(start.getTime())
+      while (d <= end) {
+        out.push({ date: ymd(d.getFullYear(), d.getMonth(), d.getDate()), event: e })
+        d.setDate(d.getDate() + 1)
+      }
+    } else if (repeat === 'weekly') {
+      const d = new Date(`${e.date}T00:00:00`)
+      if (d < start) {
+        const diff = Math.ceil((start.getTime() - d.getTime()) / (7 * 86400000))
+        d.setDate(d.getDate() + diff * 7)
+      }
+      while (d <= end) {
+        out.push({ date: ymd(d.getFullYear(), d.getMonth(), d.getDate()), event: e })
+        d.setDate(d.getDate() + 7)
+      }
+    } else {
+      const day = Number(e.date.slice(8))
+      const cur = new Date(`${e.date.slice(0, 7)}-01T00:00:00`)
+      const endM = new Date(`${to.slice(0, 7)}-01T00:00:00`)
+      while (cur <= endM) {
+        const dim = new Date(cur.getFullYear(), cur.getMonth() + 1, 0).getDate()
+        if (day <= dim) {
+          const ds = ymd(cur.getFullYear(), cur.getMonth(), day)
+          if (ds >= from && ds <= to) out.push({ date: ds, event: e })
+        }
+        cur.setMonth(cur.getMonth() + 1)
+      }
+    }
+  }
+  return out
 }
 
 function ymd(y: number, m: number, d: number): string {
@@ -27,6 +73,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   const [homeOpen, setHomeOpen] = useState(false)
   const [formTitle, setFormTitle] = useState('')
   const [formMemo, setFormMemo] = useState('')
+  const [formRepeat, setFormRepeat] = useState<RepeatKind>('none')
   const [editingId, setEditingId] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
@@ -64,16 +111,6 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     return () => window.removeEventListener('keydown', onKey)
   }, [mode, selected])
 
-  const eventsByDate = useMemo(() => {
-    const map = new Map<string, CalEvent[]>()
-    for (const e of events) {
-      const arr = map.get(e.date) ?? []
-      arr.push(e)
-      map.set(e.date, arr)
-    }
-    return map
-  }, [events])
-
   const cells = useMemo(() => {
     const first = new Date(view.y, view.m, 1)
     const startDay = first.getDay()
@@ -96,6 +133,38 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
       return ymd(d.getFullYear(), d.getMonth(), d.getDate())
     })
   }, [selected])
+
+  // 繰り返し予定の展開範囲：表示範囲の前後1か月（週表示は前後1週間）
+  const expandRange = useMemo((): [string, string] => {
+    if (mode === 'week') {
+      const f = new Date(`${weekDays[0]}T00:00:00`)
+      f.setDate(f.getDate() - 7)
+      const t = new Date(`${weekDays[6]}T00:00:00`)
+      t.setDate(t.getDate() + 7)
+      return [ymd(f.getFullYear(), f.getMonth(), f.getDate()), ymd(t.getFullYear(), t.getMonth(), t.getDate())]
+    }
+    const f = new Date(view.y, view.m - 1, 1)
+    const t = new Date(view.y, view.m + 2, 0)
+    return [ymd(f.getFullYear(), f.getMonth(), f.getDate()), ymd(t.getFullYear(), t.getMonth(), t.getDate())]
+  }, [mode, view, weekDays])
+
+  const eventsByDate = useMemo(() => {
+    const map = new Map<string, CalEvent[]>()
+    for (const { date, event } of expandEvents(events, expandRange[0], expandRange[1])) {
+      const arr = map.get(date) ?? []
+      arr.push(event)
+      map.set(date, arr)
+    }
+    return map
+  }, [events, expandRange])
+
+  // 表示月の予定件数（繰り返しの出現回数で数える）
+  const monthEventCount = useMemo(() => {
+    const prefix = ymd(view.y, view.m, 1).slice(0, 7)
+    let n = 0
+    for (const [date, list] of eventsByDate) if (date.startsWith(prefix)) n += list.length
+    return n
+  }, [eventsByDate, view])
 
   const moveSelectedByDays = (diff: number) => {
     const d = new Date(`${selected}T00:00:00`)
@@ -129,9 +198,16 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
 
   const addEvent = async () => {
     if (!formTitle.trim()) return
-    await saveEvent({ id: editingId ?? undefined, date: selected, title: formTitle.trim(), memo: formMemo.trim() })
+    await saveEvent({
+      id: editingId ?? undefined,
+      date: selected,
+      title: formTitle.trim(),
+      memo: formMemo.trim(),
+      ...(formRepeat !== 'none' ? { repeat: formRepeat } : {}),
+    })
     setFormTitle('')
     setFormMemo('')
+    setFormRepeat('none')
     setEditingId(null)
     await refresh()
   }
@@ -140,12 +216,14 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setEditingId(e.id)
     setFormTitle(e.title)
     setFormMemo(e.memo)
+    setFormRepeat(e.repeat ?? 'none')
   }
 
   const cancelEdit = () => {
     setEditingId(null)
     setFormTitle('')
     setFormMemo('')
+    setFormRepeat('none')
   }
 
   // 予定フォーム：Enter で追加・保存、Esc で編集中をキャンセル
@@ -159,7 +237,8 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   }
 
   const removeEvent = async (e: CalEvent) => {
-    if (!window.confirm(t('confirmDeleteEvent').replace('{title}', e.title))) return
+    const key = (e.repeat ?? 'none') !== 'none' ? 'confirmDeleteRepeatEvent' : 'confirmDeleteEvent'
+    if (!window.confirm(t(key).replace('{title}', e.title))) return
     await deleteEvent(e.id)
     if (editingId === e.id) cancelEdit()
     await refresh()
@@ -177,7 +256,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
         onSwitch={onSwitch}
         actions={[
           { label: t('today'), onClick: goToday },
-          { label: t('eventsThisMonth').replace('{n}', String(events.filter((e) => e.date.startsWith(ymd(view.y, view.m, 1).slice(0, 7))).length)), hint: '', onClick: () => {} },
+          { label: t('eventsThisMonth').replace('{n}', String(monthEventCount)), hint: '', onClick: () => {} },
         ]}
       />
       <div className="titlebar cal-title">
@@ -195,7 +274,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
           <button className={mode === 'month' ? 'active' : ''} onClick={() => setMode('month')}>{t('monthView')}</button>
           <button className={mode === 'week' ? 'active' : ''} onClick={() => setMode('week')}>{t('weekView')}</button>
         </span>
-        <span className="cal-count">{t('eventsThisMonth').replace('{n}', String(events.filter((e) => e.date.startsWith(ymd(view.y, view.m, 1).slice(0, 7))).length))}</span>
+        <span className="cal-count">{t('eventsThisMonth').replace('{n}', String(monthEventCount))}</span>
       </div>
       <div className="cal-body">
         <div className="cal-grid-wrap">
@@ -212,7 +291,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                   <span className="cal-day">{Number(date.slice(8))}</span>
                   {dayEvents.length === 0
                     ? <span className="cal-more">—</span>
-                    : dayEvents.map((e) => <span key={e.id} className="cal-event">{e.title}</span>)}
+                    : dayEvents.map((e) => <span key={`${e.id}@${date}`} className="cal-event">{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
                 </button>
               )
             }) : cells.map((date, i) => {
@@ -223,7 +302,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
               return (
                 <button key={i} className={`cal-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`} onClick={() => setSelected(date)}>
                   <span className="cal-day">{Number(date.slice(8))}</span>
-                  {dayEvents.slice(0, 2).map((e) => <span key={e.id} className="cal-event">{e.title}</span>)}
+                  {dayEvents.slice(0, 2).map((e) => <span key={`${e.id}@${date}`} className="cal-event">{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
                   {dayEvents.length > 2 && <span className="cal-more">{t('moreEvents').replace('{n}', String(dayEvents.length - 2))}</span>}
                 </button>
               )
@@ -240,6 +319,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                 <li key={e.id} className={editingId === e.id ? 'editing' : ''}>
                   <div>
                     <strong>{e.title}</strong>
+                    {(e.repeat ?? 'none') !== 'none' && <span className="cal-repeat-badge">↻ {t(e.repeat === 'daily' ? 'repeatDaily' : e.repeat === 'weekly' ? 'repeatWeekly' : 'repeatMonthly')}</span>}
                     {e.memo && <small>{e.memo}</small>}
                   </div>
                   <button onClick={() => startEdit(e)}>{t('editEvent')}</button>
@@ -251,6 +331,15 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
           <div className="cal-form">
             <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} onKeyDown={onFormKeyDown} placeholder={t('eventTitle')} aria-label={t('eventTitle')} />
             <input value={formMemo} onChange={(e) => setFormMemo(e.target.value)} onKeyDown={onFormKeyDown} placeholder={t('eventMemo')} aria-label={t('eventMemo')} />
+            <label className="cal-repeat-row">
+              <span>{t('repeatLabel')}</span>
+              <select value={formRepeat} onChange={(e) => setFormRepeat(e.target.value as RepeatKind)} aria-label={t('repeatLabel')}>
+                <option value="none">{t('repeatNone')}</option>
+                <option value="daily">{t('repeatDaily')}</option>
+                <option value="weekly">{t('repeatWeekly')}</option>
+                <option value="monthly">{t('repeatMonthly')}</option>
+              </select>
+            </label>
             <button onClick={() => void addEvent()}>{editingId ? t('saveEvent') : t('addEvent')}</button>
             {editingId && <button className="cal-cancel" onClick={cancelEdit}>{t('cancelBtn')}</button>}
           </div>

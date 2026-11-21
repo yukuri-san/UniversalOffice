@@ -224,6 +224,9 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .cal-event-list button { border: 1px solid #c6d0dd; background: #fff; border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: 12px; }
 .cal-form { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #eef2f8; padding-top: 12px; }
 .cal-form input { border: 1px solid #c6d0dd; border-radius: 6px; padding: 8px 10px; font-size: 14px; }
+.cal-repeat-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #4a5568; }
+.cal-repeat-row select { flex: 1; border: 1px solid #c6d0dd; border-radius: 6px; padding: 7px 8px; font-size: 14px; background: #fff; color: inherit; }
+.cal-repeat-badge { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 600; color: #6b4fa1; background: #ece5f7; border-radius: 4px; padding: 1px 6px; }
 .cal-form button { border: 1px solid #6b4fa1; background: #6b4fa1; color: #fff; border-radius: 8px; padding: 8px; cursor: pointer; font-weight: 600; }
 .cal-form button.cal-cancel { background: #fff; color: #333; border-color: #c6d0dd; font-weight: 400; }
 
@@ -400,6 +403,8 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .os-root[data-theme='dark'] .sheet-wrap { background: #1c2536; border-color: rgba(255,255,255,.12); }
 .os-root[data-theme='dark'] .cal-cell { background: #1c2536; border-color: rgba(255,255,255,.08); color: #e6ecf5; }
 .os-root[data-theme='dark'] .cal-event { background: #372b58; color: #ddd0ff; }
+.os-root[data-theme='dark'] .cal-repeat-badge { background: #372b58; color: #ddd0ff; }
+.os-root[data-theme='dark'] .cal-repeat-row { color: #c6d3e6; }
 .os-root[data-theme='dark'] h2, .os-root[data-theme='dark'] h3 { color: #e6ecf5; }
 
 .os-root[data-theme='ipados'] .os-desktop { background: radial-gradient(55% 50% at 20% 0%, rgba(125,211,252,.75), transparent 60%), radial-gradient(50% 50% at 90% 20%, rgba(249,168,212,.65), transparent 60%), radial-gradient(60% 60% at 70% 100%, rgba(167,243,208,.6), transparent 60%), linear-gradient(160deg, #dbeafe, #e0e7ff 55%, #fce7f3); }
@@ -1202,3 +1207,107 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .lock-recover h3 { margin: 0 0 8px; font-size: 17px; }
 .lock-recover p { font-size: 14px; line-height: 1.7; text-align: left; margin: 0 0 14px; }
 .lock-recover-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+/* ===== v1.22.0: ウィジェット基盤 ===== */
+.app-icon.widgets { background: linear-gradient(135deg, #06b6d4, #7c3aed); }
+.desktop-widgets { position: absolute; top: 16px; right: 16px; z-index: 1; display: flex; flex-direction: column; gap: 10px; max-height: calc(100% - 32px); overflow-y: auto; scrollbar-width: none; }
+.desktop-widgets::-webkit-scrollbar { display: none; }
+.dwidget { width: 252px; max-width: 62vw; padding: 12px 15px; border-radius: 20px; color: #fff; background: rgba(255,255,255,.13); border: 1px solid rgba(255,255,255,.3); backdrop-filter: blur(22px) saturate(180%); -webkit-backdrop-filter: blur(22px) saturate(180%); box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px 0 rgba(255,255,255,.4); display: flex; flex-direction: column; gap: 3px; }
+.dw-clock { align-items: flex-end; padding: 14px 18px; }
+.dw-title { font-size: 12px; font-weight: 700; letter-spacing: .05em; opacity: .9; }
+.dw-note { font-size: 12.5px; opacity: .85; }
+.dw-battery-row { display: flex; align-items: center; gap: 10px; }
+.dw-battery-bar { flex: 1; height: 12px; border-radius: 999px; background: rgba(255,255,255,.25); overflow: hidden; }
+.dw-battery-bar span { display: block; height: 100%; border-radius: 999px; background: #4ade80; }
+.dw-battery-bar span.low { background: #f87171; }
+.dw-weather { display: flex; align-items: center; gap: 10px; font-size: 15px; }
+.dw-weather-icon { font-size: 26px; }
+.dw-weather strong { font-size: 22px; }
+.dw-minical { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: 4px; }
+.dw-mc-head { font-size: 10.5px; text-align: center; opacity: .75; }
+.dw-mc-cell { font-size: 12px; text-align: center; padding: 2.5px 0; border-radius: 7px; position: relative; }
+.dw-mc-cell.today { background: #2563eb; font-weight: 700; }
+.dw-mc-cell.has-event::after { content: ''; position: absolute; left: 50%; bottom: 0.5px; transform: translateX(-50%); width: 4px; height: 4px; border-radius: 50%; background: #fbbf24; }
+.dw-wc-row { display: flex; justify-content: space-between; font-size: 13.5px; padding: 1.5px 0; }
+.dw-countdown { font-size: 16px; }
+.dw-countdown strong { font-size: 24px; }
+.dw-sticky textarea { border: 0; border-radius: 10px; background: rgba(255,255,255,.88); color: #333; min-height: 64px; padding: 8px 10px; font-size: 13.5px; resize: vertical; font-family: inherit; }
+.dw-launcher { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.dw-launch-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; border: 0; background: transparent; cursor: pointer; color: #fff; width: 52px; }
+.dw-launch-name { font-size: 10.5px; max-width: 52px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-shadow: 0 1px 3px rgba(0,0,0,.4); }
+.widget-admin-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.widget-admin-name { font-weight: 700; font-size: 15px; }
+.widget-launcher-picker { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; align-items: center; }
+@media (max-width: 640px) { .dwidget { width: 210px; } .dw-clock { padding: 10px 14px; } }
+
+/* ===== v1.22.0: BIOS / 回復環境 ===== */
+.splash-setup { margin-top: 6px; border: 1px solid rgba(255,255,255,.4); background: rgba(255,255,255,.1); color: #e2e8f0; border-radius: 999px; padding: 7px 16px; cursor: pointer; font-size: 12.5px; }
+.splash-setup:hover { background: rgba(255,255,255,.22); }
+.safemode-badge { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); z-index: 3; background: rgba(220,38,38,.88); color: #fff; font-size: 12.5px; padding: 7px 16px; border-radius: 999px; box-shadow: 0 8px 22px rgba(0,0,0,.35); pointer-events: none; }
+.bios-screen { position: fixed; inset: 0; z-index: 600; background: #050514; color: #d4d4e8; font-family: ui-monospace, Menlo, Consolas, monospace; display: flex; align-items: center; justify-content: center; padding: 14px; overflow: auto; }
+.bios-frame { width: min(880px, 100%); border: 2px solid #4a4a8a; background: #0a0a24; box-shadow: 0 0 0 4px #020208, 0 30px 80px rgba(0,0,0,.8); }
+.bios-header { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; background: #1a1a5e; color: #fff; padding: 10px 16px; font-size: 16px; font-weight: 700; letter-spacing: .04em; }
+.bios-header-sub { font-size: 12px; font-weight: 400; opacity: .8; }
+.bios-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 14px; max-height: calc(100dvh - 170px); overflow: auto; }
+.bios-panel { border: 1px solid #3a3a6e; padding: 12px 14px; }
+.bios-panel h3 { margin: 0 0 10px; font-size: 13.5px; color: #9ad; letter-spacing: .06em; }
+.bios-row { display: flex; justify-content: space-between; gap: 14px; padding: 5px 0; border-top: 1px dotted #2c2c55; font-size: 13px; flex-wrap: wrap; }
+.bios-row:first-of-type { border-top: 0; }
+.bios-key { color: #aab; }
+.bios-val { color: #ffe98a; overflow-wrap: anywhere; text-align: right; }
+.bios-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.bios-opt { border: 1px solid #55558a; background: #14143a; color: #ccd; padding: 5px 12px; cursor: pointer; font-family: inherit; font-size: 12.5px; }
+.bios-opt.on { background: #ffe98a; color: #111; font-weight: 700; border-color: #ffe98a; }
+.bios-note { font-size: 12px; color: #99a; margin: 8px 0 0; line-height: 1.6; }
+.bios-actions { display: flex; flex-direction: column; gap: 8px; }
+.bios-btn { border: 1px solid #55558a; background: #14143a; color: #e8e8ff; padding: 10px 14px; cursor: pointer; font-family: inherit; font-size: 13.5px; text-align: left; }
+.bios-btn:hover { background: #23235a; }
+.bios-btn.primary { background: #ffe98a; color: #111; font-weight: 700; border-color: #ffe98a; }
+.bios-footer { padding: 9px 16px; border-top: 1px solid #3a3a6e; font-size: 11.5px; color: #88a; }
+.recovery-screen { position: fixed; inset: 0; z-index: 600; background: linear-gradient(160deg, #0b2a6b, #123a8a 60%, #0a1f4d); color: #eaf1ff; display: flex; align-items: center; justify-content: center; padding: 18px; overflow: auto; }
+.recovery-frame { width: min(560px, 100%); }
+.recovery-frame h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: .02em; }
+.recovery-info { opacity: .85; font-size: 13.5px; margin: 0 0 18px; }
+.recovery-list { display: flex; flex-direction: column; gap: 9px; }
+.recovery-btn { border: 1px solid rgba(255,255,255,.35); background: rgba(255,255,255,.1); color: #fff; border-radius: 12px; padding: 13px 16px; font-size: 15px; text-align: left; cursor: pointer; }
+.recovery-btn:hover { background: rgba(255,255,255,.22); }
+.recovery-btn.danger { border-color: rgba(248,113,113,.7); background: rgba(220,38,38,.18); }
+.recovery-msg { margin-top: 14px; font-size: 14px; background: rgba(0,0,0,.3); border-radius: 10px; padding: 10px 14px; }
+.recovery-note { margin-top: 14px; font-size: 12.5px; opacity: .8; line-height: 1.6; }
+
+/* ===== v1.22.0: セットアップの許可ステップ ===== */
+.setup-perm-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-top: 1px solid rgba(127,140,160,.2); font-size: 14px; flex-wrap: wrap; }
+.setup-perm-state { margin-left: auto; color: #64748b; font-size: 13px; }
+.setup-permonly-note { background: rgba(37,99,235,.1); border: 1px solid rgba(37,99,235,.3); border-radius: 12px; padding: 10px 14px; font-size: 13.5px; margin: 0 0 6px; }
+
+/* ===== v1.22.0: MXUI（モバイル向けUI） ===== */
+.os-root[data-ui="mxui-classic"] .os-desktop { margin-top: 30px; margin-bottom: 54px; }
+.os-root[data-ui="mxui-classic"] .os-window, .os-root[data-ui="mxui-liquid"] .os-window { border-radius: 0; box-shadow: none; }
+.os-root[data-ui="mxui-classic"] .os-resize-handle, .os-root[data-ui="mxui-liquid"] .os-resize-handle,
+.os-root[data-ui="mxui-classic"] .os-resize-edge, .os-root[data-ui="mxui-liquid"] .os-resize-edge { display: none; }
+.os-root[data-ui="mxui-classic"] .desktop-icons, .os-root[data-ui="mxui-liquid"] .desktop-icons { top: 208px; left: 10px; right: 10px; flex-direction: row; flex-wrap: wrap; align-content: flex-start; max-height: none; }
+.os-root[data-ui="mxui-classic"] .desktop-widgets, .os-root[data-ui="mxui-liquid"] .desktop-widgets { flex-direction: row; left: 8px; right: 8px; top: 8px; max-height: 190px; overflow-x: auto; overflow-y: hidden; }
+.os-root[data-ui="mxui-liquid"] .desktop-widgets { top: 52px; }
+.os-root[data-ui="mxui-classic"] .dwidget, .os-root[data-ui="mxui-liquid"] .dwidget { flex: 0 0 auto; width: 232px; }
+.os-root[data-ui="mxui-classic"] .os-titlebar { background: #263238; border-bottom: 0; min-height: 50px; }
+.os-root[data-ui="mxui-classic"] .os-title { color: #fff; font-size: 15.5px; }
+.os-root[data-ui="mxui-classic"] .os-win-buttons button { background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.2); }
+.os-root[data-ui="mxui-liquid"] .os-titlebar { background: rgba(255,255,255,.5); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); min-height: 50px; }
+.mx-statusbar { position: fixed; top: 0; left: 0; right: 0; height: 30px; z-index: 300; background: rgba(10,12,16,.92); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 13px; }
+.mx-status-right { display: flex; align-items: center; gap: 8px; }
+.mx-status-btn { position: relative; border: 0; background: transparent; color: #fff; font-size: 14px; cursor: pointer; padding: 2px 4px; }
+.mx-navbar { position: fixed; left: 0; right: 0; bottom: 0; height: 54px; z-index: 300; background: rgba(10,12,16,.95); display: flex; align-items: stretch; justify-content: space-around; }
+.mx-navbar button { flex: 1; border: 0; background: transparent; color: #e5e7eb; font-size: 17px; cursor: pointer; }
+.mx-navbar button:active { background: rgba(255,255,255,.14); }
+.mx-island { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 300; min-width: 190px; max-width: calc(100vw - 32px); border: 0; border-radius: 999px; background: #000; color: #fff; padding: 9px 20px; font-size: 13.5px; cursor: pointer; box-shadow: 0 10px 28px rgba(0,0,0,.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mx-dock { position: fixed; left: 50%; transform: translateX(-50%); bottom: 16px; z-index: 300; display: flex; align-items: center; gap: 8px; padding: 9px 11px; border-radius: 30px; background: rgba(255,255,255,.28); border: 1px solid rgba(255,255,255,.45); backdrop-filter: blur(24px) saturate(190%); -webkit-backdrop-filter: blur(24px) saturate(190%); box-shadow: 0 16px 40px rgba(2,6,23,.35); max-width: calc(100vw - 20px); }
+.mx-dock-btn { border: 0; background: transparent; cursor: pointer; padding: 0; display: flex; }
+.mx-dock-btn.text { background: rgba(15,23,42,.35); color: #fff; border-radius: 999px; padding: 9px 13px; font-size: 13px; }
+.mx-dock-sep { width: 1px; height: 30px; background: rgba(255,255,255,.5); }
+.mx-homebar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 5px; z-index: 300; width: 134px; height: 4.5px; border-radius: 999px; background: rgba(255,255,255,.75); box-shadow: 0 1px 4px rgba(0,0,0,.3); pointer-events: none; }
+.mx-recents { position: fixed; inset: 0; z-index: 290; background: rgba(2,6,23,.5); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); display: flex; align-items: flex-end; justify-content: center; }
+.mx-recents-list { width: min(430px, 100%); max-height: 72dvh; overflow-y: auto; background: rgba(255,255,255,.92); border-radius: 24px 24px 0 0; padding: 16px; display: flex; flex-direction: column; gap: 9px; color: #101828; animation: menu-in .18s ease; }
+.mx-recents-empty { text-align: center; color: #64748b; font-size: 14px; margin: 10px 0; }
+.mx-recent-card { display: flex; align-items: center; gap: 8px; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 8px 10px; }
+.mx-recent-main { flex: 1; display: flex; align-items: center; gap: 10px; border: 0; background: transparent; cursor: pointer; font-size: 14.5px; color: #101828; text-align: left; }
+.mx-recent-close { border: 0; background: #f1f5f9; border-radius: 8px; width: 30px; height: 30px; cursor: pointer; }

@@ -44,6 +44,7 @@ const fmtTime = (sec: number) => {
 }
 
 export default function SysInfo() {
+  const permitHw = localStorage.getItem('webx-permit-hwinfo') !== 'off'
   const nav = navigator as unknown as NavExt
   const [info, setInfo] = useState<{ backend: string; own: number; quota: number; persisted: boolean; docs: number; trash: number; events: number } | null>(null)
   const [battery, setBattery] = useState<BatteryLike | null>(null)
@@ -149,6 +150,10 @@ export default function SysInfo() {
       ],
     },
   ]
+  if (!permitHw) {
+    const hw = sections.find((s) => s.title === 'ハードウェア')
+    if (hw) hw.rows = hw.rows.map(([k]) => [k, '許可されていません（設定 → システムで許可できます）'] as [string, string])
+  }
   return (
     <div className="settings-app">
       <h2>システム情報</h2>

@@ -6,7 +6,9 @@ export const SETTINGS_KEYS = [
   'webx-update-notified', 'webx-clock-24h', 'webx-clock-sec', 'webx-reduce-motion',
   'webx-restore-win', 'webx-widget-agenda', 'webx-win-layout', 'webx-nightlight',
   'webx-mute-notes', 'webx-screensaver', 'webx-brightness', 'webx-clipboard',
-  'webx-pin-hash', 'webx-pin-len',
+  'webx-pin-hash', 'webx-pin-len', 'webx-widget-config', 'webx-widget-note', 'webx-widget-agenda',
+  'webx-boot-delay', 'webx-safe-mode', 'webx-boot-target', 'webx-widget-weather',
+  'webx-permit-hwinfo', 'webx-setup-version', 'webx-ui-mode',
 ]
 
 /** 設定だけを初期化する（ドキュメントや予定などのデータは消えない。PINも消える） */

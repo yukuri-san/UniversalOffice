@@ -68,6 +68,10 @@ interface Props {
   setMuteNotes: (v: boolean) => void
   saverOn: boolean
   setSaverOn: (v: boolean) => void
+  permitHw: boolean
+  setPermitHw: (v: boolean) => void
+  uiMode: string
+  setUiMode: (v: string) => void
 }
 
 export const WALLPAPERS: { id: string; key: string }[] = [
@@ -102,7 +106,7 @@ async function fileToWallpaper(file: File): Promise<string> {
   }
 }
 
-export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale, userName, setUserName, timezone, setTimezone, iconSize, setIconSize, iconClick, setIconClick, onShowSetup, clock24h, setClock24h, clockSec, setClockSec, reduceMotion, setReduceMotion, restoreWin, setRestoreWin, widgetAgenda, setWidgetAgenda, nightLight, setNightLight, muteNotes, setMuteNotes, saverOn, setSaverOn }: Props) {
+export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale, userName, setUserName, timezone, setTimezone, iconSize, setIconSize, iconClick, setIconClick, onShowSetup, clock24h, setClock24h, clockSec, setClockSec, reduceMotion, setReduceMotion, restoreWin, setRestoreWin, widgetAgenda, setWidgetAgenda, nightLight, setNightLight, muteNotes, setMuteNotes, saverOn, setSaverOn, permitHw, setPermitHw, uiMode, setUiMode }: Props) {
   const [pinDraft, setPinDraft] = useState('')
   const [pinSetNow, setPinSetNow] = useState(() => getPin() !== null)
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
@@ -214,6 +218,15 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
           ))}
         </div>
         <p className="settings-note">{translate(lang, 'uiScaleNote')}</p>
+        <label className="settings-label">{translate(lang, 'uiSystem')}</label>
+        <div className="settings-options">
+          {(['auto', 'dxui', 'mxui-classic', 'mxui-liquid'] as const).map((m) => (
+            <button key={m} className={uiMode === m ? 'opt on' : 'opt'} onClick={() => setUiMode(m)}>
+              {translate(lang, m === 'auto' ? 'uiAuto' : m === 'dxui' ? 'uiDxui' : m === 'mxui-classic' ? 'uiMxuiClassic' : 'uiMxuiLiquid')}
+            </button>
+          ))}
+        </div>
+        <p className="settings-note">{translate(lang, 'uiSystemNote')}</p>
       </section>
 
       <section className="settings-section">
@@ -227,6 +240,7 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
           ['setNightLight', nightLight, setNightLight],
           ['setMuteNotes', muteNotes, setMuteNotes],
           ['setSaver', saverOn, setSaverOn],
+          ['setPermitHw', permitHw, setPermitHw],
         ] as [string, boolean, (v: boolean) => void][]).map(([key, val, set]) => (
           <div key={key} className="settings-toggle-row">
             <span>{translate(lang, key)}</span>

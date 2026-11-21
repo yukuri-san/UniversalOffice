@@ -7,7 +7,7 @@ import BrowserPanel from './components/BrowserPanel'
 import FilesWindow from './components/FilesWindow'
 import Settings, { type ThemeId } from './components/Settings'
 import { LangContext, LOCALES, translate, type Lang } from './lib/i18n'
-import SetupWizard from './components/SetupWizard'
+import SetupWizard, { SETUP_VERSION } from './components/SetupWizard'
 import YoutubeApp from './components/YoutubeApp'
 import TrashWindow from './components/TrashWindow'
 import DocsWindow, { type DocKind } from './components/DocsWindow'
@@ -31,6 +31,10 @@ import { Kakeibo, HabitTracker, ShoppingList, ReactionTest, SimonGame, Counter, 
 import SysInfo from './components/SysInfo'
 import TaskManager from './components/TaskManager'
 import ClipboardApp from './components/ClipboardApp'
+import DesktopWidget, { type LauncherAppInfo } from './components/DesktopWidgets'
+import WidgetsApp from './components/WidgetsApp'
+import { BiosScreen, RecoveryScreen } from './components/BootScreens'
+import { loadWidgetConfig, saveWidgetConfig, type WidgetConfig } from './lib/widgets'
 import { getPin, hashPin } from './lib/pin'
 import { resetSettingsOnly } from './lib/reset'
 import Tetris from './components/games/Tetris'
@@ -48,7 +52,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets'
 
 interface Win {
   id: WindowApp
@@ -134,8 +138,9 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   sysinfo: { icon: '情', cls: 'sysinfo' },
   taskman: { icon: '管', cls: 'taskman' },
   clipboard: { icon: '📋', cls: 'clipboard' },
+  widgets: { icon: '🧩', cls: 'widgets' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'clipboard', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'sysinfo', 'taskman', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'clipboard', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'sysinfo', 'taskman', 'widgets', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>(() => {
@@ -175,7 +180,15 @@ export default function App() {
   const [timezone, setTimezoneState] = useState(() => localStorage.getItem('webx-timezone') ?? '')
   const [iconSize, setIconSizeState] = useState(() => localStorage.getItem('webx-icon-size') ?? 'm')
   const [iconClick, setIconClickState] = useState(() => localStorage.getItem('webx-icon-click') ?? 'double')
-  const [showSetup, setShowSetup] = useState(() => localStorage.getItem('webx-setup-done') !== '1')
+  // セットアップ版が上がったら全ユーザーに再実施させる（既存ユーザーは許可確認のみ）
+  const [showSetup, setShowSetup] = useState(() => localStorage.getItem('webx-setup-done') !== '1' || localStorage.getItem('webx-setup-version') !== SETUP_VERSION)
+  const [setupMode] = useState<'full' | 'permissions'>(() => (localStorage.getItem('webx-setup-done') === '1' ? 'permissions' : 'full'))
+  const [permitHw, setPermitHwState] = useState(() => localStorage.getItem('webx-permit-hwinfo') !== 'off')
+  const setPermitHw = (v: boolean) => { setPermitHwState(v); localStorage.setItem('webx-permit-hwinfo', v ? 'on' : 'off') }
+  // UIシステム：DXUI（デスクトップ）／MXUI（モバイル）。auto は画面幅で判定する
+  const [uiMode, setUiModeState] = useState(() => localStorage.getItem('webx-ui-mode') ?? 'auto')
+  const setUiMode = (v: string) => { setUiModeState(v); localStorage.setItem('webx-ui-mode', v) }
+  const [recentsOpen, setRecentsOpen] = useState(false)
   const [closingIds, setClosingIds] = useState<string[]>([])
   const [minIds, setMinIds] = useState<string[]>([])
   const [maxAnimIds, setMaxAnimIds] = useState<string[]>([])
@@ -187,12 +200,14 @@ export default function App() {
   const [clockSec, setClockSecState] = useState(() => localStorage.getItem('webx-clock-sec') === 'on')
   const [reduceMotion, setReduceMotionState] = useState(() => localStorage.getItem('webx-reduce-motion') === 'on')
   const [restoreWin, setRestoreWinState] = useState(() => localStorage.getItem('webx-restore-win') !== 'off')
-  const [widgetAgenda, setWidgetAgendaState] = useState(() => localStorage.getItem('webx-widget-agenda') !== 'off')
+  const [widgetConfig, setWidgetConfigState] = useState<WidgetConfig>(() => loadWidgetConfig())
+  const setWidgetConfig = (cfg: WidgetConfig) => { setWidgetConfigState(cfg); saveWidgetConfig(cfg) }
+  const widgetAgenda = widgetConfig.enabled.agenda
   const setClock24h = (v: boolean) => { setClock24hState(v); localStorage.setItem('webx-clock-24h', v ? '24' : '12') }
   const setClockSec = (v: boolean) => { setClockSecState(v); localStorage.setItem('webx-clock-sec', v ? 'on' : 'off') }
   const setReduceMotion = (v: boolean) => { setReduceMotionState(v); localStorage.setItem('webx-reduce-motion', v ? 'on' : 'off') }
   const setRestoreWin = (v: boolean) => { setRestoreWinState(v); localStorage.setItem('webx-restore-win', v ? 'on' : 'off') }
-  const setWidgetAgenda = (v: boolean) => { setWidgetAgendaState(v); localStorage.setItem('webx-widget-agenda', v ? 'on' : 'off') }
+  const setWidgetAgenda = (v: boolean) => { setWidgetConfig({ ...widgetConfig, enabled: { ...widgetConfig.enabled, agenda: v } }) }
   const [nightLight, setNightLightState] = useState(() => localStorage.getItem('webx-nightlight') === 'on')
   const [muteNotes, setMuteNotesState] = useState(() => localStorage.getItem('webx-mute-notes') === 'on')
   const [saverOn, setSaverOnState] = useState(() => localStorage.getItem('webx-screensaver') === 'on')
@@ -266,20 +281,23 @@ export default function App() {
       else localStorage.setItem('webx-win-layout', JSON.stringify(windows))
     } catch { /* ignore */ }
   }, [windows])
-  const [todayEvents, setTodayEvents] = useState<CalEvent[]>([])
+  const [allEvents, setAllEvents] = useState<CalEvent[]>([])
+  const todayKey = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })()
+  const todayEvents = allEvents.filter((e) => e.date === todayKey)
   useEffect(() => {
-    if (!widgetAgenda) return
+    if (!widgetConfig.enabled.agenda && !widgetConfig.enabled.minical) return
     const loadAgenda = () => {
-      void listEvents().then((evs) => {
-        const d = new Date()
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-        setTodayEvents(evs.filter((e) => e.date === key))
-      }).catch(() => { /* ignore */ })
+      void listEvents().then(setAllEvents).catch(() => { /* ignore */ })
     }
     loadAgenda()
+    // 予定が追加・編集・削除されたら即座に反映する
+    window.addEventListener('webx-events-changed', loadAgenda)
     const iv = window.setInterval(loadAgenda, 60000)
-    return () => window.clearInterval(iv)
-  }, [widgetAgenda])
+    return () => {
+      window.removeEventListener('webx-events-changed', loadAgenda)
+      window.clearInterval(iv)
+    }
+  }, [widgetConfig.enabled.agenda, widgetConfig.enabled.minical])
   const [installedApps, setInstalledApps] = useState<string[]>(() => {
     try {
       const v = JSON.parse(localStorage.getItem('webx-installed-apps') ?? '[]')
@@ -346,9 +364,21 @@ export default function App() {
       : 1
     : Number(uiScaleSetting) / 100
   const [booted, setBooted] = useState(false)
+  // 起動ターゲット（bios / recovery）は電源メニュー等から localStorage 経由で指定される
+  const [bootTarget, setBootTarget] = useState<string | null>(() => {
+    const v = localStorage.getItem('webx-boot-target')
+    if (v) localStorage.removeItem('webx-boot-target')
+    return v
+  })
+  const [safeMode] = useState(() => {
+    const v = localStorage.getItem('webx-safe-mode')
+    if (v === 'once') { localStorage.removeItem('webx-safe-mode'); return true }
+    return v === 'always'
+  })
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setBooted(true), 1100)
+    const delay = Number(localStorage.getItem('webx-boot-delay'))
+    const timer = window.setTimeout(() => setBooted(true), Number.isFinite(delay) && delay >= 0 ? delay : 1100)
     return () => window.clearTimeout(timer)
   }, [])
 
@@ -368,6 +398,14 @@ export default function App() {
   const [theme, setTheme] = useState<ThemeId>(() => (localStorage.getItem('ykr-theme') as ThemeId) || 'light')
   const t = (key: string) => translate(lang, key)
   const appName = (app: WindowApp) => STORE_APPS.find((a) => a.id === app)?.name ?? t(app)
+  const appInfoOf = (id: string): LauncherAppInfo | null => {
+    const meta = APP_META[id as WindowApp]
+    if (meta) return { id, name: appName(id as WindowApp), icon: meta.icon, cls: meta.cls }
+    const sa = STORE_APPS.find((a) => a.id === id)
+    return sa ? { id, name: sa.name, icon: sa.icon, cls: sa.cls } : null
+  }
+  const launcherAppsInfo = widgetConfig.launcherApps.flatMap((id) => { const info = appInfoOf(id); return info ? [info] : [] })
+  const allAppsInfo = [...APP_ORDER, ...STORE_APPS.map((a) => a.id)].flatMap((id) => { const info = appInfoOf(id); return info ? [info] : [] })
 
   useEffect(() => {
     localStorage.setItem('ykr-lang', lang)
@@ -619,7 +657,7 @@ export default function App() {
 
   const onTitlePointerDown = (e: React.PointerEvent, win: Win) => {
     focusWin(win.id)
-    if (win.maximized || !wide) return
+    if (win.maximized || !wide || isMxui) return
     dragRef.current = { id: win.id, dx: e.clientX - win.x, dy: e.clientY - win.y }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
@@ -739,11 +777,14 @@ export default function App() {
           nightLight={nightLight} setNightLight={setNightLight}
           muteNotes={muteNotes} setMuteNotes={setMuteNotes}
           saverOn={saverOn} setSaverOn={setSaverOn}
+          permitHw={permitHw} setPermitHw={setPermitHw}
+          uiMode={uiMode} setUiMode={setUiMode}
         />
       )
       case 'youtube': return <YoutubeApp />
       case 'trash': return <TrashWindow />
       case 'clipboard': return <ClipboardApp />
+      case 'widgets': return <WidgetsApp config={widgetConfig} onChange={setWidgetConfig} appsInfo={allAppsInfo} />
       case 'calculator': return <Calculator />
       case 'clock': return <ClockApp />
       case 'paint': return <Paint />
@@ -837,14 +878,29 @@ export default function App() {
     }
   }
 
+  const resolvedUi: 'dxui' | 'mxui-classic' | 'mxui-liquid' =
+    uiMode === 'mxui-classic' ? 'mxui-classic'
+    : uiMode === 'mxui-liquid' ? 'mxui-liquid'
+    : uiMode === 'dxui' ? 'dxui'
+    : viewport.w < 760 ? 'mxui-classic' : 'dxui'
+  const isMxui = resolvedUi !== 'dxui'
+  const showHome = () => {
+    setWindows((prev) => prev.map((w) => ({ ...w, minimized: true })))
+    setActiveId(null)
+    setRecentsOpen(false)
+  }
+
   const tzOpt = timezone ? { timeZone: timezone } : {}
   const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', ...(clockSec ? { second: '2-digit' } : {}), hour12: !clock24h, ...tzOpt }).format(now)
   const widgetDate = new Intl.DateTimeFormat(LOCALES[lang], { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short', ...tzOpt }).format(now)
   const dateLabel = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`
 
+  if (bootTarget === 'bios') return <BiosScreen onExit={() => setBootTarget(null)} />
+  if (bootTarget === 'recovery') return <RecoveryScreen onExit={() => setBootTarget(null)} />
+
   return (
     <LangContext.Provider value={lang}>
-    <div className="os-root" data-theme={theme} data-iconsize={iconSize} data-motion={reduceMotion ? 'reduced' : undefined} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
+    <div className="os-root" data-theme={theme} data-ui={resolvedUi} data-iconsize={iconSize} data-motion={reduceMotion || safeMode ? 'reduced' : undefined} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
       <div
         className="os-desktop"
         ref={desktopRef}
@@ -853,7 +909,7 @@ export default function App() {
           e.preventDefault()
           setCtxMenu({ x: e.clientX, y: e.clientY })
         }}
-        style={wpUseCustom && wpCustom ? { backgroundImage: `url(${wpCustom})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+        style={!safeMode && wpUseCustom && wpCustom ? { backgroundImage: `url(${wpCustom})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
         <div className="desktop-icons">
           {visibleApps.map((app) => (
@@ -869,19 +925,22 @@ export default function App() {
             </button>
           ))}
         </div>
-        <div className="desktop-widget">
-          <span className="widget-clock">{clock}</span>
-          <span className="widget-date">{widgetDate}</span>
-          <span className="widget-brand">WebX</span>
+        {safeMode && <div className="safemode-badge">セーフモードで起動中（ウィジェットとアニメーションは無効です）</div>}
+        <div className="desktop-widgets">
+          {!safeMode && widgetConfig.order.filter((id) => widgetConfig.enabled[id]).map((id) => (
+            <DesktopWidget
+              key={id}
+              id={id}
+              now={now}
+              clock={clock}
+              dateLabel={widgetDate}
+              events={id === 'agenda' ? todayEvents : allEvents}
+              config={widgetConfig}
+              launcherAppsInfo={launcherAppsInfo}
+              onOpenApp={(appId) => openApp(appId as WindowApp)}
+            />
+          ))}
         </div>
-        {widgetAgenda && (
-          <div className="desktop-agenda">
-            <span className="agenda-title">{t('todayEvents')}</span>
-            {todayEvents.length === 0
-              ? <span className="agenda-empty">{t('noEventsToday')}</span>
-              : todayEvents.slice(0, 4).map((e) => <span key={e.id} className="agenda-item">・{e.title}</span>)}
-          </div>
-        )}
         {windows.length === 0 && (
           <div className="desktop-welcome">
             <h1>WebX</h1>
@@ -889,16 +948,18 @@ export default function App() {
           </div>
         )}
         {windows.map((win) => {
-          if (win.minimized || win.ws !== ws) return null
           const meta = APP_META[win.id]
-          const full = win.maximized || !wide
-          const style: React.CSSProperties = full
+          const full = win.maximized || !wide || isMxui
+          // 最小化中・別デスクトップのウィンドウも描画し続ける（YouTube等の再生を止めないため、見えないだけにする）
+          const hiddenWin = (win.minimized || win.ws !== ws) && !minIds.includes(win.id)
+          const baseStyle: React.CSSProperties = full
             ? { inset: 0, width: '100%', height: '100%', zIndex: win.z }
             : { left: win.x, top: win.y, width: win.w, height: win.h, zIndex: win.z }
+          const style: React.CSSProperties = hiddenWin ? { ...baseStyle, visibility: 'hidden', pointerEvents: 'none' } : baseStyle
           return (
             <section
               key={win.id}
-              className={`os-window${activeId === win.id ? ' active' : ''}${full ? ' full' : ''}${closingIds.includes(win.id) ? ' closing' : ''}${minIds.includes(win.id) ? ' minimizing' : ''}${maxAnimIds.includes(win.id) ? ' max-anim' : ''}`}
+              className={`os-window${activeId === win.id ? ' active' : ''}${full ? ' full' : ''}${closingIds.includes(win.id) ? ' closing' : ''}${minIds.includes(win.id) ? ' minimizing' : ''}${maxAnimIds.includes(win.id) ? ' max-anim' : ''}${hiddenWin ? ' win-hidden' : ''}`}
               style={style}
               onPointerDown={() => focusWin(win.id)}
             >
@@ -981,6 +1042,8 @@ export default function App() {
                 <button onClick={() => { setLocked(true); setStartOpen(false); setPowerMenuOpen(false) }}>{t('lockNow')}</button>
                 <button onClick={() => location.reload()}>{t('powerRestart')}</button>
                 <button onClick={() => { setPowerMode('shutdown'); setStartOpen(false); setPowerMenuOpen(false) }}>{t('powerShutdown')}</button>
+                <button onClick={() => { localStorage.setItem('webx-boot-target', 'bios'); location.reload() }}>BIOSで再起動</button>
+                <button onClick={() => { localStorage.setItem('webx-boot-target', 'recovery'); location.reload() }}>回復環境で再起動</button>
               </div>
             )}
           </div>
@@ -1017,7 +1080,8 @@ export default function App() {
           timezone={timezone} setTimezone={setTimezone}
           iconSize={iconSize} setIconSize={setIconSize}
           iconClick={iconClick} setIconClick={setIconClick}
-          onFinish={() => { localStorage.setItem('webx-setup-done', '1'); setShowSetup(false); notifyOs(t('setupDoneMsg'), 'settings') }}
+          mode={setupMode}
+          onFinish={() => { localStorage.setItem('webx-setup-done', '1'); localStorage.setItem('webx-setup-version', SETUP_VERSION); setShowSetup(false); notifyOs(t('setupDoneMsg'), 'settings') }}
         />
       )}
       {shortcutsOpen && (
@@ -1097,6 +1161,7 @@ export default function App() {
           <div className="splash-logo">WebX</div>
           <div className="splash-bar"><span /></div>
           <small className="splash-version">v{APP_VERSION}</small>
+          <button className="splash-setup" onClick={() => setBootTarget('bios')}>DEL — セットアップ（BIOS）</button>
         </div>
       )}
 
@@ -1163,6 +1228,7 @@ export default function App() {
         </div>
       )}
 
+      {!isMxui && (
       <div className="os-taskbar">
         <button className={startOpen ? 'start-btn on' : 'start-btn'} onClick={() => { setStartOpen((v) => !v); setPowerMenuOpen(false) }}>
           {t('start')}
@@ -1195,6 +1261,62 @@ export default function App() {
           <small>{dateLabel}</small>
         </div>
       </div>
+      )}
+
+      {isMxui && resolvedUi === 'mxui-classic' && (
+        <>
+          <div className="mx-statusbar">
+            <span>{clock}</span>
+            <span className="mx-status-right">
+              <button className="mx-status-btn" onClick={(e) => { e.stopPropagation(); setCcOpen((v) => !v); setNotesOpen(false) }}>🎛</button>
+              <button className="mx-status-btn" onClick={(e) => { e.stopPropagation(); setNotesOpen((v) => !v); setCcOpen(false) }}>🔔{notes.length > 0 && <span className="bell-badge">{notes.length}</span>}</button>
+              <span>WebX</span>
+            </span>
+          </div>
+          <div className="mx-navbar">
+            <button onClick={() => { if (activeId) closeWin(activeId) }} aria-label="戻る">◀</button>
+            <button onClick={showHome} aria-label="ホーム">●</button>
+            <button onClick={() => setRecentsOpen((v) => !v)} aria-label="タスク">■</button>
+          </div>
+        </>
+      )}
+
+      {isMxui && resolvedUi === 'mxui-liquid' && (
+        <>
+          <button className="mx-island" onClick={() => { setNotesOpen((v) => !v); setCcOpen(false) }}>
+            {toast ?? `🕒 ${clock}`}
+          </button>
+          <div className="mx-dock">
+            {(['word', 'sheet', 'calendar', 'store'] as WindowApp[]).map((app) => (
+              <button key={app} className="mx-dock-btn" onClick={() => openApp(app)}>
+                <span className={`app-icon ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
+              </button>
+            ))}
+            <span className="mx-dock-sep" />
+            <button className="mx-dock-btn text" onClick={showHome}>ホーム</button>
+            <button className="mx-dock-btn text" onClick={() => setRecentsOpen((v) => !v)}>タスク</button>
+          </div>
+          <div className="mx-homebar" />
+        </>
+      )}
+
+      {isMxui && recentsOpen && (
+        <div className="mx-recents" onClick={() => setRecentsOpen(false)}>
+          <div className="mx-recents-list" onClick={(e) => e.stopPropagation()}>
+            {windows.length === 0 && <p className="mx-recents-empty">開いているアプリはありません</p>}
+            {windows.map((win) => (
+              <div key={win.id} className="mx-recent-card">
+                <button className="mx-recent-main" onClick={() => { setWs(win.ws); focusWin(win.id); setRecentsOpen(false) }}>
+                  <span className={`app-icon ${APP_META[win.id].cls}`}>{APP_META[win.id].icon}</span>
+                  <span>{appName(win.id)}</span>
+                </button>
+                <button className="mx-recent-close" onClick={() => closeWin(win.id)}>✕</button>
+              </div>
+            ))}
+            {windows.length > 0 && <button className="btn" onClick={() => { windows.forEach((w) => closeWin(w.id)); setRecentsOpen(false) }}>すべて閉じる</button>}
+          </div>
+        </div>
+      )}
     </div>
     </LangContext.Provider>
   )
