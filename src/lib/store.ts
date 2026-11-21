@@ -16,6 +16,7 @@ export type RepeatKind = 'none' | 'daily' | 'weekly' | 'monthly'
 export interface CalEvent {
   id: string
   date: string // YYYY-MM-DD
+  time?: string // HH:MM、未指定は終日（既存データとの互換のため）
   title: string
   memo: string
   repeat?: RepeatKind // 未指定は 'none' と同じ（既存データとの互換のため）

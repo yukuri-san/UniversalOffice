@@ -219,12 +219,12 @@ export default function DesktopWidget({ id, now, clock, dateLabel, events, confi
         </div>
       )
     case 'agenda': {
-      const items = events.slice(0, 4)
+      const items = [...events].sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '')).slice(0, 4)
       return (
         <div className="dwidget">
           <div className="dw-title">📅 今日の予定</div>
           {items.length > 0
-            ? items.map((e) => <div key={e.id} className="agenda-item">・{e.title}</div>)
+            ? items.map((e) => <div key={e.id} className="agenda-item">・{e.time ? `${e.time} ` : ''}{e.title}</div>)
             : <div className="dw-note">今日の予定はありません</div>}
         </div>
       )

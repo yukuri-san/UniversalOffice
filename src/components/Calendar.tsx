@@ -73,6 +73,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   const [homeOpen, setHomeOpen] = useState(false)
   const [formTitle, setFormTitle] = useState('')
   const [formMemo, setFormMemo] = useState('')
+  const [formTime, setFormTime] = useState('')
   const [formRepeat, setFormRepeat] = useState<RepeatKind>('none')
   const [formReminder, setFormReminder] = useState(-1)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -202,6 +203,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     await saveEvent({
       id: editingId ?? undefined,
       date: selected,
+      ...(formTime ? { time: formTime } : {}),
       title: formTitle.trim(),
       memo: formMemo.trim(),
       ...(formRepeat !== 'none' ? { repeat: formRepeat } : {}),
@@ -209,6 +211,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     })
     setFormTitle('')
     setFormMemo('')
+    setFormTime('')
     setFormRepeat('none')
     setFormReminder(-1)
     setEditingId(null)
@@ -219,6 +222,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setEditingId(e.id)
     setFormTitle(e.title)
     setFormMemo(e.memo)
+    setFormTime(e.time ?? '')
     setFormRepeat(e.repeat ?? 'none')
     setFormReminder(e.reminder ?? -1)
   }
@@ -227,6 +231,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setEditingId(null)
     setFormTitle('')
     setFormMemo('')
+    setFormTime('')
     setFormRepeat('none')
   }
 
@@ -249,6 +254,11 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   }
 
   const selectedEvents = eventsByDate.get(selected) ?? []
+  // 時刻順に並べる（終日は先頭、時刻ありは時刻順）
+  const sortedSelectedEvents = useMemo(
+    () => [...selectedEvents].sort((a, b) => (a.time ?? '').localeCompare(b.time ?? '')),
+    [selectedEvents],
+  )
   const selectedDate = new Date(`${selected}T00:00:00`)
 
   return (
@@ -295,7 +305,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                   <span className="cal-day">{Number(date.slice(8))}</span>
                   {dayEvents.length === 0
                     ? <span className="cal-more">—</span>
-                    : dayEvents.map((e) => <span key={`${e.id}@${date}`} className="cal-event">{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
+                    : dayEvents.map((e) => <span key={`${e.id}@${date}`} className="cal-event">{e.time && <span className="cal-event-time">{e.time}</span>}{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
                 </button>
               )
             }) : cells.map((date, i) => {
@@ -306,7 +316,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
               return (
                 <button key={i} className={`cal-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`} onClick={() => setSelected(date)}>
                   <span className="cal-day">{Number(date.slice(8))}</span>
-                  {dayEvents.slice(0, 2).map((e) => <span key={`${e.id}@${date}`} className="cal-event">{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
+                  {dayEvents.slice(0, 2).map((e) => <span key={`${e.id}@${date}`} className="cal-event">{e.time && <span className="cal-event-time">{e.time}</span>}{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
                   {dayEvents.length > 2 && <span className="cal-more">{t('moreEvents').replace('{n}', String(dayEvents.length - 2))}</span>}
                 </button>
               )
@@ -319,10 +329,10 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
             <p className="cal-noevent">{t('noEvents')}</p>
           ) : (
             <ul className="cal-event-list">
-              {selectedEvents.map((e) => (
+              {sortedSelectedEvents.map((e) => (
                 <li key={e.id} className={editingId === e.id ? 'editing' : ''}>
                   <div>
-                    <strong>{e.title}</strong>
+                    <strong>{e.time ? <span className="cal-event-time">{e.time} </span> : <span className="cal-event-time">{t('allDay')} </span>}{e.title}</strong>
                     {(e.repeat ?? 'none') !== 'none' && <span className="cal-repeat-badge">↻ {t(e.repeat === 'daily' ? 'repeatDaily' : e.repeat === 'weekly' ? 'repeatWeekly' : 'repeatMonthly')}</span>}
                     {e.memo && <small>{e.memo}</small>}
                   </div>
@@ -336,6 +346,10 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
             <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} onKeyDown={onFormKeyDown} placeholder={t('eventTitle')} aria-label={t('eventTitle')} />
             <input value={formMemo} onChange={(e) => setFormMemo(e.target.value)} onKeyDown={onFormKeyDown} placeholder={t('eventMemo')} aria-label={t('eventMemo')} />
             <label className="cal-repeat-row">
+              <span>{t('eventTime')}</span>
+              <input type="time" value={formTime} onChange={(e) => setFormTime(e.target.value)} aria-label={t('eventTime')} />
+            </label>
+            <label className="cal-repeat-row">
               <span>{t('repeatLabel')}</span>
               <select value={formRepeat} onChange={(e) => setFormRepeat(e.target.value as RepeatKind)} aria-label={t('repeatLabel')}>
                 <option value="none">{t('repeatNone')}</option>
@@ -345,13 +359,13 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
               </select>
             </label>
             <label className="cal-repeat-row">
-              <span>リマインダー</span>
-              <select value={formReminder} onChange={(e) => setFormReminder(Number(e.target.value))} aria-label="リマインダー">
-                <option value={-1}>なし</option>
-                <option value={0}>当日</option>
-                <option value={1}>前日</option>
-                <option value={3}>3日前</option>
-                <option value={7}>7日前</option>
+              <span>{t('reminderLabel')}</span>
+              <select value={formReminder} onChange={(e) => setFormReminder(Number(e.target.value))} aria-label={t('reminderLabel')}>
+                <option value={-1}>{t('reminderNone')}</option>
+                <option value={0}>{t('reminderToday')}</option>
+                <option value={1}>{t('reminder1d')}</option>
+                <option value={3}>{t('reminder3d')}</option>
+                <option value={7}>{t('reminder7d')}</option>
               </select>
             </label>
             <button onClick={() => void addEvent()}>{editingId ? t('saveEvent') : t('addEvent')}</button>
