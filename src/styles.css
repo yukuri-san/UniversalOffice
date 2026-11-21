@@ -1560,3 +1560,16 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
   .ymm-side { width: auto; max-height: 168px; border-right: none; border-bottom: 1px solid var(--border, rgba(127,127,127,.22)); }
   .ymm-sel { width: 96px; }
 }
+
+/* ==== YMM4辞書CSV：空間ID設定画面 ==== */
+.ymm-set-head { display: flex; align-items: center; gap: 8px; }
+.ymm-set-title { font-size: 15px; font-weight: 800; }
+.ymm-set-list { display: flex; flex-direction: column; gap: 6px; }
+.ymm-set-row { display: flex; align-items: center; gap: 8px; padding: 7px 9px; border-radius: 14px; border: 1px solid var(--border, rgba(127,127,127,.20)); background: var(--panel, rgba(127,127,127,.05)); }
+.ymm-set-name { flex: 1; min-width: 0; border: none; background: transparent; color: inherit; font-size: 13.5px; font-weight: 600; padding: 6px 4px; outline: none; border-radius: 8px; }
+.ymm-set-name:focus { background: rgba(14,165,233,.10); }
+.ymm-set-count { font-size: 11px; opacity: .6; white-space: nowrap; }
+.ymm-set-add { display: flex; gap: 6px; }
+.ymm-set-add input { flex: 1; min-width: 0; font-size: 13px; padding: 9px 11px; border-radius: 12px; }
+.ymm-backbtn { border: none; background: rgba(127,127,127,.12); color: inherit; cursor: pointer; font-size: 12.5px; font-weight: 700; padding: 7px 12px; border-radius: 10px; }
+.ymm-backbtn:hover { background: rgba(14,165,233,.22); }

@@ -84,8 +84,8 @@ export default function YmmDic() {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [loaded, setLoaded] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
-  const [idsOpen, setIdsOpen] = useState(false)
-  const [idsText, setIdsText] = useState('')
+  const [view, setView] = useState<'edit' | 'idsettings'>('edit')
+  const [newId, setNewId] = useState('')
   const [focusRowId, setFocusRowId] = useState<string | null>(null)
   const csvRef = useRef<HTMLInputElement>(null)
   const jsonRef = useRef<HTMLInputElement>(null)
@@ -218,17 +218,39 @@ export default function YmmDic() {
     patchFile(active.id, { rows: [] })
   }
 
-  // ---- 立ち絵空間ID ----
-  const openIds = () => {
+  // ---- 立ち絵空間ID（設定画面） ----
+  const renameId = (oldName: string, raw: string) => {
     if (!active) return
-    setIdsText(active.characterIds.join('\n'))
-    setIdsOpen(true)
+    const name = raw.trim()
+    if (!name || name === oldName) return
+    if (active.characterIds.includes(name)) { notifyOs('同じ名前のIDが既にあります', 'ymmdic'); return }
+    patchFile(active.id, {
+      characterIds: active.characterIds.map((c) => (c === oldName ? name : c)),
+      rows: active.rows.map((r) => (r.charId === oldName ? { ...r, charId: name } : r)),
+    })
   }
-  const applyIds = () => {
+  const deleteId = (name: string) => {
     if (!active) return
-    const ids = idsText.split('\n').map((s) => s.trim()).filter(Boolean)
+    const n = active.rows.filter((r) => r.charId === name).length
+    if (!window.confirm(`空間ID「${name}」を削除しますか？${n > 0 ? `\n（このIDを使っている行が ${n} 件あります。行そのものは残ります）` : ''}`)) return
+    patchFile(active.id, { characterIds: active.characterIds.filter((c) => c !== name) })
+  }
+  const moveId = (name: string, dir: -1 | 1) => {
+    if (!active) return
+    const ids = [...active.characterIds]
+    const i = ids.indexOf(name)
+    const j = i + dir
+    if (i < 0 || j < 0 || j >= ids.length) return
+    ;[ids[i], ids[j]] = [ids[j], ids[i]]
     patchFile(active.id, { characterIds: ids })
-    setIdsOpen(false)
+  }
+  const addId = () => {
+    if (!active) return
+    const name = newId.trim()
+    if (!name) return
+    if (active.characterIds.includes(name)) { notifyOs('同じ名前のIDが既にあります', 'ymmdic'); return }
+    patchFile(active.id, { characterIds: [...active.characterIds, name] })
+    setNewId('')
   }
 
   // ---- CSV ----
@@ -295,7 +317,7 @@ export default function YmmDic() {
 
   const fileRow = (f: YFile) => (
     <div key={f.id} className={f.id === activeId ? 'ymm-file on' : 'ymm-file'}>
-      <button className="ymm-file-main" onClick={() => setActiveId(f.id)}>
+      <button className="ymm-file-main" onClick={() => { setActiveId(f.id); setView('edit') }}>
         <span>📄</span>
         <span className="ymm-file-name">{f.name}</span>
         <span className="ymm-file-count">{f.rows.length}</span>
@@ -361,13 +383,50 @@ export default function YmmDic() {
               <p>辞書が選択されていません。<br />左の「＋ ファイル」から作成してください。</p>
             </div>
           )}
-          {active && (
+          {active && view === 'idsettings' && (
+            <>
+              <div className="ymm-set-head">
+                <button className="ymm-backbtn" onClick={() => setView('edit')}>← 戻る</button>
+                <span className="ymm-set-title">🎭 空間IDの設定</span>
+                <span className="hint">{active.name}</span>
+              </div>
+              <p className="hint" style={{ margin: 0 }}>名前を変えると、そのIDを使っている行にも反映されます。並び順は、行のID選択肢の順番になります。</p>
+              <div className="ymm-set-list">
+                {active.characterIds.map((c) => (
+                  <div key={c} className="ymm-set-row">
+                    <span className="ymm-ava" style={{ background: colorOf(c), width: 26, height: 26, fontSize: 13 }}>{c.slice(0, 1)}</span>
+                    <input
+                      className="ymm-set-name"
+                      defaultValue={c}
+                      onBlur={(e) => renameId(c, e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur() }}
+                    />
+                    <span className="ymm-set-count">{active.rows.filter((r) => r.charId === c).length}行</span>
+                    <button className="ymm-iconbtn" title="上へ" onClick={() => moveId(c, -1)}>↑</button>
+                    <button className="ymm-iconbtn" title="下へ" onClick={() => moveId(c, 1)}>↓</button>
+                    <button className="ymm-iconbtn" title="削除" onClick={() => deleteId(c)}>✕</button>
+                  </div>
+                ))}
+                {active.characterIds.length === 0 && <p className="hint">空間IDがまだありません。下から追加してください。</p>}
+              </div>
+              <div className="ymm-set-add">
+                <input
+                  value={newId}
+                  placeholder="新しい空間IDの名前"
+                  onChange={(e) => setNewId(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') addId() }}
+                />
+                <button className="btn accent" onClick={addId}>＋ 追加</button>
+              </div>
+            </>
+          )}
+          {active && view === 'edit' && (
             <>
               <div className="ymm-toolbar">
                 <span className="ymm-fname">{active.name}</span>
                 <span className="hint">{active.rows.length}行</span>
                 <span style={{ flex: 1 }} />
-                <button className="btn" onClick={openIds}>🎭 IDを編集</button>
+                <button className="btn" onClick={() => setView('idsettings')}>🎭 IDの設定</button>
                 <button className="btn" onClick={() => { importMode.current = 'new'; csvRef.current?.click() }}>CSV取込（新規）</button>
                 <button className="btn" onClick={() => { importMode.current = 'overwrite'; csvRef.current?.click() }}>CSVで上書き</button>
                 <button className="btn accent" onClick={exportCSV}>⬇ CSVを出力</button>
@@ -382,17 +441,6 @@ export default function YmmDic() {
                 ))}
               </div>
 
-              {idsOpen && (
-                <div className="ymm-ids">
-                  <p style={{ margin: '0 0 6px', fontWeight: 700, fontSize: 13 }}>立ち絵空間ID（1行に1つ）</p>
-                  <textarea value={idsText} onChange={(e) => setIdsText(e.target.value)} rows={4} />
-                  <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                    <button className="btn accent" onClick={applyIds}>適用</button>
-                    <button className="btn" onClick={() => setIdsText('')}>すべて消す</button>
-                    <button className="btn" onClick={() => setIdsOpen(false)}>閉じる</button>
-                  </div>
-                </div>
-              )}
 
               {ctxRows && (
                 <div className="ymm-ctx">
