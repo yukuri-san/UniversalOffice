@@ -462,8 +462,8 @@ export default function Paint() {
           </ul>
           <div className="layer-actions">
             <button onClick={addLayer}>{t('addLayer')}</button>
-            <button onClick={duplicateLayer}>複製</button>
-            <button onClick={mergeDown}>下と結合</button>
+            <button onClick={duplicateLayer}>{t('duplicateLayer')}</button>
+            <button onClick={mergeDown}>{t('mergeDown')}</button>
             <button onClick={() => moveLayer(1)}>↑</button>
             <button onClick={() => moveLayer(-1)}>↓</button>
             <button onClick={deleteLayer}>{t('deleteBtn')}</button>
