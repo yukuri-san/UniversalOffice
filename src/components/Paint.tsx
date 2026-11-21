@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import { createStore, del, get, set } from 'idb-keyval'
 import { useLang } from '../lib/i18n'
 import { notifyOs } from '../lib/notify'
+
+/* 描画内容は端末内の IndexedDB に自動保存し、次回開いたときに復元する */
+const paintStore = createStore('webx-paint-db', 'canvas')
+interface SavedLayer { id: number; name: string; visible: boolean; opacity: number; data: string }
+interface SavedPaint { layers: SavedLayer[]; activeId: number; savedAt: number }
 
 const W = 1200
 const H = 800
@@ -69,7 +75,61 @@ export default function Paint() {
   const layersRef = useRef<Layer[]>([])
   const undoRef = useRef<Map<number, string[]>>(new Map())
   const [, setRenderTick] = useState(0)
-  const rerender = () => setRenderTick((v) => v + 1)
+  const [loaded, setLoaded] = useState(false)
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // 変更から 800ms 後に保存（描画中の連打は1回にまとめる）
+  const scheduleSave = () => {
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    saveTimerRef.current = setTimeout(() => { void doSave() }, 800)
+  }
+  const doSave = async () => {
+    if (!layersRef.current.length) return
+    setSaveState('saving')
+    try {
+      const rec: SavedPaint = {
+        layers: layersRef.current.map((l) => ({ id: l.id, name: l.name, visible: l.visible, opacity: l.opacity, data: l.canvas.toDataURL() })),
+        activeId,
+        savedAt: Date.now(),
+      }
+      await set('current', rec, paintStore)
+      setSavedAt(rec.savedAt)
+      setSaveState('saved')
+    } catch {
+      setSaveState('idle')
+    }
+  }
+  const rerender = () => { setRenderTick((v) => v + 1); scheduleSave() }
+
+  // 起動時に保存済みの絵を復元する（無ければ白紙のレイヤー1から始める）
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      try {
+        const rec = (await get('current', paintStore)) as SavedPaint | undefined
+        if (rec && rec.layers?.length && !cancelled) {
+          const rebuilt: Layer[] = []
+          for (const sl of rec.layers) {
+            const c = makeCanvas()
+            const img = new Image()
+            await new Promise<void>((resolve) => { img.onload = () => resolve(); img.onerror = () => resolve(); img.src = sl.data })
+            c.getContext('2d')!.drawImage(img, 0, 0)
+            rebuilt.push({ id: sl.id, name: sl.name, visible: sl.visible, opacity: sl.opacity, canvas: c })
+          }
+          layersRef.current = rebuilt
+          layerSeq = Math.max(...rebuilt.map((l) => l.id)) + 1
+          setActiveId(rebuilt.some((l) => l.id === rec.activeId) ? rec.activeId : rebuilt[rebuilt.length - 1].id)
+          setSavedAt(rec.savedAt ?? null)
+          setSaveState('saved')
+        }
+      } catch { /* 保存が読めなければ白紙から始める */ }
+      if (!cancelled) setLoaded(true)
+    })()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [activeId, setActiveId] = useState(0)
   const [tool, setTool] = useState<Tool>('brush')
   const [color, setColor] = useState('#2563eb')
@@ -82,7 +142,7 @@ export default function Paint() {
   const drawState = useRef<{ drawing: boolean; start: { x: number; y: number } | null; last: { x: number; y: number } | null }>({ drawing: false, start: null, last: null })
   const importRef = useRef<HTMLInputElement>(null)
 
-  if (layersRef.current.length === 0) {
+  if (loaded && layersRef.current.length === 0) {
     const base = makeCanvas()
     const ctx = base.getContext('2d')!
     ctx.fillStyle = '#ffffff'
@@ -124,6 +184,23 @@ export default function Paint() {
     pushUndo(active)
     active.canvas.getContext('2d')!.clearRect(0, 0, W, H)
     rerender()
+  }
+
+  // 白紙から描き直す（保存済みの絵も破棄する）
+  const newCanvas = async () => {
+    if (!window.confirm(t('paintConfirmNew'))) return
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
+    try { await del('current', paintStore) } catch { /* ignore */ }
+    const base = makeCanvas()
+    const ctx = base.getContext('2d')!
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, W, H)
+    layerSeq = 1
+    layersRef.current = [{ id: 0, name: 'レイヤー 1', visible: true, opacity: 1, canvas: base }]
+    setActiveId(0)
+    setSavedAt(null)
+    setSaveState('idle')
+    setRenderTick((v) => v + 1)
   }
 
   // Ctrl+Z / Cmd+Z で元に戻す（テキスト入力中は入力欄の操作を優先）
@@ -383,6 +460,10 @@ export default function Paint() {
     { id: 'text', label: t('toolText') },
   ]
 
+  if (!loaded) {
+    return <div className="paint-app pro"><div className="paint-loading">{t('paintLoading')}</div></div>
+  }
+
   return (
     <div className="paint-app pro" ref={rootRef} tabIndex={0} onKeyDown={onKeyDown}>
       <div className="paint-tools wrap">
@@ -401,6 +482,8 @@ export default function Paint() {
         <label className="paint-size">{t('brushOpacity')}<input type="range" min={10} max={100} value={Math.round(brushOpacity * 100)} onChange={(e) => setBrushOpacity(Number(e.target.value) / 100)} /></label>
         <button onClick={undo}>{t('undo')}</button>
         <button onClick={clearLayer}>{t('clearLayer')}</button>
+        <button onClick={() => void newCanvas()}>{t('paintNew')}</button>
+        <span className="paint-save-state">{saveState === 'saving' ? t('paintSaving') : saveState === 'saved' && savedAt ? `${t('paintSaved')} ${new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
         <button onClick={() => importRef.current?.click()}>{t('importImage')}</button>
         <input ref={importRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) importImage(f); e.target.value = '' }} />
         <button onClick={download}>{t('downloadBtn')}</button>
