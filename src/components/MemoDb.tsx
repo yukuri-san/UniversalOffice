@@ -119,6 +119,48 @@ export default function MemoDb() {
     else createNew()
   }
 
+  // 旧メモDB（RecordDB / https://api.ykr3.net/mem/）の JSON バックアップ取り込み
+  const importRef = useRef<HTMLInputElement>(null)
+  const importLegacy = async (file: File) => {
+    try {
+      const parsed = JSON.parse(await file.text()) as unknown
+      const records: unknown[] = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray((parsed as { records?: unknown[] }).records)
+          ? (parsed as { records: unknown[] }).records
+          : Array.isArray((parsed as { items?: unknown[] }).items)
+            ? (parsed as { items: unknown[] }).items
+            : []
+      if (records.length === 0) {
+        notifyOs('取り込める記録が見つかりませんでした（旧メモDBのバックアップファイルを選んでください）', 'memodb')
+        return
+      }
+      const existing = await listDocs()
+      const existingKeys = new Set(existing.filter((d) => d.kind === 'memo').map((d) => `${d.name}\n${parseMemo(d.content).body}`))
+      let imported = 0
+      let skipped = 0
+      for (const raw of records) {
+        const rec = (raw ?? {}) as { title?: unknown; body?: unknown; memo?: unknown; category?: unknown; tags?: unknown }
+        const name = typeof rec.title === 'string' && rec.title.trim() ? rec.title.trim() : '無題のメモ'
+        const bodyMain = typeof rec.body === 'string' ? rec.body : ''
+        const memoText = typeof rec.memo === 'string' ? rec.memo : ''
+        const fullBody = memoText.trim() ? `${bodyMain}${bodyMain ? '\n\n' : ''}【補足】\n${memoText}` : bodyMain
+        const tags: string[] = []
+        if (typeof rec.category === 'string' && rec.category.trim()) tags.push(rec.category.trim())
+        if (Array.isArray(rec.tags)) rec.tags.forEach((x) => { if (typeof x === 'string' && x.trim() && !tags.includes(x.trim())) tags.push(x.trim()) })
+        if (existingKeys.has(`${name}\n${fullBody}`)) { skipped++; continue }
+        await saveDoc({ kind: 'memo', name, folder: '', content: JSON.stringify({ body: fullBody, tags }) })
+        existingKeys.add(`${name}\n${fullBody}`)
+        imported++
+      }
+      const rest = await refresh()
+      if (rest.length > 0 && imported > 0) select(rest[0])
+      notifyOs(`旧メモDBから ${imported} 件を取り込みました${skipped > 0 ? `（重複 ${skipped} 件はスキップ）` : ''}`, 'memodb')
+    } catch {
+      notifyOs('バックアップファイルを読み込めませんでした（JSON形式を確認してください）', 'memodb')
+    }
+  }
+
   return (
     <div className="memodb-app">
       <aside className="memodb-side">
@@ -139,6 +181,9 @@ export default function MemoDb() {
           </div>
         )}
         <button className="memodb-new" onClick={createNew}>＋ {t('newDoc')}</button>
+        <button className="memodb-new" onClick={() => importRef.current?.click()}>📥 旧メモDBから取り込む</button>
+        <input ref={importRef} type="file" accept=".json,application/json" hidden
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) void importLegacy(f); e.target.value = '' }} />
         <ul className="memodb-list">
           {visible.map((m) => {
             const data = parseMemo(m.content)

@@ -1482,3 +1482,11 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .os-root[data-theme='lavender'] .os-win-buttons button { background: rgba(255, 255, 255, .7); color: #3b0764; border-color: rgba(167, 139, 250, .25); }
 .os-root[data-theme='lavender'] .ribbon, .os-root[data-theme='lavender'] .toolbar, .os-root[data-theme='lavender'] .formula-bar, .os-root[data-theme='lavender'] .note-list, .os-root[data-theme='lavender'] .note-editor, .os-root[data-theme='lavender'] .cal-grid-wrap, .os-root[data-theme='lavender'] .cal-side, .os-root[data-theme='lavender'] .cal-toolbar, .os-root[data-theme='lavender'] .settings-section, .os-root[data-theme='lavender'] .explorer-storage, .os-root[data-theme='lavender'] .files-window, .os-root[data-theme='lavender'] .settings-app, .os-root[data-theme='lavender'] .fm-list li, .os-root[data-theme='lavender'] .file-action, .os-root[data-theme='lavender'] .theme-card, .os-root[data-theme='lavender'] .statusbar { background: #f3efff; color: #3b0764; border-color: rgba(167, 139, 250, .2); }
 .os-root[data-theme='lavender'] .page-scroll { background: #ede9fe; }
+
+/* ==== コマンドプロンプト（v1.22.0ex 刷新後のクラス） ==== */
+.terminal { display: flex; flex-direction: column; height: 100%; background: #0c0f14; color: #d1f7d6; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.terminal-body { flex: 1; overflow-y: auto; padding: 12px 14px; font-size: 13px; line-height: 1.55; }
+.terminal-line { white-space: pre-wrap; word-break: break-all; min-height: 1.2em; }
+.terminal-input-row { display: flex; align-items: center; gap: 6px; }
+.terminal-prompt { color: #7ee787; white-space: nowrap; }
+.terminal-input { flex: 1; background: transparent; border: none; outline: none; color: #fff; font: inherit; padding: 0; caret-color: #7ee787; }
