@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { marked } from 'marked'
 import { useLang } from '../lib/i18n'
 import { STORE_APPS } from '../lib/storeApps'
+import { catalogEntry, outdatedFromCatalog, type StoreCatalog } from '../lib/storeCheck'
 import { APP_VERSION } from '../lib/version'
 import { compareVersions, fetchLatestVersion, performUpdate } from '../lib/updateCheck'
 import { notifyOs } from '../lib/notify'
@@ -14,6 +15,8 @@ interface Props {
   installed: string[]
   versions: Record<string, string>
   onUpdateApp: (id: string) => void
+  // ストアアプリの最新情報は store.json 由来のカタログから取る（OS 更新とは別系統）
+  catalog: StoreCatalog | null
 }
 
 function changelogSection(version: string): string {
@@ -22,7 +25,7 @@ function changelogSection(version: string): string {
   return m ? m[1].trim() : ''
 }
 
-export default function UpdateInfoWindow({ target, installed, versions, onUpdateApp }: Props) {
+export default function UpdateInfoWindow({ target, installed, versions, onUpdateApp, catalog }: Props) {
   const { t } = useLang()
   const [latest, setLatest] = useState<string | null>(null)
   const [fetchState, setFetchState] = useState<'loading' | 'done' | 'failed'>('loading')
@@ -56,8 +59,8 @@ export default function UpdateInfoWindow({ target, installed, versions, onUpdate
   }, [target, loadWebx])
 
   const outdated = useMemo(
-    () => STORE_APPS.filter((a) => installed.includes(a.id) && versions[a.id] !== a.version),
-    [installed, versions]
+    () => outdatedFromCatalog(catalog, installed, versions),
+    [catalog, installed, versions]
   )
 
   const notesHtml = (md: string) => ({ __html: marked.parse(md) as string })
@@ -101,18 +104,21 @@ export default function UpdateInfoWindow({ target, installed, versions, onUpdate
   if (target.kind === 'app') {
     const app = STORE_APPS.find((a) => a.id === target.id)
     if (!app) return <div className="update-info"><p className="hint">{t('updNoNotes')}</p></div>
+    const entry = catalogEntry(catalog, app.id)
+    const latestVer = entry?.version ?? app.version
+    const notes = entry?.notes ?? app.notes
     const cur = versions[app.id]
-    const done = doneApps.includes(app.id) || cur === app.version
+    const done = doneApps.includes(app.id) || cur === latestVer
     return (
       <div className="update-info">
         <h2><span className={`app-icon ${app.cls}`}>{app.icon}</span> {app.name}</h2>
-        <p className="update-ver">v{cur ?? '?'} → {t('updNewVer')} v{app.version}</p>
+        <p className="update-ver">v{cur ?? '?'} → {t('updNewVer')} v{latestVer}</p>
         <h3>{t('updWhatsNew')}</h3>
-        {app.notes ? <p className="update-note-text">{app.notes}</p> : <p className="hint">{t('updNoNotes')}</p>}
+        {notes ? <p className="update-note-text">{notes}</p> : <p className="hint">{t('updNoNotes')}</p>}
         {!done ? (
           <button
             className="btn accent"
-            onClick={() => { onUpdateApp(app.id); setDoneApps((p) => [...p, app.id]); notifyOs(`${app.name} v${app.version}: ${t('updDone')}`) }}
+            onClick={() => { onUpdateApp(app.id); setDoneApps((p) => [...p, app.id]); notifyOs(`${app.name} v${latestVer}: ${t('updDone')}`) }}
           >
             {t('stUpdateBtn')}
           </button>
@@ -129,17 +135,20 @@ export default function UpdateInfoWindow({ target, installed, versions, onUpdate
     <div className="update-info">
       <h2>🆙 {t('updTitle')}</h2>
       {outdated.length === 0 && <p className="hint">{t('stAllLatest')}</p>}
-      {outdated.map((a) => (
-        <div key={a.id} className="update-row">
-          <span className={`app-icon ${a.cls}`}>{a.icon}</span>
-          <div className="update-row-main">
-            <strong>{a.name}</strong>
-            <span className="update-ver">v{versions[a.id] ?? '?'} → v{a.version}</span>
-            {a.notes && <p className="update-note-text">{a.notes}</p>}
+      {outdated.map((a) => {
+        const local = STORE_APPS.find((x) => x.id === a.id)
+        return (
+          <div key={a.id} className="update-row">
+            <span className={`app-icon ${local?.cls ?? ''}`}>{local?.icon ?? ''}</span>
+            <div className="update-row-main">
+              <strong>{a.name}</strong>
+              <span className="update-ver">v{versions[a.id] ?? '?'} → v{a.version}</span>
+              {a.notes && <p className="update-note-text">{a.notes}</p>}
+            </div>
+            {doneApps.includes(a.id) && <span className="update-done">✓</span>}
           </div>
-          {doneApps.includes(a.id) && <span className="update-done">✓</span>}
-        </div>
-      ))}
+        )
+      })}
       {remaining.length > 0 && (
         <button
           className="btn accent"

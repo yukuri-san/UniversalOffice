@@ -27,6 +27,12 @@ import { PassGen, TextCount, ColorPicker, Morse } from './components/store/Tools
 import { DayCalc, Bmi, SplitBill, Currency, Wareki } from './components/store/ToolsB'
 import { Pomodoro, Metronome, WhiteNoise, Flashcards } from './components/store/Life'
 import { TodoList } from './components/store/TodoList'
+import { Kakeibo, HabitTracker, ShoppingList, ReactionTest, SimonGame, Counter, Roulette, CoinFlip, Countdown, AgeCalc } from './components/store/Apps2'
+import SysInfo from './components/SysInfo'
+import TaskManager from './components/TaskManager'
+import ClipboardApp from './components/ClipboardApp'
+import { getPin, hashPin } from './lib/pin'
+import { resetSettingsOnly } from './lib/reset'
 import Tetris from './components/games/Tetris'
 import Suika from './components/games/Suika'
 import { Game2048, Snake, Breakout } from './components/games/Classics'
@@ -34,17 +40,19 @@ import { Minesweeper, Sudoku } from './components/games/Puzzle'
 import { Memory, Reversi, Gomoku } from './components/games/Board'
 import { Match3, Pong, Flappy, WhackMole } from './components/games/Arcade'
 import { Typing, Puzzle15, Hanoi, Blackjack, Slot, Runner } from './components/games/Mini'
-import { requestPersist } from './lib/store'
+import { listEvents, requestPersist, type CalEvent } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import { compareVersions, fetchLatestVersion } from './lib/updateCheck'
+import { fetchStoreCatalog, outdatedFromCatalog, type StoreCatalog } from './lib/storeCheck'
 import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'updateinfo'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard'
 
 interface Win {
   id: WindowApp
+  ws: number
   z: number
   minimized: boolean
   maximized: boolean
@@ -113,11 +121,46 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   slot: { icon: '🎰', cls: 'slot' },
   runner: { icon: '🦖', cls: 'runner' },
   todo: { icon: '✓', cls: 'todo' },
+  kakeibo: { icon: '家', cls: 'kakeibo' },
+  habit: { icon: '継', cls: 'habit' },
+  shopping: { icon: '買', cls: 'shopping' },
+  reaction: { icon: '⚡', cls: 'reaction' },
+  simon: { icon: '🎵', cls: 'simon' },
+  counter: { icon: '数', cls: 'counter' },
+  roulette: { icon: '🎡', cls: 'roulette' },
+  coinflip: { icon: '🪙', cls: 'coinflip' },
+  countdown: { icon: '⏳', cls: 'countdown' },
+  agecalc: { icon: '🎂', cls: 'agecalc' },
+  sysinfo: { icon: '情', cls: 'sysinfo' },
+  taskman: { icon: '管', cls: 'taskman' },
+  clipboard: { icon: '📋', cls: 'clipboard' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'clipboard', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'sysinfo', 'taskman', 'settings']
 
 export default function App() {
-  const [windows, setWindows] = useState<Win[]>([])
+  const [windows, setWindows] = useState<Win[]>(() => {
+    // 起動時のウィンドウ復元（設定でオフにできる）
+    if (localStorage.getItem('webx-restore-win') === 'off') return []
+    try {
+      const v = JSON.parse(localStorage.getItem('webx-win-layout') ?? '[]')
+      if (!Array.isArray(v)) return []
+      return v
+        .filter((w) => w && typeof w.id === 'string' && w.id in APP_META)
+        .map((w) => ({
+          id: w.id as WindowApp,
+          ws: Number(w.ws) || 0,
+          z: Number(w.z) || 10,
+          minimized: !!w.minimized,
+          maximized: !!w.maximized,
+          x: Number(w.x) || 40,
+          y: Number(w.y) || 40,
+          w: Number(w.w) || 720,
+          h: Number(w.h) || 480,
+        }))
+    } catch {
+      return []
+    }
+  })
   const [activeId, setActiveId] = useState<WindowApp | null>(null)
   const [startOpen, setStartOpen] = useState(false)
   const [startQuery, setStartQuery] = useState('')
@@ -140,6 +183,103 @@ export default function App() {
   const setTimezone = (v: string) => { setTimezoneState(v); localStorage.setItem('webx-timezone', v) }
   const setIconSize = (v: string) => { setIconSizeState(v); localStorage.setItem('webx-icon-size', v) }
   const setIconClick = (v: string) => { setIconClickState(v); localStorage.setItem('webx-icon-click', v) }
+  const [clock24h, setClock24hState] = useState(() => localStorage.getItem('webx-clock-24h') !== '12')
+  const [clockSec, setClockSecState] = useState(() => localStorage.getItem('webx-clock-sec') === 'on')
+  const [reduceMotion, setReduceMotionState] = useState(() => localStorage.getItem('webx-reduce-motion') === 'on')
+  const [restoreWin, setRestoreWinState] = useState(() => localStorage.getItem('webx-restore-win') !== 'off')
+  const [widgetAgenda, setWidgetAgendaState] = useState(() => localStorage.getItem('webx-widget-agenda') !== 'off')
+  const setClock24h = (v: boolean) => { setClock24hState(v); localStorage.setItem('webx-clock-24h', v ? '24' : '12') }
+  const setClockSec = (v: boolean) => { setClockSecState(v); localStorage.setItem('webx-clock-sec', v ? 'on' : 'off') }
+  const setReduceMotion = (v: boolean) => { setReduceMotionState(v); localStorage.setItem('webx-reduce-motion', v ? 'on' : 'off') }
+  const setRestoreWin = (v: boolean) => { setRestoreWinState(v); localStorage.setItem('webx-restore-win', v ? 'on' : 'off') }
+  const setWidgetAgenda = (v: boolean) => { setWidgetAgendaState(v); localStorage.setItem('webx-widget-agenda', v ? 'on' : 'off') }
+  const [nightLight, setNightLightState] = useState(() => localStorage.getItem('webx-nightlight') === 'on')
+  const [muteNotes, setMuteNotesState] = useState(() => localStorage.getItem('webx-mute-notes') === 'on')
+  const [saverOn, setSaverOnState] = useState(() => localStorage.getItem('webx-screensaver') === 'on')
+  const [brightness, setBrightnessState] = useState(() => Math.min(60, Math.max(0, Number(localStorage.getItem('webx-brightness')) || 0)))
+  const setNightLight = (v: boolean) => { setNightLightState(v); localStorage.setItem('webx-nightlight', v ? 'on' : 'off') }
+  const setMuteNotes = (v: boolean) => { setMuteNotesState(v); localStorage.setItem('webx-mute-notes', v ? 'on' : 'off') }
+  const setSaverOn = (v: boolean) => { setSaverOnState(v); localStorage.setItem('webx-screensaver', v ? 'on' : 'off') }
+  const setBrightness = (v: number) => { setBrightnessState(v); localStorage.setItem('webx-brightness', String(v)) }
+  const [ws, setWs] = useState(0)
+  const [locked, setLocked] = useState(false)
+  const [pinInput, setPinInput] = useState('')
+  const [pinError, setPinError] = useState(false)
+  const [pinForgot, setPinForgot] = useState(false)
+  const [powerMode, setPowerMode] = useState<'sleep' | 'shutdown' | null>(null)
+  const [powerMenuOpen, setPowerMenuOpen] = useState(false)
+  const [ccOpen, setCcOpen] = useState(false)
+  const [saverActive, setSaverActive] = useState(false)
+  const windowsRef = useRef<Win[]>([])
+  useEffect(() => { windowsRef.current = windows }, [windows])
+  // コピーしたテキストをクリップボード履歴に残す
+  useEffect(() => {
+    const onCopy = () => {
+      const text = document.getSelection()?.toString().trim()
+      if (!text) return
+      try {
+        const list: string[] = JSON.parse(localStorage.getItem('webx-clipboard') ?? '[]')
+        const next = [text, ...(Array.isArray(list) ? list.filter((x) => x !== text) : [])].slice(0, 30)
+        localStorage.setItem('webx-clipboard', JSON.stringify(next))
+      } catch { /* ignore */ }
+    }
+    document.addEventListener('copy', onCopy)
+    document.addEventListener('cut', onCopy)
+    return () => {
+      document.removeEventListener('copy', onCopy)
+      document.removeEventListener('cut', onCopy)
+    }
+  }, [])
+  // スクリーンセーバー：3分間操作がなければ表示する
+  useEffect(() => {
+    if (!saverOn) return
+    let timer = 0
+    const arm = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => setSaverActive(true), 180000)
+    }
+    const onAct = () => { setSaverActive(false); arm() }
+    arm()
+    window.addEventListener('pointerdown', onAct)
+    window.addEventListener('keydown', onAct)
+    return () => {
+      window.clearTimeout(timer)
+      window.removeEventListener('pointerdown', onAct)
+      window.removeEventListener('keydown', onAct)
+    }
+  }, [saverOn])
+  const tryPin = (digit: string) => {
+    const pin = getPin()
+    if (!pin) { setLocked(false); return }
+    const next = (pinInput + digit).slice(0, pin.len)
+    if (next.length < pin.len) { setPinInput(next); setPinError(false); return }
+    if (hashPin(next) === pin.hash) {
+      setLocked(false); setPinInput(''); setPinError(false)
+    } else {
+      setPinError(true); setPinInput('')
+    }
+  }
+  // ウィンドウ配置を保存する（次回起動時の復元用）
+  useEffect(() => {
+    try {
+      if (windows.length === 0) localStorage.removeItem('webx-win-layout')
+      else localStorage.setItem('webx-win-layout', JSON.stringify(windows))
+    } catch { /* ignore */ }
+  }, [windows])
+  const [todayEvents, setTodayEvents] = useState<CalEvent[]>([])
+  useEffect(() => {
+    if (!widgetAgenda) return
+    const loadAgenda = () => {
+      void listEvents().then((evs) => {
+        const d = new Date()
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        setTodayEvents(evs.filter((e) => e.date === key))
+      }).catch(() => { /* ignore */ })
+    }
+    loadAgenda()
+    const iv = window.setInterval(loadAgenda, 60000)
+    return () => window.clearInterval(iv)
+  }, [widgetAgenda])
   const [installedApps, setInstalledApps] = useState<string[]>(() => {
     try {
       const v = JSON.parse(localStorage.getItem('webx-installed-apps') ?? '[]')
@@ -157,7 +297,9 @@ export default function App() {
     }
   })
   const visibleApps: WindowApp[] = [...APP_ORDER, ...STORE_APPS.filter((a) => installedApps.includes(a.id)).map((a) => a.id as WindowApp)]
-  const updatableCount = STORE_APPS.filter((a) => installedApps.includes(a.id) && appVersions[a.id] !== a.version).length
+  // ストア情報は OS の更新とは別に store.json から取得する
+  const [storeCatalog, setStoreCatalog] = useState<StoreCatalog | null>(null)
+  const updatableCount = outdatedFromCatalog(storeCatalog, installedApps, appVersions).length
   const installApp = (id: string) => {
     const def = STORE_APPS.find((a) => a.id === id)
     if (!def) return
@@ -216,7 +358,7 @@ export default function App() {
       const text = typeof detail === 'string' ? detail : detail.text
       const app = typeof detail === 'string' ? undefined : detail.app
       setNotes((prev) => [{ id: Date.now() + Math.random(), text, app, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) }, ...prev].slice(0, 30))
-      showToast(text)
+      if (localStorage.getItem('webx-mute-notes') !== 'on') showToast(text)
     }
     window.addEventListener('webx-notify', onNotify)
     return () => window.removeEventListener('webx-notify', onNotify)
@@ -235,7 +377,7 @@ export default function App() {
     localStorage.setItem('ykr-theme', theme)
   }, [theme])
   useEffect(() => {
-    const ids: ThemeId[] = ['light', 'dark', 'ipados', 'macos', 'win11', 'win7', 'winxp', 'win95', 'cyber', 'sakura', 'ocean', 'sunset']
+    const ids: ThemeId[] = ['light', 'dark', 'ipados', 'macos', 'win11', 'win7', 'winxp', 'win95', 'cyber', 'sakura', 'ocean', 'sunset', 'forest', 'candy']
     const onThemeSet = (e: Event) => {
       const id = (e as CustomEvent<string>).detail as ThemeId
       if (ids.includes(id)) setTheme(id)
@@ -250,15 +392,17 @@ export default function App() {
   useEffect(() => {
     let cancelled = false
     const checkUpdates = async () => {
-      const latest = await fetchLatestVersion()
+      // OS 本体（version.json）とストア（store.json）の更新確認は別々に行う
+      const [latest, catalog] = await Promise.all([fetchLatestVersion(), fetchStoreCatalog(true)])
       if (cancelled) return
+      if (catalog) setStoreCatalog(catalog)
       let signature = ''
       if (latest && compareVersions(latest, APP_VERSION) > 0) signature += `webx:${latest};`
       let outdatedNames: string[] = []
       try {
         const installedNow: string[] = JSON.parse(localStorage.getItem('webx-installed-apps') ?? '[]')
         const versionsNow: Record<string, string> = JSON.parse(localStorage.getItem('webx-app-versions') ?? '{}')
-        const outdated = STORE_APPS.filter((a) => installedNow.includes(a.id) && versionsNow[a.id] !== a.version)
+        const outdated = outdatedFromCatalog(catalog, installedNow, versionsNow)
         outdatedNames = outdated.map((a) => `${a.name} v${a.version}`)
         if (outdated.length > 0) signature += outdated.map((a) => `${a.id}:${a.version}`).join(',')
       } catch { /* 保存データが壊れている場合は通知しない */ }
@@ -344,6 +488,11 @@ export default function App() {
   const [desktop, setDesktop] = useState({ w: 1200, h: 700 })
   const desktopRef = useRef<HTMLDivElement>(null)
   const zRef = useRef(10)
+  // 復元したウィンドウの z を引き継ぐ（初回のみ）
+  useEffect(() => {
+    zRef.current = Math.max(zRef.current, ...windows.map((w) => w.z))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const dragRef = useRef<{ id: WindowApp; dx: number; dy: number } | null>(null)
   const resizeRef = useRef<{ id: WindowApp; startX: number; startY: number; startW: number; startH: number; edge: 'corner' | 'right' | 'bottom' } | null>(null)
 
@@ -402,6 +551,9 @@ export default function App() {
     setStartOpen(false)
     // そのアプリを開いたら、宛先がそのアプリの通知は消える
     setNotes((prev) => prev.filter((n) => n.app !== app))
+    // 別の仮想デスクトップで開いているアプリなら、そのデスクトップへ移動する
+    const existing = windowsRef.current.find((w) => w.id === app)
+    if (existing) setWs(existing.ws)
     setWindows((prev) => {
       if (prev.some((w) => w.id === app)) {
         zRef.current += 1
@@ -423,6 +575,7 @@ export default function App() {
         ...prev,
         {
           id: app,
+          ws,
           z: zRef.current,
           minimized: false,
           maximized: !wide,
@@ -436,7 +589,7 @@ export default function App() {
     zRef.current += 1
     setActiveId(app)
     setWindows((prev) => prev.map((w) => (w.id === app ? { ...w, z: zRef.current, minimized: false } : w)))
-  }, [desktop, wide, installedApps])
+  }, [desktop, wide, installedApps, ws])
 
   const closeWin = (id: WindowApp) => {
     if (closingIds.includes(id)) return
@@ -578,10 +731,19 @@ export default function App() {
           iconSize={iconSize} setIconSize={setIconSize}
           iconClick={iconClick} setIconClick={setIconClick}
           onShowSetup={() => setShowSetup(true)}
+          clock24h={clock24h} setClock24h={setClock24h}
+          clockSec={clockSec} setClockSec={setClockSec}
+          reduceMotion={reduceMotion} setReduceMotion={setReduceMotion}
+          restoreWin={restoreWin} setRestoreWin={setRestoreWin}
+          widgetAgenda={widgetAgenda} setWidgetAgenda={setWidgetAgenda}
+          nightLight={nightLight} setNightLight={setNightLight}
+          muteNotes={muteNotes} setMuteNotes={setMuteNotes}
+          saverOn={saverOn} setSaverOn={setSaverOn}
         />
       )
       case 'youtube': return <YoutubeApp />
       case 'trash': return <TrashWindow />
+      case 'clipboard': return <ClipboardApp />
       case 'calculator': return <Calculator />
       case 'clock': return <ClockApp />
       case 'paint': return <Paint />
@@ -599,10 +761,16 @@ export default function App() {
           onUninstall={uninstallApp}
           onUpdateApp={updateStoreApp}
           onShowUpdate={(target) => { setUpdateTarget(target); openApp('updateinfo') }}
+          catalog={storeCatalog}
+          onRefreshCatalog={async () => {
+            const c = await fetchStoreCatalog(true)
+            if (c) setStoreCatalog(c)
+            return c
+          }}
         />
       )
       case 'updateinfo': return (
-        <UpdateInfoWindow target={updateTarget} installed={installedApps} versions={appVersions} onUpdateApp={updateStoreApp} />
+        <UpdateInfoWindow target={updateTarget} installed={installedApps} versions={appVersions} onUpdateApp={updateStoreApp} catalog={storeCatalog} />
       )
       case 'unit': return <UnitConverter />
       case 'pomodoro': return <Pomodoro />
@@ -643,21 +811,44 @@ export default function App() {
       case 'slot': return <Slot />
       case 'runner': return <Runner />
       case 'todo': return <TodoList />
+      case 'kakeibo': return <Kakeibo />
+      case 'habit': return <HabitTracker />
+      case 'shopping': return <ShoppingList />
+      case 'reaction': return <ReactionTest />
+      case 'simon': return <SimonGame />
+      case 'counter': return <Counter />
+      case 'roulette': return <Roulette />
+      case 'coinflip': return <CoinFlip />
+      case 'countdown': return <Countdown />
+      case 'agecalc': return <AgeCalc />
+      case 'sysinfo': return <SysInfo />
+      case 'taskman': return (
+        <TaskManager
+          windows={windows}
+          activeId={activeId}
+          nameOf={(id) => appName(id as WindowApp)}
+          iconOf={(id) => APP_META[id as WindowApp]}
+          onFocus={(id) => focusWin(id as WindowApp)}
+          onMinimize={(id) => minimizeWin(id as WindowApp)}
+          onClose={(id) => closeWin(id as WindowApp)}
+          onCloseAll={() => { windows.forEach((w) => closeWin(w.id)) }}
+        />
+      )
     }
   }
 
   const tzOpt = timezone ? { timeZone: timezone } : {}
-  const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, ...tzOpt }).format(now)
+  const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', ...(clockSec ? { second: '2-digit' } : {}), hour12: !clock24h, ...tzOpt }).format(now)
   const widgetDate = new Intl.DateTimeFormat(LOCALES[lang], { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short', ...tzOpt }).format(now)
   const dateLabel = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()}`
 
   return (
     <LangContext.Provider value={lang}>
-    <div className="os-root" data-theme={theme} data-iconsize={iconSize} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
+    <div className="os-root" data-theme={theme} data-iconsize={iconSize} data-motion={reduceMotion ? 'reduced' : undefined} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
       <div
         className="os-desktop"
         ref={desktopRef}
-        onClick={() => { setStartOpen(false); setCtxMenu(null); setNotesOpen(false) }}
+        onClick={() => { setStartOpen(false); setCtxMenu(null); setNotesOpen(false); setCcOpen(false) }}
         onContextMenu={(e) => {
           e.preventDefault()
           setCtxMenu({ x: e.clientX, y: e.clientY })
@@ -683,6 +874,14 @@ export default function App() {
           <span className="widget-date">{widgetDate}</span>
           <span className="widget-brand">WebX</span>
         </div>
+        {widgetAgenda && (
+          <div className="desktop-agenda">
+            <span className="agenda-title">{t('todayEvents')}</span>
+            {todayEvents.length === 0
+              ? <span className="agenda-empty">{t('noEventsToday')}</span>
+              : todayEvents.slice(0, 4).map((e) => <span key={e.id} className="agenda-item">・{e.title}</span>)}
+          </div>
+        )}
         {windows.length === 0 && (
           <div className="desktop-welcome">
             <h1>WebX</h1>
@@ -690,7 +889,7 @@ export default function App() {
           </div>
         )}
         {windows.map((win) => {
-          if (win.minimized) return null
+          if (win.minimized || win.ws !== ws) return null
           const meta = APP_META[win.id]
           const full = win.maximized || !wide
           const style: React.CSSProperties = full
@@ -774,6 +973,38 @@ export default function App() {
           <button className="start-shortcuts" onClick={() => { setStartOpen(false); setShortcutsOpen(true) }}>
             {t('shortcuts')}（{modLabel(platform)} + /）
           </button>
+          <div className="start-power-row">
+            <button className="start-power" onClick={() => setPowerMenuOpen((v) => !v)}>⏻ 電源</button>
+            {powerMenuOpen && (
+              <div className="power-menu">
+                <button onClick={() => { setPowerMode('sleep'); setStartOpen(false); setPowerMenuOpen(false) }}>{t('powerSleep')}</button>
+                <button onClick={() => { setLocked(true); setStartOpen(false); setPowerMenuOpen(false) }}>{t('lockNow')}</button>
+                <button onClick={() => location.reload()}>{t('powerRestart')}</button>
+                <button onClick={() => { setPowerMode('shutdown'); setStartOpen(false); setPowerMenuOpen(false) }}>{t('powerShutdown')}</button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {ccOpen && (
+        <div className="cc-panel" onClick={(e) => e.stopPropagation()}>
+          <h3>{t('ccTitle')}</h3>
+          <div className="cc-grid">
+            <button className={theme === 'dark' ? 'cc-tile on' : 'cc-tile'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>🌙 ダーク切替</button>
+            <button className={nightLight ? 'cc-tile on' : 'cc-tile'} onClick={() => setNightLight(!nightLight)}>🌆 夜間モード</button>
+            <button className={reduceMotion ? 'cc-tile on' : 'cc-tile'} onClick={() => setReduceMotion(!reduceMotion)}>🎞 アニメーション削減</button>
+            <button className={muteNotes ? 'cc-tile on' : 'cc-tile'} onClick={() => setMuteNotes(!muteNotes)}>🔕 通知ミュート</button>
+          </div>
+          <label className="cc-slider">
+            {t('brightnessLabel')}
+            <input type="range" min={0} max={60} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} />
+          </label>
+          <div className="cc-actions">
+            <button className="btn" onClick={() => { setLocked(true); setCcOpen(false) }}>{t('lockNow')}</button>
+            <button className="btn" onClick={() => { openApp('settings'); setCcOpen(false) }}>{t('settingsTitle')}</button>
+            <button className="btn" onClick={() => { openApp('taskman'); setCcOpen(false) }}>{t('taskman')}</button>
+          </div>
         </div>
       )}
 
@@ -871,12 +1102,73 @@ export default function App() {
 
       {toast && <div className="os-toast">{toast}</div>}
 
+      {nightLight && <div className="nightlight-overlay" />}
+      {brightness > 0 && <div className="brightness-overlay" style={{ opacity: brightness / 100 }} />}
+      {saverActive && !locked && powerMode === null && (
+        <div className="saver-screen">
+          <div className="saver-clock">{clock}</div>
+          <div className="saver-date">{widgetDate}</div>
+          <div className="saver-brand">WebX</div>
+        </div>
+      )}
+      {locked && (
+        <div className="lock-screen">
+          <div className="lock-clock">{clock}</div>
+          <div className="lock-date">{widgetDate}</div>
+          {getPin() ? (
+            pinForgot ? (
+              <div className="lock-recover">
+                <h3>PINを忘れた場合</h3>
+                <p>
+                  PIN自体を復元する方法はありません。その代わり、<strong>設定だけをリセット</strong>してロックを解除できます。
+                  テーマや言語などの設定とPINは初期状態に戻りますが、ドキュメント・予定・メモなどのデータは消えません。
+                </p>
+                <div className="lock-recover-btns">
+                  <button
+                    className="btn accent"
+                    onClick={() => { if (window.confirm('設定をリセットしてロックを解除します。よろしいですか？')) { resetSettingsOnly(); location.reload() } }}
+                  >
+                    設定をリセットして解除する
+                  </button>
+                  <button className="btn" onClick={() => setPinForgot(false)}>戻る</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="lock-dots">{'●'.repeat(pinInput.length)}{'○'.repeat(Math.max(0, getPin()!.len - pinInput.length))}</div>
+                {pinError && <p className="lock-error">PINが違います</p>}
+                <div className="lock-pad">
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 0].map((n) => (
+                    <button key={n} onClick={() => tryPin(String(n))}>{n}</button>
+                  ))}
+                  <button className="lock-pad-sub" onClick={() => { setPinInput(''); setPinError(false) }}>消す</button>
+                </div>
+                <button className="lock-forgot" onClick={() => setPinForgot(true)}>PINを忘れた場合</button>
+              </>
+            )
+          ) : (
+            <button className="btn accent lock-unlock" onClick={() => setLocked(false)}>タップでロック解除</button>
+          )}
+        </div>
+      )}
+      {powerMode === 'sleep' && (
+        <div className="power-screen" onClick={() => setPowerMode(null)}>
+          <p>スリープ中… クリックで復帰</p>
+        </div>
+      )}
+      {powerMode === 'shutdown' && (
+        <div className="power-screen">
+          <div className="splash-logo">WebX</div>
+          <button className="btn accent" onClick={() => location.reload()}>電源を入れる</button>
+        </div>
+      )}
+
       <div className="os-taskbar">
-        <button className={startOpen ? 'start-btn on' : 'start-btn'} onClick={() => setStartOpen((v) => !v)}>
+        <button className={startOpen ? 'start-btn on' : 'start-btn'} onClick={() => { setStartOpen((v) => !v); setPowerMenuOpen(false) }}>
           {t('start')}
         </button>
         <div className="task-buttons">
-          {windows.map((win) => (
+          {windows.filter((win) => win.ws === ws).map((win) => (
             <button
               key={win.id}
               className={`task-btn${activeId === win.id && !win.minimized ? ' active' : ''}`}
@@ -887,7 +1179,15 @@ export default function App() {
             </button>
           ))}
         </div>
-        <button className="task-bell" onClick={(e) => { e.stopPropagation(); setNotesOpen((v) => !v) }}>
+        <div className="ws-switcher">
+          {[0, 1, 2].map((i) => (
+            <button key={i} className={ws === i ? 'ws-btn on' : 'ws-btn'} title={`デスクトップ ${i + 1}`} onClick={() => setWs(i)}>{i + 1}</button>
+          ))}
+        </div>
+        <button className="task-bell" onClick={(e) => { e.stopPropagation(); setCcOpen((v) => !v); setNotesOpen(false) }}>
+          🎛
+        </button>
+        <button className="task-bell" onClick={(e) => { e.stopPropagation(); setNotesOpen((v) => !v); setCcOpen(false) }}>
           🔔{notes.length > 0 && <span className="bell-badge">{notes.length}</span>}
         </button>
         <div className="task-clock">

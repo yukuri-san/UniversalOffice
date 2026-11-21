@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { STORE_APPS, STORE_CATEGORIES, type StoreCategory } from '../lib/storeApps'
+import { catalogEntry, outdatedFromCatalog, type StoreCatalog } from '../lib/storeCheck'
 import { notifyOs } from '../lib/notify'
 import { APP_VERSION } from '../lib/version'
 import { compareVersions, fetchLatestVersion } from '../lib/updateCheck'
@@ -13,22 +14,28 @@ interface Props {
   onUninstall: (id: string) => void
   onUpdateApp: (id: string) => void
   onShowUpdate: (target: { kind: 'webx' } | { kind: 'app'; id: string } | { kind: 'apps' }) => void
+  // ストア情報は OS の更新とは別系統（store.json）で扱う
+  catalog: StoreCatalog | null
+  onRefreshCatalog: () => Promise<StoreCatalog | null>
 }
 
 type CheckState = 'idle' | 'checking' | 'done' | 'error'
 
 // アプリの入手・削除・更新はすべてこのストアで処理する。
-// WebX 本体の更新確認・適用もここで行う（設定からは移管済み）。
-export default function AppStore({ installed, versions, coreApps, onInstall, onUninstall, onUpdateApp, onShowUpdate }: Props) {
+// WebX 本体の更新確認（version.json）とストア情報の確認（store.json）は別系統で行う。
+export default function AppStore({ installed, versions, coreApps, onInstall, onUninstall, onUpdateApp, onShowUpdate, catalog, onRefreshCatalog }: Props) {
   const { t } = useLang()
   const [check, setCheck] = useState<CheckState>('idle')
+  const [storeCheck, setStoreCheck] = useState<CheckState>('idle')
   const [category, setCategory] = useState<StoreCategory | 'all' | 'updates'>('all')
   const [latest, setLatest] = useState('')
   const [summary, setSummary] = useState('')
+  const [storeSummary, setStoreSummary] = useState('')
 
-  const outdatedApps = STORE_APPS.filter((a) => installed.includes(a.id) && versions[a.id] !== a.version)
+  const outdatedApps = outdatedFromCatalog(catalog, installed, versions)
   const webxOutdated = latest !== '' && compareVersions(latest, APP_VERSION) > 0
 
+  // OS 本体の更新確認（version.json のみを見る）
   const runCheck = async () => {
     setCheck('checking')
     const v = await fetchLatestVersion()
@@ -39,10 +46,21 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
     }
     setLatest(v)
     setCheck('done')
-    const parts: string[] = []
-    parts.push(compareVersions(v, APP_VERSION) > 0 ? `WebX v${v}${t('stHasUpdateSuffix')}` : `WebX: ${t('latestVersion')}`)
-    parts.push(outdatedApps.length > 0 ? `${outdatedApps.length} × ${t('stUpdateBtn')}` : t('stAllLatest'))
-    setSummary(parts.join('／'))
+    setSummary(compareVersions(v, APP_VERSION) > 0 ? `WebX v${v}${t('stHasUpdateSuffix')}` : `WebX: ${t('latestVersion')}`)
+  }
+
+  // ストア情報の更新確認（store.json のみを見る）
+  const runStoreCheck = async () => {
+    setStoreCheck('checking')
+    const c = await onRefreshCatalog()
+    if (c === null) {
+      setStoreCheck('error')
+      setStoreSummary('ストア情報を取得できませんでした（通信状態を確認してください）')
+      return
+    }
+    setStoreCheck('done')
+    const outdated = outdatedFromCatalog(c, installed, versions)
+    setStoreSummary(outdated.length > 0 ? `${outdated.length} × ${t('stUpdateBtn')}` : t('stAllLatest'))
   }
 
   return (
@@ -71,6 +89,12 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
 
       <h3 className="store-head">{t('stStoreApps')}</h3>
       <p className="store-note">{t('stNoteText')}</p>
+      <div style={{ marginBottom: 8 }}>
+        <button className="btn" onClick={() => void runStoreCheck()} disabled={storeCheck === 'checking'}>
+          {storeCheck === 'checking' ? t('checkingUpdate') : 'ストアの更新を確認'}
+        </button>
+      </div>
+      {storeSummary && <p className="store-note">{storeSummary}</p>}
       <div className="store-cats">
         <button className={category === 'all' ? 'chip on' : 'chip'} onClick={() => setCategory('all')}>すべて（{STORE_APPS.length}）</button>
         {outdatedApps.length > 0 && (
@@ -95,14 +119,15 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
         {STORE_APPS.filter((a) => category === 'all' || (category === 'updates' ? outdatedApps.some((o) => o.id === a.id) : a.category === category)).map((app) => {
           const isIn = installed.includes(app.id)
           const cur = versions[app.id]
-          const outdated = isIn && cur !== app.version
+          const latestVer = catalogEntry(catalog, app.id)?.version ?? app.version
+          const outdated = isIn && cur !== latestVer
           return (
             <div className="store-row" key={app.id}>
               <span className={`app-icon ${app.cls}`}>{app.icon}</span>
               <div className="store-meta">
                 <div className="store-name">
                   {app.name}
-                  <span className="store-ver">v{app.version}</span>
+                  <span className="store-ver">v{latestVer}</span>
                   {isIn && <span className="store-state">{outdated ? `${t('stInstalled')} v${cur ?? '?'} (${t('stUpdateBtn')})` : t('stInstalled')}</span>}
                 </div>
                 <div className="store-desc">{app.desc}</div>

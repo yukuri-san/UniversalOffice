@@ -1,0 +1,218 @@
+{
+  "version": "1.21.0",
+  "apps": [
+    {
+      "id": "unit",
+      "version": "1.0.0"
+    },
+    {
+      "id": "pomodoro",
+      "version": "1.0.0"
+    },
+    {
+      "id": "metronome",
+      "version": "1.0.0"
+    },
+    {
+      "id": "whitenoise",
+      "version": "1.0.0"
+    },
+    {
+      "id": "flashcards",
+      "version": "1.0.0"
+    },
+    {
+      "id": "dice",
+      "version": "1.0.0"
+    },
+    {
+      "id": "janken",
+      "version": "1.0.0"
+    },
+    {
+      "id": "numguess",
+      "version": "1.0.0"
+    },
+    {
+      "id": "omikuji",
+      "version": "1.0.0"
+    },
+    {
+      "id": "passgen",
+      "version": "1.0.0"
+    },
+    {
+      "id": "textcount",
+      "version": "1.0.0"
+    },
+    {
+      "id": "colorpicker",
+      "version": "1.0.0"
+    },
+    {
+      "id": "morse",
+      "version": "1.0.0"
+    },
+    {
+      "id": "daycalc",
+      "version": "1.0.0"
+    },
+    {
+      "id": "bmi",
+      "version": "1.0.0"
+    },
+    {
+      "id": "splitbill",
+      "version": "1.0.0"
+    },
+    {
+      "id": "currency",
+      "version": "1.0.0"
+    },
+    {
+      "id": "wareki",
+      "version": "1.0.0"
+    },
+    {
+      "id": "tetris",
+      "version": "1.0.1",
+      "notes": "タッチ操作（タップで回転、スワイプで移動・落下）に対応しました。"
+    },
+    {
+      "id": "suika",
+      "version": "1.0.2",
+      "notes": "同じ果物が触れたときの合体判定を改善しました。"
+    },
+    {
+      "id": "g2048",
+      "version": "1.0.1",
+      "notes": "スワイプ操作に対応しました。"
+    },
+    {
+      "id": "snake",
+      "version": "1.0.1",
+      "notes": "スワイプ操作に対応しました。"
+    },
+    {
+      "id": "breakout",
+      "version": "1.0.0"
+    },
+    {
+      "id": "minesweeper",
+      "version": "1.0.1",
+      "notes": "旗モードを追加し、タッチでも旗が置けるようになりました。"
+    },
+    {
+      "id": "sudoku",
+      "version": "1.0.0"
+    },
+    {
+      "id": "memory",
+      "version": "1.0.0"
+    },
+    {
+      "id": "reversi",
+      "version": "1.0.0"
+    },
+    {
+      "id": "gomoku",
+      "version": "1.0.0"
+    },
+    {
+      "id": "match3",
+      "version": "1.0.0"
+    },
+    {
+      "id": "pong",
+      "version": "1.0.0"
+    },
+    {
+      "id": "flappy",
+      "version": "1.0.0"
+    },
+    {
+      "id": "mole",
+      "version": "1.0.0"
+    },
+    {
+      "id": "typing",
+      "version": "1.0.0"
+    },
+    {
+      "id": "puzzle15",
+      "version": "1.0.0"
+    },
+    {
+      "id": "hanoi",
+      "version": "1.0.0"
+    },
+    {
+      "id": "blackjack",
+      "version": "1.0.0"
+    },
+    {
+      "id": "slot",
+      "version": "1.0.0"
+    },
+    {
+      "id": "runner",
+      "version": "1.0.1",
+      "notes": "Space キーでのジャンプに対応しました。"
+    },
+    {
+      "id": "todo",
+      "version": "1.0.0",
+      "notes": "新規アプリです。やることの追加・完了チェック・絞り込み・完了の一括削除ができます。"
+    },
+    {
+      "id": "kakeibo",
+      "version": "1.0.0",
+      "notes": "新規アプリです。収入・支出の記録、月ごとの収支とカテゴリ内訳が使えます。"
+    },
+    {
+      "id": "habit",
+      "version": "1.0.0",
+      "notes": "新規アプリです。習慣の登録と7日分の達成チェック、連続日数の表示ができます。"
+    },
+    {
+      "id": "shopping",
+      "version": "1.0.0",
+      "notes": "新規アプリです。買うものの追加・数量メモ・購入チェックができます。"
+    },
+    {
+      "id": "reaction",
+      "version": "1.0.0",
+      "notes": "新規アプリです。反応速度の測定とベスト記録の保存ができます。"
+    },
+    {
+      "id": "simon",
+      "version": "1.0.0",
+      "notes": "新規アプリです。色の順番を覚える記憶ゲームが遊べます。"
+    },
+    {
+      "id": "counter",
+      "version": "1.0.0",
+      "notes": "新規アプリです。複数のカウンターで数を数えられます。"
+    },
+    {
+      "id": "roulette",
+      "version": "1.0.0",
+      "notes": "新規アプリです。候補からランダムに1つ選べます。"
+    },
+    {
+      "id": "coinflip",
+      "version": "1.0.0",
+      "notes": "新規アプリです。コイントスと表・裏の回数集計ができます。"
+    },
+    {
+      "id": "countdown",
+      "version": "1.0.0",
+      "notes": "新規アプリです。イベントまでの残り日数を表示できます。"
+    },
+    {
+      "id": "agecalc",
+      "version": "1.0.0",
+      "notes": "新規アプリです。生年月日から年齢と経過日数を計算できます。"
+    }
+  ]
+}

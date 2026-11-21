@@ -1,10 +1,18 @@
 // WebX の更新確認まわり（本体の version.json 照合と、更新の適用）
 export function compareVersions(a: string, b: string): number {
-  const pa = a.split('.').map((n) => parseInt(n, 10) || 0)
-  const pb = b.split('.').map((n) => parseInt(n, 10) || 0)
+  // 末尾英字つきバージョン（例：1.21.0a）にも対応する。数字が同じなら英字ありの方が新しい。
+  const parse = (v: string) =>
+    v.split('.').map((seg) => {
+      const m = seg.match(/^(\d+)([a-z]*)$/)
+      return m ? { n: parseInt(m[1], 10), s: m[2] } : { n: parseInt(seg, 10) || 0, s: '' }
+    })
+  const pa = parse(a)
+  const pb = parse(b)
   for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const d = (pa[i] ?? 0) - (pb[i] ?? 0)
-    if (d !== 0) return d
+    const x = pa[i] ?? { n: 0, s: '' }
+    const y = pb[i] ?? { n: 0, s: '' }
+    if (x.n !== y.n) return x.n - y.n
+    if (x.s !== y.s) return x.s < y.s ? -1 : 1
   }
   return 0
 }

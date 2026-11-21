@@ -221,4 +221,54 @@ export const STORE_APPS: StoreAppDef[] = [
     desc: 'やることを追加してチェックで管理。完了・未完了で絞り込みでき、端末内に保存されます。', version: '1.0.0', notes: '新規アプリです。やることの追加・完了チェック・絞り込み・完了の一括削除ができます。',
     category: 'life',
   },
+  {
+    id: 'kakeibo', icon: '家', cls: 'kakeibo', name: '家計簿',
+    desc: '収入と支出を記録して、月ごとの収支とカテゴリ内訳を確認できます。', version: '1.0.0', notes: '新規アプリです。収入・支出の記録、月ごとの収支とカテゴリ内訳が使えます。',
+    category: 'life',
+  },
+  {
+    id: 'habit', icon: '継', cls: 'habit', name: '習慣トラッカー',
+    desc: '続けたい習慣を登録して、直近7日分の達成をチェック。連続日数も分かります。', version: '1.0.0', notes: '新規アプリです。習慣の登録と7日分の達成チェック、連続日数の表示ができます。',
+    category: 'life',
+  },
+  {
+    id: 'shopping', icon: '買', cls: 'shopping', name: '買い物リスト',
+    desc: '買うものと数量をリスト化。買ったらチェックを付けて管理できます。', version: '1.0.0', notes: '新規アプリです。買うものの追加・数量メモ・購入チェックができます。',
+    category: 'life',
+  },
+  {
+    id: 'reaction', icon: '⚡', cls: 'reaction', name: '反応速度テスト',
+    desc: '緑になった瞬間にタップして反応速度を測定。ベスト記録を保存します。', version: '1.0.0', notes: '新規アプリです。反応速度の測定とベスト記録の保存ができます。',
+    category: 'game',
+  },
+  {
+    id: 'simon', icon: '🎵', cls: 'simon', name: 'サイモン',
+    desc: '光る色の順番を覚えて同じ順にタップする記憶ゲーム。', version: '1.0.0', notes: '新規アプリです。色の順番を覚える記憶ゲームが遊べます。',
+    category: 'game',
+  },
+  {
+    id: 'counter', icon: '数', cls: 'counter', name: 'カウンター',
+    desc: '複数のカウンターを作って数を数えるシンプルな道具。名前も変えられます。', version: '1.0.0', notes: '新規アプリです。複数のカウンターで数を数えられます。',
+    category: 'tool',
+  },
+  {
+    id: 'roulette', icon: '🎡', cls: 'roulette', name: 'ルーレット',
+    desc: '候補を入力してルーレットでランダムに1つ選ぶ、迷ったときの決定ツール。', version: '1.0.0', notes: '新規アプリです。候補からランダムに1つ選べます。',
+    category: 'tool',
+  },
+  {
+    id: 'coinflip', icon: '🪙', cls: 'coinflip', name: 'コイントス',
+    desc: 'コインを投げて表か裏か。投げた回数の集計つき。', version: '1.0.0', notes: '新規アプリです。コイントスと表・裏の回数集計ができます。',
+    category: 'game',
+  },
+  {
+    id: 'countdown', icon: '⏳', cls: 'countdown', name: 'カウントダウン',
+    desc: '記念日やイベントまでの残り日数を大きく表示します。', version: '1.0.0', notes: '新規アプリです。イベントまでの残り日数を表示できます。',
+    category: 'life',
+  },
+  {
+    id: 'agecalc', icon: '🎂', cls: 'agecalc', name: '年齢計算',
+    desc: '生年月日から年齢（歳・か月・日）と生まれてからの日数を計算します。', version: '1.0.0', notes: '新規アプリです。生年月日から年齢と経過日数を計算できます。',
+    category: 'calc',
+  },
 ]

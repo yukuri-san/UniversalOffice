@@ -4,8 +4,10 @@ import { notifyOs } from '../lib/notify'
 import { TIMEZONES } from './SetupWizard'
 import { useEffect, useRef, useState } from 'react'
 import { APP_VERSION } from '../lib/version'
+import { clearPin, getPin, setPin } from '../lib/pin'
+import { SETTINGS_KEYS as SETTINGS_KEYS_SHARED } from '../lib/reset'
 
-export type ThemeId = 'light' | 'dark' | 'ipados' | 'macos' | 'win11' | 'win7' | 'winxp' | 'win95' | 'cyber' | 'sakura' | 'ocean' | 'sunset'
+export type ThemeId = 'light' | 'dark' | 'ipados' | 'macos' | 'win11' | 'win7' | 'winxp' | 'win95' | 'cyber' | 'sakura' | 'ocean' | 'sunset' | 'forest' | 'candy'
 
 export const THEMES: { id: ThemeId; label: string; desc: string }[] = [
   { id: 'light', label: 'ライト', desc: '標準のガラス風テーマ' },
@@ -20,6 +22,8 @@ export const THEMES: { id: ThemeId; label: string; desc: string }[] = [
   { id: 'sakura', label: '桜', desc: '淡いピンクのやさしい配色' },
   { id: 'ocean', label: '深海', desc: '深い青とティールのダーク' },
   { id: 'sunset', label: '夕焼け', desc: 'オレンジと紫の温かい配色' },
+  { id: 'forest', label: 'フォレスト', desc: '深い緑と苔色の落ち着いたダーク' },
+  { id: 'candy', label: 'キャンディ', desc: 'パステルカラーのポップで明るい配色' },
 ]
 
 interface Props {
@@ -48,6 +52,22 @@ interface Props {
   iconClick: string
   setIconClick: (v: string) => void
   onShowSetup: () => void
+  clock24h: boolean
+  setClock24h: (v: boolean) => void
+  clockSec: boolean
+  setClockSec: (v: boolean) => void
+  reduceMotion: boolean
+  setReduceMotion: (v: boolean) => void
+  restoreWin: boolean
+  setRestoreWin: (v: boolean) => void
+  widgetAgenda: boolean
+  setWidgetAgenda: (v: boolean) => void
+  nightLight: boolean
+  setNightLight: (v: boolean) => void
+  muteNotes: boolean
+  setMuteNotes: (v: boolean) => void
+  saverOn: boolean
+  setSaverOn: (v: boolean) => void
 }
 
 export const WALLPAPERS: { id: string; key: string }[] = [
@@ -82,7 +102,9 @@ async function fileToWallpaper(file: File): Promise<string> {
   }
 }
 
-export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale, userName, setUserName, timezone, setTimezone, iconSize, setIconSize, iconClick, setIconClick, onShowSetup }: Props) {
+export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale, userName, setUserName, timezone, setTimezone, iconSize, setIconSize, iconClick, setIconClick, onShowSetup, clock24h, setClock24h, clockSec, setClockSec, reduceMotion, setReduceMotion, restoreWin, setRestoreWin, widgetAgenda, setWidgetAgenda, nightLight, setNightLight, muteNotes, setMuteNotes, saverOn, setSaverOn }: Props) {
+  const [pinDraft, setPinDraft] = useState('')
+  const [pinSetNow, setPinSetNow] = useState(() => getPin() !== null)
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
   const [ownBytes, setOwnBytes] = useState(0)
   const wpFileRef = useRef<HTMLInputElement>(null)
@@ -94,7 +116,7 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
 
   const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`
 
-  const SETTINGS_KEYS = ['ykr-theme', 'ykr-lang', 'webx-wp-preset', 'webx-wp-custom', 'webx-wp-use', 'webx-ui-scale', 'webx-user-name', 'webx-timezone', 'webx-icon-size', 'webx-icon-click', 'webx-installed-apps', 'webx-app-versions', 'webx-setup-done', 'webx-update-interval', 'webx-update-notified']
+  const SETTINGS_KEYS = SETTINGS_KEYS_SHARED
   const [updInterval, setUpdInterval] = useState<number>(() => {
     const n = Number(localStorage.getItem('webx-update-interval'))
     return Number.isFinite(n) && n >= 1 && n <= 180 ? Math.floor(n) : 30
@@ -192,6 +214,41 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
           ))}
         </div>
         <p className="settings-note">{translate(lang, 'uiScaleNote')}</p>
+      </section>
+
+      <section className="settings-section">
+        <h3>{translate(lang, 'sysSection')}</h3>
+        {([
+          ['setRestoreWin', restoreWin, setRestoreWin],
+          ['setClock24h', clock24h, setClock24h],
+          ['setClockSec', clockSec, setClockSec],
+          ['setReduceMotion', reduceMotion, setReduceMotion],
+          ['setWidgetAgenda', widgetAgenda, setWidgetAgenda],
+          ['setNightLight', nightLight, setNightLight],
+          ['setMuteNotes', muteNotes, setMuteNotes],
+          ['setSaver', saverOn, setSaverOn],
+        ] as [string, boolean, (v: boolean) => void][]).map(([key, val, set]) => (
+          <div key={key} className="settings-toggle-row">
+            <span>{translate(lang, key)}</span>
+            <span className="settings-options">
+              <button className={val ? 'opt on' : 'opt'} onClick={() => set(true)}>{translate(lang, 'onOffOn')}</button>
+              <button className={!val ? 'opt on' : 'opt'} onClick={() => set(false)}>{translate(lang, 'onOffOff')}</button>
+            </span>
+          </div>
+        ))}
+        <div className="settings-toggle-row">
+          <span>PINロック（ロック画面用）</span>
+          <span className="settings-options">
+            <input
+              type="password" inputMode="numeric" maxLength={8} value={pinDraft} placeholder="4〜8桁の数字"
+              style={{ width: 120 }}
+              onChange={(e) => setPinDraft(e.target.value.replace(/[^0-9]/g, ''))}
+            />
+            <button className="opt" disabled={pinDraft.length < 4} onClick={() => { setPin(pinDraft); setPinSetNow(true); setPinDraft(''); notifyOs('PINを設定しました', 'settings') }}>設定</button>
+            {pinSetNow && <button className="opt" onClick={() => { clearPin(); setPinSetNow(false); notifyOs('PINを解除しました', 'settings') }}>解除</button>}
+          </span>
+        </div>
+        <p className="settings-note">ロックはスタートメニューの電源ボタン、またはタスクバーのコントロールセンター（🎛）から行えます。PINは簡易ロック用で、ハッシュ化して端末内に保存されます。PINを忘れた場合は、ロック画面の「PINを忘れた場合」から設定だけをリセットして解除できます（ドキュメント等のデータは消えません）。</p>
       </section>
 
       <section className="settings-section">
