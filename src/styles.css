@@ -194,6 +194,10 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .cal-heading { display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 16px; }
 .cal-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px; margin-bottom: 10px; }
 .cal-toolbar button { border: 1px solid #c6d0dd; background: #fff; border-radius: 8px; padding: 7px 12px; cursor: pointer; font-size: 13.5px; }
+.cal-view-switch { display: flex; border: 1px solid #c6d0dd; border-radius: 8px; overflow: hidden; }
+.cal-view-switch button { border: 0; border-radius: 0; }
+.cal-view-switch button.active { background: #6b4fa1; color: #fff; }
+.cal-week-cell { min-height: 160px; }
 .cal-count { margin-left: auto; font-size: 13px; color: #526173; }
 .cal-body { display: flex; gap: 10px; align-items: flex-start; }
 .cal-grid-wrap { flex: 1; min-width: 0; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px; }

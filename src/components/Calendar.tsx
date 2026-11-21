@@ -22,6 +22,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   const now = new Date()
   const [view, setView] = useState({ y: now.getFullYear(), m: now.getMonth() })
   const [selected, setSelected] = useState(todayStr())
+  const [mode, setMode] = useState<'month' | 'week'>('month')
   const [events, setEvents] = useState<CalEvent[]>([])
   const [homeOpen, setHomeOpen] = useState(false)
   const [formTitle, setFormTitle] = useState('')
@@ -35,18 +36,20 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     void refresh()
   }, [refresh])
 
-  // キーボード：←/→ で前月・次月、T で今日（入力中は除く）
+  // キーボード：←/→ で前月・次月（週表示では前週・次週）、T で今日（入力中は除く）
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
       if (target.closest('input, textarea, [contenteditable="true"]')) return
       if (e.key === 'ArrowLeft') {
-        setView((v) => {
+        if (mode === 'week') moveSelectedByDays(-7)
+        else setView((v) => {
           const d = new Date(v.y, v.m - 1, 1)
           return { y: d.getFullYear(), m: d.getMonth() }
         })
       } else if (e.key === 'ArrowRight') {
-        setView((v) => {
+        if (mode === 'week') moveSelectedByDays(7)
+        else setView((v) => {
           const d = new Date(v.y, v.m + 1, 1)
           return { y: d.getFullYear(), m: d.getMonth() }
         })
@@ -58,7 +61,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [])
+  }, [mode])
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalEvent[]>()
@@ -80,6 +83,35 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     while (list.length % 7 !== 0) list.push(null)
     return list
   }, [view])
+
+  // 週表示：選択日の週（日曜始まり）7日分
+  const weekDays = useMemo(() => {
+    const base = new Date(`${selected}T00:00:00`)
+    const start = new Date(base)
+    start.setDate(base.getDate() - base.getDay())
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(start)
+      d.setDate(start.getDate() + i)
+      return ymd(d.getFullYear(), d.getMonth(), d.getDate())
+    })
+  }, [selected])
+
+  const moveSelectedByDays = (diff: number) => {
+    const d = new Date(`${selected}T00:00:00`)
+    d.setDate(d.getDate() + diff)
+    setSelected(ymd(d.getFullYear(), d.getMonth(), d.getDate()))
+    setView({ y: d.getFullYear(), m: d.getMonth() })
+  }
+
+  const movePrev = () => {
+    if (mode === 'week') moveSelectedByDays(-7)
+    else moveMonth(-1)
+  }
+
+  const moveNext = () => {
+    if (mode === 'week') moveSelectedByDays(7)
+    else moveMonth(1)
+  }
 
   const moveMonth = (diff: number) => {
     setView((v) => {
@@ -125,13 +157,19 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
       />
       <div className="titlebar cal-title">
         <button className="home-btn" onClick={() => setHomeOpen(true)}>{t('home')}</button>
-        <span className="title-input cal-heading">{new Intl.DateTimeFormat(LOCALES[lang], { year: 'numeric', month: 'long' }).format(new Date(view.y, view.m, 1))}</span>
+        <span className="title-input cal-heading">{mode === 'week'
+          ? `${new Intl.DateTimeFormat(LOCALES[lang], { month: 'long', day: 'numeric' }).format(new Date(`${weekDays[0]}T00:00:00`))} 〜 ${new Intl.DateTimeFormat(LOCALES[lang], { month: 'long', day: 'numeric' }).format(new Date(`${weekDays[6]}T00:00:00`))}`
+          : new Intl.DateTimeFormat(LOCALES[lang], { year: 'numeric', month: 'long' }).format(new Date(view.y, view.m, 1))}</span>
         <span className="titlebar-app">{t('calendar')}</span>
       </div>
       <div className="cal-toolbar">
-        <button onClick={() => moveMonth(-1)}>←</button>
+        <button onClick={movePrev}>←</button>
         <button onClick={goToday}>{t('today')}</button>
-        <button onClick={() => moveMonth(1)}>→</button>
+        <button onClick={moveNext}>→</button>
+        <span className="cal-view-switch">
+          <button className={mode === 'month' ? 'active' : ''} onClick={() => setMode('month')}>{t('monthView')}</button>
+          <button className={mode === 'week' ? 'active' : ''} onClick={() => setMode('week')}>{t('weekView')}</button>
+        </span>
         <span className="cal-count">今月の予定 {events.filter((e) => e.date.startsWith(ymd(view.y, view.m, 1).slice(0, 7))).length} 件</span>
       </div>
       <div className="cal-body">
@@ -140,7 +178,19 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
             {weekdayNames(LOCALES[lang]).map((w, i) => <span key={i} className={i === 0 ? 'sun' : i === 6 ? 'sat' : ''}>{w}</span>)}
           </div>
           <div className="cal-grid">
-            {cells.map((date, i) => {
+            {mode === 'week' ? weekDays.map((date) => {
+              const dayEvents = eventsByDate.get(date) ?? []
+              const isToday = date === todayStr()
+              const isSelected = date === selected
+              return (
+                <button key={date} className={`cal-cell cal-week-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`} onClick={() => setSelected(date)}>
+                  <span className="cal-day">{Number(date.slice(8))}</span>
+                  {dayEvents.length === 0
+                    ? <span className="cal-more">—</span>
+                    : dayEvents.map((e) => <span key={e.id} className="cal-event">{e.title}</span>)}
+                </button>
+              )
+            }) : cells.map((date, i) => {
               if (!date) return <div key={i} className="cal-cell empty" />
               const dayEvents = eventsByDate.get(date) ?? []
               const isToday = date === todayStr()
