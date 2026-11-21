@@ -187,6 +187,14 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const [focused, setFocused] = useState<{ r: number; c: number } | null>(null)
   const [freeze, setFreeze] = useState(true)
   const fileRef = useRef<HTMLInputElement>(null)
+  const cellRefs = useRef(new Map<string, HTMLInputElement>())
+  const [pendingFocus, setPendingFocus] = useState<{ r: number; c: number } | null>(null)
+
+  useEffect(() => {
+    if (!pendingFocus) return
+    cellRefs.current.get(`${pendingFocus.r}-${pendingFocus.c}`)?.focus()
+    setPendingFocus(null)
+  }, [pendingFocus, grid])
 
   const computed = useMemo(() => evaluateGrid(grid), [grid])
 
@@ -215,6 +223,24 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
 
   const setCell = (r: number, c: number, value: string) => {
     setGrid((prev) => prev.map((row, ri) => (ri === r ? row.map((cell, ci) => (ci === c ? value : cell)) : row)))
+  }
+
+  /** キーボードでセル間を移動する。端を超えたら行・列を自動追加する */
+  const moveSelection = (dr: number, dc: number) => {
+    const cols = grid[0]?.length ?? 1
+    let r = Math.max(0, selected.r + dr)
+    let c = Math.max(0, selected.c + dc)
+    if (r >= grid.length) { addRow(); r = grid.length }
+    if (c >= cols) { addCol(); c = cols }
+    setSelected({ r, c })
+    setPendingFocus({ r, c })
+  }
+
+  const onCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') { e.preventDefault(); moveSelection(e.shiftKey ? -1 : 1, 0) }
+    else if (e.key === 'Tab') { e.preventDefault(); moveSelection(0, e.shiftKey ? -1 : 1) }
+    else if (e.key === 'ArrowDown') { e.preventDefault(); moveSelection(1, 0) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); moveSelection(-1, 0) }
   }
 
   const addRow = () => setGrid((prev) => [...prev, Array(prev[0]?.length ?? 1).fill('')])
@@ -342,6 +368,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <input
           value={selectedRaw}
           onChange={(e) => setCell(selected.r, selected.c, e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); moveSelection(1, 0) } }}
           placeholder={t('formulaPh')}
           aria-label="数式バー"
         />
@@ -364,10 +391,12 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
                   return (
                     <td key={c} className={r === selected.r && c === selected.c ? 'sel-cell' : ''}>
                       <input
+                        ref={(el) => { if (el) cellRefs.current.set(`${r}-${c}`, el); else cellRefs.current.delete(`${r}-${c}`) }}
                         value={isFocused ? cell : (computed[r]?.[c] ?? cell)}
                         onFocus={() => { setSelected({ r, c }); setFocused({ r, c }) }}
                         onBlur={() => setFocused(null)}
                         onChange={(e) => setCell(r, c, e.target.value)}
+                        onKeyDown={onCellKeyDown}
                       />
                     </td>
                   )
@@ -377,7 +406,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </tbody>
         </table>
       </div>
-      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
+      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
     </section>
   )
 }
