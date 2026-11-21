@@ -214,6 +214,8 @@ export default function App() {
   const [notes, setNotes] = useState<{ id: number; text: string; time: string; app?: string }[]>([])
   const [notesOpen, setNotesOpen] = useState(false)
   const [selectedIcon, setSelectedIcon] = useState<WindowApp | null>(null)
+  const [iconPage, setIconPage] = useState(0)
+  const iconTouchX = useRef<number | null>(null)
   const [userName, setUserNameState] = useState(() => localStorage.getItem('webx-user-name') ?? '')
   const [timezone, setTimezoneState] = useState(() => localStorage.getItem('webx-timezone') ?? '')
   const [iconSize, setIconSizeState] = useState(() => localStorage.getItem('webx-icon-size') ?? 'm')
@@ -397,6 +399,10 @@ export default function App() {
     }
   })
   const visibleApps: WindowApp[] = [...APP_ORDER.filter((a) => a !== 'developer' || localStorage.getItem('webx-dev-enabled') !== 'off'), ...STORE_APPS.filter((a) => installedApps.includes(a.id)).map((a) => a.id as WindowApp), ...customApps.map((c) => c.id as WindowApp)]
+  // MXUI ではデスクトップアイコンを 3列×4行 = 12 個ごとにページ切り替えする
+  const ICONS_PER_PAGE = 12
+  const iconPageCount = Math.max(1, Math.ceil(visibleApps.length / ICONS_PER_PAGE))
+  const iconPageClamped = Math.min(iconPage, iconPageCount - 1)
   // ストア情報は OS の更新とは別に store.json から取得する
   const [storeCatalog, setStoreCatalog] = useState<StoreCatalog | null>(null)
   const updatableCount = outdatedFromCatalog(storeCatalog, installedApps, appVersions).length
@@ -1046,8 +1052,19 @@ export default function App() {
         }}
         style={!safeMode && wpUseCustom && wpCustom ? { backgroundImage: `url(${wpCustom})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
-        <div className="desktop-icons">
-          {visibleApps.map((app) => (
+        <div
+          className="desktop-icons"
+          style={isMxui ? { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', justifyItems: 'center', alignContent: 'start', rowGap: 14 } : undefined}
+          onTouchStart={isMxui ? (e) => { iconTouchX.current = e.touches[0].clientX } : undefined}
+          onTouchEnd={isMxui ? (e) => {
+            if (iconTouchX.current == null) return
+            const dx = e.changedTouches[0].clientX - iconTouchX.current
+            iconTouchX.current = null
+            if (dx < -40) setIconPage((pg) => Math.min(iconPageCount - 1, pg + 1))
+            else if (dx > 40) setIconPage((pg) => Math.max(0, pg - 1))
+          } : undefined}
+        >
+          {(isMxui ? visibleApps.slice(iconPageClamped * ICONS_PER_PAGE, iconPageClamped * ICONS_PER_PAGE + ICONS_PER_PAGE) : visibleApps).map((app) => (
             <button
               key={app}
               className={selectedIcon === app ? 'desktop-icon selected' : 'desktop-icon'}
@@ -1060,6 +1077,18 @@ export default function App() {
             </button>
           ))}
         </div>
+        {isMxui && iconPageCount > 1 && (
+          <div style={{ position: 'absolute', left: 0, right: 0, bottom: resolvedUi === 'mxui-liquid' ? 118 : 84, display: 'flex', justifyContent: 'center', gap: 7, zIndex: 3 }}>
+            {Array.from({ length: iconPageCount }, (_, i) => (
+              <button
+                key={i}
+                aria-label={`ページ ${i + 1}`}
+                onClick={(e) => { e.stopPropagation(); setIconPage(i) }}
+                style={{ width: i === iconPageClamped ? 20 : 8, height: 8, borderRadius: 99, border: 'none', padding: 0, cursor: 'pointer', background: i === iconPageClamped ? '#fff' : 'rgba(255,255,255,.45)', boxShadow: '0 1px 4px rgba(0,0,0,.35)', transition: 'all .18s' }}
+              />
+            ))}
+          </div>
+        )}
         {safeMode && <div className="safemode-badge">セーフモードで起動中（ウィジェットとアニメーションは無効です）</div>}
         <div className="desktop-widgets">
           {!safeMode && widgetConfig.order.filter((id) => widgetConfig.enabled[id]).map((id) => (

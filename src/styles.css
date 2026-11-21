@@ -205,6 +205,16 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .cal-view-switch button.active { background: #6b4fa1; color: #fff; }
 .cal-week-cell { min-height: 160px; }
 .cal-count { margin-left: auto; font-size: 13px; color: #526173; }
+.cal-search { display: flex; align-items: center; gap: 2px; }
+.cal-search input { border: 1px solid #c6d0dd; border-radius: 999px; padding: 7px 12px; font-size: 13.5px; width: 180px; }
+.cal-search button { border: 0; background: transparent; font-size: 16px; line-height: 1; padding: 4px 8px; cursor: pointer; color: #526173; }
+.cal-search-results { background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; max-height: 260px; overflow: auto; }
+.cal-search-count { margin: 0 0 8px; font-size: 13px; color: #526173; }
+.cal-search-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.cal-search-list button { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; width: 100%; text-align: left; border: 1px solid #eef2f8; border-radius: 8px; background: #fff; padding: 8px 10px; cursor: pointer; font-size: 13.5px; color: inherit; }
+.cal-search-list button:hover { background: #f3f5f9; }
+.cal-search-date { font-weight: 600; color: #6b4fa1; }
+.cal-search-list small { color: #7a8798; overflow-wrap: anywhere; }
 .cal-body { display: flex; gap: 10px; align-items: flex-start; }
 .cal-grid-wrap { flex: 1; min-width: 0; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px; }
 .cal-week { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12.5px; color: #526173; padding-bottom: 6px; }
@@ -410,6 +420,9 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .os-root[data-theme='dark'] table.sheet th, .os-root[data-theme='dark'] table.sheet td { border-color: rgba(255,255,255,.1); }
 .os-root[data-theme='dark'] .sheet-wrap { background: #1c2536; border-color: rgba(255,255,255,.12); }
 .os-root[data-theme='dark'] .cal-cell { background: #1c2536; border-color: rgba(255,255,255,.08); color: #e6ecf5; }
+.os-root[data-theme='dark'] .cal-search-results, .os-root[data-theme='dark'] .cal-search-list button { background: #1c2536; border-color: rgba(255,255,255,.12); color: #e6ecf5; }
+.os-root[data-theme='dark'] .cal-search-list button:hover { background: #26314a; }
+.os-root[data-theme='dark'] .cal-search-date { color: #c9b8ff; }
 .os-root[data-theme='dark'] .cal-event { background: #372b58; color: #ddd0ff; }
 .os-root[data-theme='dark'] .cal-event-time { color: #c9b8ff; }
 .os-root[data-theme='dark'] .cal-repeat-badge { background: #372b58; color: #ddd0ff; }

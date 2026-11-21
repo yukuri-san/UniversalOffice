@@ -77,6 +77,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   const [formRepeat, setFormRepeat] = useState<RepeatKind>('none')
   const [formReminder, setFormReminder] = useState(-1)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState('')
 
   const refresh = useCallback(async () => {
     setEvents(await listEvents())
@@ -261,6 +262,43 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   )
   const selectedDate = new Date(`${selected}T00:00:00`)
 
+  // 予定検索：タイトル・メモの部分一致（大文字小文字を区別しない）
+  // 繰り返し予定は今日以降の次回発生日を表示する
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase()
+    if (!q) return []
+    const today = todayStr()
+    const end = new Date()
+    end.setDate(end.getDate() + 366)
+    const endStr = ymd(end.getFullYear(), end.getMonth(), end.getDate())
+    const out: { date: string; event: CalEvent }[] = []
+    for (const e of events) {
+      if (!e.title.toLowerCase().includes(q) && !(e.memo ?? '').toLowerCase().includes(q)) continue
+      if ((e.repeat ?? 'none') === 'none') {
+        out.push({ date: e.date, event: e })
+      } else {
+        const occ = expandEvents([e], today, endStr)
+        if (occ.length > 0) out.push(occ[0])
+      }
+    }
+    // 今後の予定を日付順に先に、過去の予定は新しいものから後に並べる
+    out.sort((a, b) => {
+      const aUp = a.date >= today ? 0 : 1
+      const bUp = b.date >= today ? 0 : 1
+      if (aUp !== bUp) return aUp - bUp
+      const d = aUp === 0 ? a.date.localeCompare(b.date) : b.date.localeCompare(a.date)
+      return d || (a.event.time ?? '').localeCompare(b.event.time ?? '')
+    })
+    return out.slice(0, 50)
+  }, [events, searchQuery])
+
+  const jumpToResult = (date: string) => {
+    const d = new Date(`${date}T00:00:00`)
+    setView({ y: d.getFullYear(), m: d.getMonth() })
+    setSelected(date)
+    setSearchQuery('')
+  }
+
   return (
     <section className="cal-app">
       <Backstage
@@ -288,8 +326,42 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
           <button className={mode === 'month' ? 'active' : ''} onClick={() => setMode('month')}>{t('monthView')}</button>
           <button className={mode === 'week' ? 'active' : ''} onClick={() => setMode('week')}>{t('weekView')}</button>
         </span>
+        <span className="cal-search">
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setSearchQuery('') }}
+            placeholder={t('searchEventsPh')}
+            aria-label={t('searchEvents')}
+          />
+          {searchQuery && <button onClick={() => setSearchQuery('')} aria-label={t('clearSearch')}>×</button>}
+        </span>
         <span className="cal-count">{t('eventsThisMonth').replace('{n}', String(monthEventCount))}</span>
       </div>
+      {searchQuery.trim() !== '' && (
+        <div className="cal-search-results">
+          {searchResults.length === 0 ? (
+            <p className="cal-noevent">{t('findNotFound')}</p>
+          ) : (
+            <>
+              <p className="cal-search-count">{t('findMatches').replace('{n}', String(searchResults.length))}</p>
+              <ul className="cal-search-list">
+                {searchResults.map(({ date, event: e }) => (
+                  <li key={`${e.id}@${date}`}>
+                    <button onClick={() => jumpToResult(date)}>
+                      <span className="cal-search-date">{new Intl.DateTimeFormat(LOCALES[lang], { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' }).format(new Date(`${date}T00:00:00`))}</span>
+                      {e.time && <span className="cal-event-time">{e.time}</span>}
+                      {(e.repeat ?? 'none') !== 'none' && <span className="cal-repeat-badge">↻ {t(e.repeat === 'daily' ? 'repeatDaily' : e.repeat === 'weekly' ? 'repeatWeekly' : 'repeatMonthly')}</span>}
+                      <strong>{e.title}</strong>
+                      {e.memo && <small>{e.memo}</small>}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+      )}
       <div className="cal-body">
         <div className="cal-grid-wrap">
           <div className="cal-week">
