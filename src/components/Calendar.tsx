@@ -62,7 +62,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [mode])
+  }, [mode, selected])
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, CalEvent[]>()
