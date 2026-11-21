@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 
 /* ---------- パスワード生成 ---------- */
 export function PassGen() {
@@ -115,32 +115,69 @@ const MORSE: Record<string, string> = {
 export function Morse() {
   const [text, setText] = useState('SOS')
   const [playing, setPlaying] = useState(false)
+  const [msg, setMsg] = useState('')
   const ctxRef = useRef<AudioContext | null>(null)
+  const keyerRef = useRef<{ osc: OscillatorNode; gain: GainNode } | null>(null)
   const code = text.toUpperCase().split('').map((c) => MORSE[c] ?? '').filter(Boolean).join(' ')
+  useEffect(() => () => { void ctxRef.current?.close().catch(() => undefined) }, [])
+  const ensureCtx = (): AudioContext | null => {
+    try {
+      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+      if (!AC) return null
+      ctxRef.current ??= new AC()
+      return ctxRef.current
+    } catch { return null }
+  }
+  const keyer = (ctx: AudioContext) => {
+    if (!keyerRef.current) {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.value = 660
+      const gain = ctx.createGain()
+      gain.gain.value = 0
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.start()
+      keyerRef.current = { osc, gain }
+    }
+    return keyerRef.current
+  }
   const play = async () => {
     if (playing) return
+    const ctx = ensureCtx()
+    if (!ctx) { setMsg('この端末・ブラウザでは音声（Web Audio）が使えませんでした'); return }
+    await ctx.resume()
+    if (ctx.state !== 'running') { setMsg('音声を開始できませんでした。もう一度「音で再生」を押してみてください'); return }
+    setMsg('')
+    const { gain } = keyer(ctx)
     setPlaying(true)
-    try {
-      ctxRef.current ??= new AudioContext()
-      const ctx = ctxRef.current
-      await ctx.resume()
-      let t = ctx.currentTime + 0.05
-      const unit = 0.09
-      for (const ch of code) {
-        if (ch === ' ') { t += unit * 3; continue }
-        if (ch === '/') { t += unit * 4; continue }
-        const osc = ctx.createOscillator()
-        const gain = ctx.createGain()
-        osc.frequency.value = 660
-        osc.connect(gain); gain.connect(ctx.destination)
-        const dur = ch === '.' ? unit : unit * 3
-        osc.start(t); osc.stop(t + dur)
-        t += dur + unit
-      }
-      window.setTimeout(() => setPlaying(false), (t - ctx.currentTime) * 1000 + 100)
-    } catch {
-      setPlaying(false)
+    const unit = 0.09
+    let t = ctx.currentTime + 0.06
+    const g = gain.gain
+    g.cancelScheduledValues(t)
+    g.setValueAtTime(0, t)
+    for (const ch of code) {
+      if (ch === ' ') { t += unit * 3; continue }
+      if (ch === '/') { t += unit * 4; continue }
+      const dur = ch === '.' ? unit : unit * 3
+      g.setValueAtTime(0.5, t)
+      g.setValueAtTime(0.5, Math.max(t, t + dur - 0.008))
+      g.setValueAtTime(0, t + dur)
+      t += dur + unit
     }
+    window.setTimeout(() => setPlaying(false), (t - ctx.currentTime) * 1000 + 80)
+  }
+  const keyDown = async () => {
+    const ctx = ensureCtx()
+    if (!ctx) { setMsg('この端末・ブラウザでは音声（Web Audio）が使えませんでした'); return }
+    await ctx.resume()
+    if (ctx.state !== 'running') { setMsg('音声を開始できませんでした。もう一度押してみてください'); return }
+    setMsg('')
+    keyer(ctx).gain.gain.setTargetAtTime(0.5, ctx.currentTime, 0.005)
+  }
+  const keyUp = () => {
+    const ctx = ctxRef.current
+    if (!ctx || !keyerRef.current) return
+    keyerRef.current.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.005)
   }
   return (
     <div className="sa-app">
@@ -148,8 +185,15 @@ export function Morse() {
       <div className="sa-morse">{code || '—'}</div>
       <div className="sa-row">
         <button className="btn accent" onClick={() => void play()} disabled={playing || !code}>{playing ? '再生中…' : '音で再生'}</button>
+        <button className="btn" style={{ touchAction: 'none', userSelect: 'none', WebkitUserSelect: 'none' }}
+          onPointerDown={(e) => { e.preventDefault(); void keyDown() }}
+          onPointerUp={keyUp} onPointerLeave={keyUp} onPointerCancel={keyUp}
+          onContextMenu={(e) => e.preventDefault()}>
+          🔑 電鍵（押している間鳴る）
+        </button>
       </div>
-      <p className="sa-note">対応は A〜Z と 0〜9 とスペースのみです。</p>
+      {msg && <p className="sa-note" style={{ color: '#dc2626' }}>{msg}</p>}
+      <p className="sa-note">対応は A〜Z と 0〜9 とスペースのみです。音が出ないときは端末のメディア音量も確認してみてください。電鍵ボタンで音が出るか試せます。</p>
     </div>
   )
 }

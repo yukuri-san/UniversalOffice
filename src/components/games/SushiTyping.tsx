@@ -185,6 +185,7 @@ function SushiMode() {
   const [combo, setCombo] = useState(0)
   const [best, setBest] = useState(loadBest)
   const laneRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
   const g = useRef({ plates: [] as Plate[], nextId: 1, spawnIn: 0, okKeys: 0, missKeys: 0, escaped: 0, maxCombo: 0, combo: 0, money: 0, eaten: 0, elapsed: 0 })
   const courseRef = useRef(course)
   courseRef.current = course
@@ -208,6 +209,7 @@ function SushiMode() {
     setMoney(0); setEaten(0); setCombo(0)
     setTimeLeft(cfg.time)
     setPhase('playing')
+    inputRef.current?.focus()
   }
 
   useEffect(() => {
@@ -258,30 +260,37 @@ function SushiMode() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
+  const feedChar = (ch: string) => {
+    const st = g.current
+    if (!st.plates.length) return
+    const target = st.plates.reduce((a, b) => (a.x < b.x ? a : b))
+    const res = target.matcher.feed(ch)
+    if (res === 'miss') { st.missKeys++; return }
+    st.okKeys++
+    if (res === 'complete') {
+      st.money += target.price
+      st.eaten++
+      st.combo++
+      st.maxCombo = Math.max(st.maxCombo, st.combo)
+      st.plates = st.plates.filter((p) => p.id !== target.id)
+      setMoney(st.money); setEaten(st.eaten); setCombo(st.combo)
+    }
+    setPlates([...st.plates])
+  }
+
   useEffect(() => {
     if (phase !== 'playing') return
     const onKey = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return
+      // 入力欄からのキー入力は onChange 側で処理する（二重入力防止）
+      if (e.target === inputRef.current) return
       const ch = e.key.toLowerCase()
       if (!/^[a-z-]$/.test(ch)) return
-      const st = g.current
-      if (!st.plates.length) return
-      const target = st.plates.reduce((a, b) => (a.x < b.x ? a : b))
-      const res = target.matcher.feed(ch)
-      if (res === 'miss') { st.missKeys++; return }
-      st.okKeys++
-      if (res === 'complete') {
-        st.money += target.price
-        st.eaten++
-        st.combo++
-        st.maxCombo = Math.max(st.maxCombo, st.combo)
-        st.plates = st.plates.filter((p) => p.id !== target.id)
-        setMoney(st.money); setEaten(st.eaten); setCombo(st.combo)
-      }
-      setPlates([...st.plates])
+      feedChar(ch)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
   const cfg = COURSES[course]
@@ -311,7 +320,7 @@ function SushiMode() {
         <span className="game-stat inline">コンボ<b>{combo}</b></span>
         {best[course] && <span className="game-stat inline">ベスト<b>¥{best[course]!.money.toLocaleString()}</b></span>}
       </div>
-      <div className="sushi-lane" ref={laneRef}>
+      <div className="sushi-lane" ref={laneRef} onClick={() => { if (phase === 'playing') inputRef.current?.focus() }}>
         {plates.map((p) => {
           const isTarget = targetPlate?.id === p.id
           const typed = p.matcher.typedCount()
@@ -345,7 +354,13 @@ function SushiMode() {
           </span>
         </div>
       )}
-      <p className="game-help">先頭の皿が入力対象。打ち切ると食べられて金額が加算、流れ去るとコンボが途切れます。ローマ字は shi/si、chi/ti、fu/hu など複数表記OK。「ん」は n でも nn でも可。</p>
+      {phase === 'playing' && (
+        <input ref={inputRef} className="typing-input" value=""
+          onChange={(e) => { for (const ch of e.target.value.toLowerCase()) if (/^[a-z-]$/.test(ch)) feedChar(ch) }}
+          placeholder="タップしてキーボードを表示（英語キーボードでローマ字入力）"
+          autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} enterKeyHint="go" />
+      )}
+      <p className="game-help">先頭の皿が入力対象。打ち切ると食べられて金額が加算、流れ去るとコンボが途切れます。ローマ字は shi/si、chi/ti、fu/hu など複数表記OK。「ん」は n でも nn でも可。スマホ・タブレットでは下の入力欄をタップするとキーボードが出ます（英語キーボードに切り替えて打ってください）。キーボードが消えたらレーンか入力欄をタップ。</p>
     </div>
   )
 }
@@ -360,6 +375,7 @@ function ClassicMode() {
   const [timeLeft, setTimeLeft] = useState(60)
   const [running, setRunning] = useState(false)
   const [best, setBest] = useState(0)
+  const classicInputRef = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (!running) return
     const id = window.setInterval(() => {
@@ -370,7 +386,7 @@ function ClassicMode() {
     }, 1000)
     return () => window.clearInterval(id)
   }, [running, count])
-  const start = () => { setCount(0); setMiss(0); setTimeLeft(60); setTyped(''); setWord(CLASSIC_WORDS[Math.floor(Math.random() * CLASSIC_WORDS.length)]); setRunning(true) }
+  const start = () => { setCount(0); setMiss(0); setTimeLeft(60); setTyped(''); setWord(CLASSIC_WORDS[Math.floor(Math.random() * CLASSIC_WORDS.length)]); setRunning(true); classicInputRef.current?.focus() }
   const onType = (v: string) => {
     if (!running) return
     const next = v.slice(-1)
@@ -396,8 +412,9 @@ function ClassicMode() {
           <span key={i} style={{ color: i < typed.length ? '#16a34a' : i === typed.length ? '#2563eb' : '#9ca3af', textDecoration: i === typed.length ? 'underline' : 'none' }}>{ch}</span>
         ))}
       </div>
-      <input className="typing-input" value="" onChange={(e) => onType(e.target.value)} placeholder={running ? 'ここに入力' : 'スタートを押してください'} disabled={!running} />
-      <p className="game-help">表示されたローマ字を正確に入力。60秒で何問解ける？</p>
+      <input ref={classicInputRef} className="typing-input" value="" onChange={(e) => onType(e.target.value)} placeholder={running ? 'ここに入力（英語キーボード）' : 'スタートを押してください'} disabled={!running}
+        autoCapitalize="off" autoCorrect="off" autoComplete="off" spellCheck={false} enterKeyHint="go" />
+      <p className="game-help">表示されたローマ字を正確に入力。60秒で何問解ける？スマホでは入力欄をタップして英語キーボードで打ってください。</p>
     </div>
   )
 }
