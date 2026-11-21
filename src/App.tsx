@@ -26,6 +26,8 @@ import { DayCalc, Bmi, SplitBill, Currency, Wareki } from './components/store/To
 import { Pomodoro, Metronome, WhiteNoise, Flashcards } from './components/store/Life'
 import { requestPersist } from './lib/store'
 import { APP_VERSION } from './lib/version'
+import { compareVersions, fetchLatestVersion } from './lib/updateCheck'
+import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
@@ -186,6 +188,27 @@ export default function App() {
   }, [theme])
   useEffect(() => {
     void requestPersist()
+  }, [])
+  // 起動時に更新があれば通知する（WebX 本体＋インストール済みストアアプリ）
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      void (async () => {
+        const latest = await fetchLatestVersion()
+        if (latest && compareVersions(latest, APP_VERSION) > 0) {
+          notifyOs(`WebX の新しいバージョン v${latest} があります（ストアで更新できます）`)
+        }
+        try {
+          const installedNow: string[] = JSON.parse(localStorage.getItem('webx-installed-apps') ?? '[]')
+          const versionsNow: Record<string, string> = JSON.parse(localStorage.getItem('webx-app-versions') ?? '{}')
+          const outdated = STORE_APPS.filter((a) => installedNow.includes(a.id) && versionsNow[a.id] !== a.version)
+          if (outdated.length > 0) {
+            notifyOs(`アプリの更新があります：${outdated.map((a) => `${a.name} v${a.version}`).join('、')}（ストアで更新できます）`)
+          }
+        } catch { /* 保存データが壊れている場合は通知しない */ }
+      })()
+    }, 2500)
+    return () => window.clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
   // ソフトウェアキーボード開閉後にページ領域外が見える問題への対策：
   // visualViewport の高さにアプリの高さを同期し、閉じたときはスクロール位置を戻す
@@ -433,6 +456,7 @@ export default function App() {
             openApp('docs')
           }}
           openAbout={() => openApp('about')}
+          onOpenStore={() => openApp('store')}
           uiScale={uiScaleSetting}
           onUiScale={(value: string) => {
             setUiScaleSetting(value)

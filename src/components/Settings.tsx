@@ -30,6 +30,7 @@ interface Props {
   onRemoveCustom: () => void
   openDocs: (doc: 'license' | 'readme' | 'changelog') => void
   openAbout: () => void
+  onOpenStore: () => void
   uiScale: string
   onUiScale: (value: string) => void
 }
@@ -66,44 +67,8 @@ async function fileToWallpaper(file: File): Promise<string> {
   }
 }
 
-function compareVersions(a: string, b: string): number {
-  const pa = a.split('.').map((n) => parseInt(n, 10) || 0)
-  const pb = b.split('.').map((n) => parseInt(n, 10) || 0)
-  for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
-    const d = (pa[i] ?? 0) - (pb[i] ?? 0)
-    if (d !== 0) return d
-  }
-  return 0
-}
-
-export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, uiScale, onUiScale }: Props) {
+export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale }: Props) {
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
-  const [updateState, setUpdateState] = useState<'idle' | 'checking' | 'latest' | 'available' | 'error'>('idle')
-  const [remoteVersion, setRemoteVersion] = useState('')
-  const checkUpdate = async () => {
-    setUpdateState('checking')
-    try {
-      const res = await fetch(`version.json?ts=${Date.now()}`, { cache: 'no-store' })
-      if (!res.ok) throw new Error('fetch failed')
-      const data = (await res.json()) as { version?: string }
-      if (!data.version) throw new Error('bad version file')
-      setRemoteVersion(data.version)
-      setUpdateState(compareVersions(data.version, APP_VERSION) > 0 ? 'available' : 'latest')
-    } catch {
-      setUpdateState('error')
-    }
-  }
-  const doUpdate = async () => {
-    if (!window.confirm(translate(lang, 'updateConfirmQ'))) return
-    try {
-      const reg = await navigator.serviceWorker?.getRegistration()
-      await reg?.update()
-      if (reg?.waiting) reg.waiting.postMessage('SKIP_WAITING')
-      const keys = await caches.keys()
-      await Promise.all(keys.map((k) => caches.delete(k)))
-    } catch { /* ignore */ }
-    window.location.reload()
-  }
   const [ownBytes, setOwnBytes] = useState(0)
   const wpFileRef = useRef<HTMLInputElement>(null)
 
@@ -216,15 +181,10 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
       <section className="settings-section">
         <h3>{translate(lang, 'updateSection')}</h3>
         <p className="settings-note">WebX / {translate(lang, 'versionLabel')} {APP_VERSION}</p>
+        <p className="settings-note">更新の確認と適用は「ストア」アプリで行います。</p>
         <div className="settings-options" style={{ marginTop: 10 }}>
-          <button className="opt" onClick={() => void checkUpdate()} disabled={updateState === 'checking'}>
-            {updateState === 'checking' ? translate(lang, 'checkingUpdate') : translate(lang, 'checkUpdate')}
-          </button>
-          <button className="opt" onClick={() => void doUpdate()}>{translate(lang, 'updateNow')}</button>
+          <button className="opt" onClick={onOpenStore}>ストアを開く</button>
         </div>
-        {updateState === 'latest' && <p className="settings-note">{translate(lang, 'latestVersion')}</p>}
-        {updateState === 'available' && <p className="settings-note">{translate(lang, 'updateAvailable')}：v{remoteVersion}</p>}
-        {updateState === 'error' && <p className="settings-note">{translate(lang, 'updateFailed')}</p>}
       </section>
 
       <section className="settings-section">
