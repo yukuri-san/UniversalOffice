@@ -60,7 +60,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
             <span className="store-ver">{t('stCurrentVer')} v{APP_VERSION}</span>
             {webxOutdated && <span className="store-state">v{latest}{t('stHasUpdateSuffix')}</span>}
           </div>
-          <div className="store-desc">本体の更新確認と適用はこのストアで行います</div>
+          <div className="store-desc">{t('stBodyNote')}</div>
         </div>
         <div className="store-actions">
           <button className="btn" onClick={() => void runCheck()} disabled={check === 'checking'}>
@@ -82,7 +82,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
         )}
         {STORE_CATEGORIES.map((c) => (
           <button key={c.id} className={category === c.id ? 'chip on' : 'chip'} onClick={() => setCategory(c.id)}>
-            {c.label}（{STORE_APPS.filter((a) => a.category === c.id).length}）
+            {c.emoji} {t(c.key)}（{STORE_APPS.filter((a) => a.category === c.id).length}）
           </button>
         ))}
       </div>
@@ -138,7 +138,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
                   <button
                     className="btn"
                     onClick={() => {
-                      if (window.confirm(`「${app.name}」をアンインストールしますか？`)) onUninstall(app.id)
+                      if (window.confirm(`${app.name}${t('stUninstallQ')}`)) onUninstall(app.id)
                     }}
                   >
                     {t('stUninstall')}
@@ -148,7 +148,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
             </div>
           )
         })}
-        {STORE_APPS.length === 0 && <p className="store-note">まだストアアプリはありません。</p>}
+        {STORE_APPS.length === 0 && <p className="store-note">{t('stEmpty')}</p>}
       </div>
 
       <h3 className="store-head">{t('stBuiltIn')}</h3>

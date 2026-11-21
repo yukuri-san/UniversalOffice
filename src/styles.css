@@ -777,7 +777,31 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 
 /* ===== v1.14.0: animations ===== */
 @keyframes win-in { from { opacity: 0; transform: scale(.96) translateY(6px); } to { opacity: 1; transform: scale(1) translateY(0); } }
-.os-window { animation: win-in .16s ease; }
+/* ウィンドウアニメーション（テーマごとに --wopen / --wclose / --wmin で切替） */
+.os-root { --wopen: win-in; --wclose: win-out; --wmin: win-min; --wanim: .18s; }
+.os-window { animation: var(--wopen) var(--wanim) ease-out; }
+.os-window.closing { animation: var(--wclose) var(--wanim) ease-in forwards; }
+.os-window.minimizing { animation: var(--wmin) var(--wanim) ease-in forwards; transform-origin: bottom center; }
+.os-window.max-anim { transition: left .22s ease, top .22s ease, width .22s ease, height .22s ease; }
+.os-root[data-theme="dark"] { --wopen: win-in-pop; }
+.os-root[data-theme="ipados"] { --wopen: win-in-pop; --wmin: win-min-genie; }
+.os-root[data-theme="macos"] { --wopen: win-in-pop; --wmin: win-min-genie; }
+.os-root[data-theme="win11"] { --wopen: win-in-slide; --wclose: win-out-slide; }
+.os-root[data-theme="win7"] { --wopen: win-in-flip; --wclose: win-out-flip; }
+.os-root[data-theme="winxp"] { --wopen: win-in-slide; --wclose: win-out-slide; --wanim: .22s; }
+.os-root[data-theme="win95"] { --wopen: none; --wclose: none; --wmin: none; --wanim: 0s; }
+.os-root[data-theme="cyber"] { --wopen: win-in-flip; --wclose: win-out-flip; }
+.os-root[data-theme="sakura"] { --wopen: win-in-pop; }
+.os-root[data-theme="ocean"] { --wopen: win-in-slide; --wclose: win-out-slide; }
+.os-root[data-theme="sunset"] { --wopen: win-in-slide; --wclose: win-out-slide; }
+@keyframes win-in-pop { 0% { opacity: 0; transform: scale(.86); } 60% { opacity: 1; transform: scale(1.03); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes win-in-slide { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes win-in-flip { from { opacity: 0; transform: perspective(700px) rotateX(16deg) translateY(12px); } to { opacity: 1; transform: perspective(700px) rotateX(0) translateY(0); } }
+@keyframes win-out { to { opacity: 0; transform: scale(.92); } }
+@keyframes win-out-slide { to { opacity: 0; transform: translateY(16px); } }
+@keyframes win-out-flip { to { opacity: 0; transform: perspective(700px) rotateX(-14deg) translateY(10px); } }
+@keyframes win-min { to { opacity: 0; transform: translateY(46vh) scale(.22); } }
+@keyframes win-min-genie { to { opacity: 0; transform: translateY(52vh) scaleX(.3) scaleY(.05); } }
 @keyframes menu-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 .start-menu, .ctx-menu, .notes-panel { animation: menu-in .15s ease; }
 .start-search { width: 100%; padding: 8px 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.14); color: inherit; margin-bottom: 10px; }

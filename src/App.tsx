@@ -129,6 +129,9 @@ export default function App() {
   const [iconSize, setIconSizeState] = useState(() => localStorage.getItem('webx-icon-size') ?? 'm')
   const [iconClick, setIconClickState] = useState(() => localStorage.getItem('webx-icon-click') ?? 'double')
   const [showSetup, setShowSetup] = useState(() => localStorage.getItem('webx-setup-done') !== '1')
+  const [closingIds, setClosingIds] = useState<string[]>([])
+  const [minIds, setMinIds] = useState<string[]>([])
+  const [maxAnimIds, setMaxAnimIds] = useState<string[]>([])
   const setUserName = (v: string) => { setUserNameState(v); localStorage.setItem('webx-user-name', v) }
   const setTimezone = (v: string) => { setTimezoneState(v); localStorage.setItem('webx-timezone', v) }
   const setIconSize = (v: string) => { setIconSizeState(v); localStorage.setItem('webx-icon-size', v) }
@@ -403,11 +406,27 @@ export default function App() {
   }, [desktop, wide, installedApps])
 
   const closeWin = (id: WindowApp) => {
-    setWindows((prev) => prev.filter((w) => w.id !== id))
-    if (activeId === id) setActiveId(null)
+    if (closingIds.includes(id)) return
+    setClosingIds((prev) => [...prev, id])
+    window.setTimeout(() => {
+      setWindows((prev) => prev.filter((w) => w.id !== id))
+      setClosingIds((prev) => prev.filter((c) => c !== id))
+      if (activeId === id) setActiveId(null)
+    }, 190)
+  }
+
+  const minimizeWin = (id: WindowApp) => {
+    if (minIds.includes(id)) return
+    setMinIds((prev) => [...prev, id])
+    window.setTimeout(() => {
+      setWindows((prev) => prev.map((w) => (w.id === id ? { ...w, minimized: true } : w)))
+      setMinIds((prev) => prev.filter((c) => c !== id))
+    }, 190)
   }
 
   const toggleMax = (id: WindowApp) => {
+    setMaxAnimIds((prev) => [...prev, id])
+    window.setTimeout(() => setMaxAnimIds((prev) => prev.filter((c) => c !== id)), 240)
     setWindows((prev) => prev.map((w) => (w.id === id ? { ...w, maximized: !w.maximized } : w)))
     focusWin(id)
   }
@@ -477,7 +496,7 @@ export default function App() {
         case 'm':
           e.preventDefault()
           if (e.shiftKey) toggleMax(activeId)
-          else setWindows((prev) => prev.map((w) => (w.id === activeId ? { ...w, minimized: true } : w)))
+          else minimizeWin(activeId)
           break
         case 'w':
           if (e.shiftKey) {
@@ -642,7 +661,7 @@ export default function App() {
           return (
             <section
               key={win.id}
-              className={`os-window${activeId === win.id ? ' active' : ''}${full ? ' full' : ''}`}
+              className={`os-window${activeId === win.id ? ' active' : ''}${full ? ' full' : ''}${closingIds.includes(win.id) ? ' closing' : ''}${minIds.includes(win.id) ? ' minimizing' : ''}${maxAnimIds.includes(win.id) ? ' max-anim' : ''}`}
               style={style}
               onPointerDown={() => focusWin(win.id)}
             >
@@ -656,7 +675,7 @@ export default function App() {
                 <span className={`app-icon tiny ${meta.cls}`}>{meta.icon}</span>
                 <span className="os-title">{appName(win.id)}</span>
                 <div className="os-win-buttons" onPointerDown={(e) => e.stopPropagation()}>
-                  <button title="最小化" onClick={() => setWindows((prev) => prev.map((w) => (w.id === win.id ? { ...w, minimized: true } : w)))}>―</button>
+                  <button title="最小化" onClick={() => minimizeWin(win.id)}>―</button>
                   {wide && <button title={win.maximized ? '元に戻す' : '最大化'} onClick={() => toggleMax(win.id)}>{win.maximized ? '🗗' : '🗖'}</button>}
                   <button title="閉じる" className="close" onClick={() => closeWin(win.id)}>✕</button>
                 </div>
@@ -695,7 +714,7 @@ export default function App() {
           <input
             className="start-search"
             type="search"
-            placeholder="アプリを検索"
+            placeholder={t('startSearchPh')}
             value={startQuery}
             onChange={(e) => setStartQuery(e.target.value)}
           />
@@ -823,7 +842,7 @@ export default function App() {
             <button
               key={win.id}
               className={`task-btn${activeId === win.id && !win.minimized ? ' active' : ''}`}
-              onClick={() => (win.minimized || activeId !== win.id ? focusWin(win.id) : setWindows((prev) => prev.map((w) => (w.id === win.id ? { ...w, minimized: true } : w))))}
+              onClick={() => (win.minimized || activeId !== win.id ? focusWin(win.id) : minimizeWin(win.id))}
             >
               <span className={`app-icon tiny ${APP_META[win.id].cls}`}>{APP_META[win.id].icon}</span>
               {appName(win.id)}

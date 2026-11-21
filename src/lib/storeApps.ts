@@ -2,12 +2,12 @@
 // ユーザーはストアからインストール／アンインストールでき、更新はアプリごとに個別処理する。
 // アプリを改良したら、そのアプリの version だけを上げる（WebX 本体のバージョンとは独立）。
 export type StoreCategory = 'game' | 'tool' | 'calc' | 'life' | 'study'
-export const STORE_CATEGORIES: { id: StoreCategory; label: string }[] = [
-  { id: 'game', label: '🎮 ゲーム' },
-  { id: 'tool', label: '🧰 ツール' },
-  { id: 'calc', label: '🧮 計算・変換' },
-  { id: 'life', label: '🌿 暮らし' },
-  { id: 'study', label: '📚 学習' },
+export const STORE_CATEGORIES: { id: StoreCategory; label: string; key: string; emoji: string }[] = [
+  { id: 'game', label: '🎮 ゲーム', key: 'catGame', emoji: '🎮' },
+  { id: 'tool', label: '🧰 ツール', key: 'catTool', emoji: '🧰' },
+  { id: 'calc', label: '🧮 計算・変換', key: 'catCalc', emoji: '🧮' },
+  { id: 'life', label: '🌿 暮らし', key: 'catLife', emoji: '🌿' },
+  { id: 'study', label: '📚 学習', key: 'catStudy', emoji: '📚' },
 ]
 export interface StoreAppDef {
   id: string

@@ -138,6 +138,18 @@ const ja: Dict = {
   stBulkUpdate: 'すべて更新',
   stNoteText: 'ストアアプリはここでインストールしたものだけがデスクトップやスタートメニューに表示されます。更新はアプリごとに個別に行われます。',
   stInstalled: 'インストール済み',
+  catGame: 'ゲーム',
+  catTool: 'ツール',
+  catCalc: '計算・変換',
+  catLife: '暮らし',
+  catStudy: '学習',
+  stBodyNote: '本体の更新確認と適用はこのストアで行います',
+  stEmpty: 'まだストアアプリはありません',
+  stUninstallQ: ' をアンインストールしますか？',
+  manualSearchPh: '説明書を検索',
+  prevPage: '前へ',
+  nextPage: '次へ',
+  startSearchPh: 'アプリを検索',
 }
 
 const en: Dict = {
@@ -252,6 +264,18 @@ const en: Dict = {
   stBulkUpdate: 'Update all',
   stNoteText: 'Only store apps you install here appear on the desktop and in the Start menu. Each app updates individually.',
   stInstalled: 'Installed',
+  catGame: 'Games',
+  catTool: 'Tools',
+  catCalc: 'Calc & Convert',
+  catLife: 'Life',
+  catStudy: 'Study',
+  stBodyNote: 'Check and apply updates for WebX itself here',
+  stEmpty: 'No store apps yet',
+  stUninstallQ: ': uninstall?',
+  manualSearchPh: 'Search the manual',
+  prevPage: 'Prev',
+  nextPage: 'Next',
+  startSearchPh: 'Search apps',
 }
 
 const zh: Dict = {
@@ -365,6 +389,18 @@ const zh: Dict = {
   stBulkUpdate: '全部更新',
   stNoteText: '只有在此安装的商店应用才会显示在桌面和开始菜单中。每个应用单独更新。',
   stInstalled: '已安装',
+  catGame: '游戏',
+  catTool: '工具',
+  catCalc: '计算与转换',
+  catLife: '生活',
+  catStudy: '学习',
+  stBodyNote: '在此检查并应用 WebX 本体更新',
+  stEmpty: '还没有商店应用',
+  stUninstallQ: '：要卸载吗？',
+  manualSearchPh: '搜索说明书',
+  prevPage: '上一页',
+  nextPage: '下一页',
+  startSearchPh: '搜索应用',
 }
 
 const ko: Dict = {
@@ -478,6 +514,18 @@ const ko: Dict = {
   stBulkUpdate: '모두 업데이트',
   stNoteText: '여기서 설치한 스토어 앱만 바탕화면과 시작 메뉴에 표시됩니다. 업데이트는 앱별로 개별 처리됩니다.',
   stInstalled: '설치됨',
+  catGame: '게임',
+  catTool: '도구',
+  catCalc: '계산·변환',
+  catLife: '생활',
+  catStudy: '학습',
+  stBodyNote: 'WebX 본체 업데이트 확인과 적용은 여기서 합니다',
+  stEmpty: '아직 스토어 앱이 없습니다',
+  stUninstallQ: '을(를) 삭제할까요?',
+  manualSearchPh: '설명서 검색',
+  prevPage: '이전',
+  nextPage: '다음',
+  startSearchPh: '앱 검색',
 }
 
 const th: Dict = {
@@ -591,6 +639,18 @@ const th: Dict = {
   stBulkUpdate: 'อัปเดตทั้งหมด',
   stNoteText: 'เฉพาะแอปจากสโตร์ที่ติดตั้งที่นี่เท่านั้นที่จะแสดงบนเดสก์ท็อปและเมนูเริ่ม การอัปเดตทำแยกตามแอป',
   stInstalled: 'ติดตั้งแล้ว',
+  catGame: 'เกม',
+  catTool: 'เครื่องมือ',
+  catCalc: 'คำนวณ·แปลง',
+  catLife: 'ชีวิตประจำวัน',
+  catStudy: 'เรียนรู้',
+  stBodyNote: 'ตรวจและอัปเดตตัว WebX ได้ที่นี่',
+  stEmpty: 'ยังไม่มีแอปจากสโตร์',
+  stUninstallQ: ': ถอนการติดตั้งไหม?',
+  manualSearchPh: 'ค้นหาคู่มือ',
+  prevPage: 'ก่อนหน้า',
+  nextPage: 'ถัดไป',
+  startSearchPh: 'ค้นหาแอป',
 }
 
 const es: Dict = {
@@ -881,6 +941,18 @@ const es: Dict = {
   stBulkUpdate: 'Actualizar todo',
   stNoteText: 'Solo las apps de la tienda que instales aquí aparecen en el escritorio y en el menú Inicio. Cada app se actualiza por separado.',
   stInstalled: 'Instalado',
+  catGame: 'Juegos',
+  catTool: 'Herramientas',
+  catCalc: 'Cálculo y conversión',
+  catLife: 'Vida',
+  catStudy: 'Estudio',
+  stBodyNote: 'Aquí puedes buscar y aplicar actualizaciones de WebX',
+  stEmpty: 'Aún no hay apps de la tienda',
+  stUninstallQ: ': ¿desinstalar?',
+  manualSearchPh: 'Buscar en el manual',
+  prevPage: 'Anterior',
+  nextPage: 'Siguiente',
+  startSearchPh: 'Buscar apps',
 }
 
 const fr: Dict = {
@@ -1171,6 +1243,18 @@ const fr: Dict = {
   stBulkUpdate: 'Tout mettre à jour',
   stNoteText: 'Seules les apps de la boutique installées ici apparaissent sur le bureau et dans le menu Démarrer. Chaque app se met à jour séparément.',
   stInstalled: 'Installé',
+  catGame: 'Jeux',
+  catTool: 'Outils',
+  catCalc: 'Calcul et conversion',
+  catLife: 'Quotidien',
+  catStudy: 'Étude',
+  stBodyNote: 'Recherchez et appliquez ici les mises à jour de WebX',
+  stEmpty: 'Aucune app de la boutique',
+  stUninstallQ: ' : désinstaller ?',
+  manualSearchPh: 'Rechercher dans le manuel',
+  prevPage: 'Précédent',
+  nextPage: 'Suivant',
+  startSearchPh: 'Rechercher des apps',
 }
 
 const de: Dict = {
@@ -1461,6 +1545,18 @@ const de: Dict = {
   stBulkUpdate: 'Alle aktualisieren',
   stNoteText: 'Nur hier installierte Store-Apps erscheinen auf dem Desktop und im Startmenü. Jede App wird einzeln aktualisiert.',
   stInstalled: 'Installiert',
+  catGame: 'Spiele',
+  catTool: 'Werkzeuge',
+  catCalc: 'Rechnen & Umrechnen',
+  catLife: 'Alltag',
+  catStudy: 'Lernen',
+  stBodyNote: 'Updates für WebX selbst hier prüfen und anwenden',
+  stEmpty: 'Noch keine Store-Apps',
+  stUninstallQ: ': deinstallieren?',
+  manualSearchPh: 'Im Handbuch suchen',
+  prevPage: 'Zurück',
+  nextPage: 'Weiter',
+  startSearchPh: 'Apps suchen',
 }
 
 export const DICTS: Record<Lang, Dict> = { ja, en, zh, ko, th, es, fr, de }

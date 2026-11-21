@@ -1,4 +1,5 @@
 import { marked } from 'marked'
+import { useLang } from '../lib/i18n'
 import manualText from '../../MANUAL.md?raw'
 import { useMemo, useState } from 'react'
 
@@ -36,6 +37,7 @@ function parseManual(md: string): Page[] {
 }
 
 export default function ManualWindow() {
+  const { t } = useLang()
   const pages = useMemo(() => parseManual(manualText as string), [])
   const [sel, setSel] = useState(0)
   const [query, setQuery] = useState('')
@@ -51,7 +53,7 @@ export default function ManualWindow() {
         <input
           className="manual-search"
           type="search"
-          placeholder="説明書を検索"
+          placeholder={t('manualSearchPh')}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -74,9 +76,9 @@ export default function ManualWindow() {
         <h1 className="manual-title">{page.title}</h1>
         <div className="manual-body" dangerouslySetInnerHTML={{ __html: html }} />
         <div className="manual-pager">
-          <button className="btn" disabled={sel <= 0} onClick={() => setSel(sel - 1)}>← 前へ</button>
+          <button className="btn" disabled={sel <= 0} onClick={() => setSel(sel - 1)}>← {t('prevPage')}</button>
           <span className="manual-count">{sel + 1} / {pages.length}</span>
-          <button className="btn" disabled={sel >= pages.length - 1} onClick={() => setSel(sel + 1)}>次へ →</button>
+          <button className="btn" disabled={sel >= pages.length - 1} onClick={() => setSel(sel + 1)}>{t('nextPage')} →</button>
         </div>
       </article>
     </div>
