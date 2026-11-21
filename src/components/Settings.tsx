@@ -74,6 +74,8 @@ interface Props {
   setPermitHw: (v: boolean) => void
   uiMode: string
   setUiMode: (v: string) => void
+  androidWinMove: boolean
+  setAndroidWinMove: (v: boolean) => void
 }
 
 export const WALLPAPERS: { id: string; key: string }[] = [
@@ -108,7 +110,7 @@ async function fileToWallpaper(file: File): Promise<string> {
   }
 }
 
-export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale, userName, setUserName, timezone, setTimezone, iconSize, setIconSize, iconClick, setIconClick, onShowSetup, clock24h, setClock24h, clockSec, setClockSec, reduceMotion, setReduceMotion, restoreWin, setRestoreWin, widgetAgenda, setWidgetAgenda, nightLight, setNightLight, muteNotes, setMuteNotes, saverOn, setSaverOn, permitHw, setPermitHw, uiMode, setUiMode }: Props) {
+export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale, userName, setUserName, timezone, setTimezone, iconSize, setIconSize, iconClick, setIconClick, onShowSetup, clock24h, setClock24h, clockSec, setClockSec, reduceMotion, setReduceMotion, restoreWin, setRestoreWin, widgetAgenda, setWidgetAgenda, nightLight, setNightLight, muteNotes, setMuteNotes, saverOn, setSaverOn, permitHw, setPermitHw, uiMode, setUiMode, androidWinMove, setAndroidWinMove }: Props) {
   const [pinDraft, setPinDraft] = useState('')
   const [pinSetNow, setPinSetNow] = useState(() => getPin() !== null)
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
@@ -229,6 +231,14 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
           ))}
         </div>
         <p className="settings-note">{translate(lang, 'uiSystemNote')}</p>
+        <div className="settings-toggle-row">
+          <span>{translate(lang, 'setAndroidWinMove')}</span>
+          <span className="settings-options">
+            <button className={androidWinMove ? 'opt on' : 'opt'} onClick={() => setAndroidWinMove(true)}>{translate(lang, 'onOffOn')}</button>
+            <button className={!androidWinMove ? 'opt on' : 'opt'} onClick={() => setAndroidWinMove(false)}>{translate(lang, 'onOffOff')}</button>
+          </span>
+        </div>
+        <p className="settings-note">{translate(lang, 'androidWinMoveNote')}</p>
       </section>
 
       <section className="settings-section">

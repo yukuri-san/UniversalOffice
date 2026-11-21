@@ -230,6 +230,11 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .cal-cell.empty { background: transparent; border: 0; cursor: default; }
 .cal-cell.today .cal-day { background: #6b4fa1; color: #fff; border-radius: 999px; }
 .cal-cell.selected { border-color: #6b4fa1; outline: 1px solid #6b4fa1; }
+.cal-cell.drag-over { outline: 2px dashed #6b4fa1; background: #f6f2fb; }
+.cal-event[draggable="true"] { cursor: grab; }
+.cal-event[draggable="true"]:active { cursor: grabbing; }
+.cal-event-list li > div[draggable="true"] { cursor: grab; }
+.cal-drag-hint { font-size: 11px; color: #7a8798; margin: 0 0 6px; padding: 0 4px; }
 .cal-day { font-size: 13px; font-weight: 600; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
 .cal-event { font-size: 11px; background: #ece5f7; border-radius: 4px; padding: 1px 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cal-event-c-blue { background: #dbeafe; color: #1d4ed8; }
@@ -732,7 +737,7 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .os-resize-edge { position: absolute; touch-action: none; z-index: 6; }
 .os-resize-edge.right { right: 0; top: 8px; bottom: 8px; width: 8px; cursor: ew-resize; }
 .os-resize-edge.bottom { bottom: 0; left: 8px; right: 8px; height: 8px; cursor: ns-resize; }
-.os-window-body { container-type: size; }
+.os-window-body { container-type: inline-size; }
 @container (max-width: 680px) {
   .memodb-app { flex-direction: column; }
   .memodb-side { width: 100%; max-height: 42%; border-right: 0; border-bottom: 1px solid #e3e8f0; }

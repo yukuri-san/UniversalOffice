@@ -227,6 +227,9 @@ export default function App() {
   const setPermitHw = (v: boolean) => { setPermitHwState(v); localStorage.setItem('webx-permit-hwinfo', v ? 'on' : 'off') }
   // UIシステム：DXUI（デスクトップ）／MXUI（モバイル）。auto は画面幅で判定する
   const [uiMode, setUiModeState] = useState(() => localStorage.getItem('webx-ui-mode') ?? 'auto')
+  const [androidWinMove, setAndroidWinMoveState] = useState(() => localStorage.getItem('webx-android-winmove') === 'on')
+  const setAndroidWinMove = (v: boolean) => { setAndroidWinMoveState(v); localStorage.setItem('webx-android-winmove', v ? 'on' : 'off') }
+  const isAndroidOs = /Android/i.test(navigator.userAgent)
   const setUiMode = (v: string) => { setUiModeState(v); localStorage.setItem('webx-ui-mode', v) }
   const [recentsOpen, setRecentsOpen] = useState(false)
   const [customApps, setCustomApps] = useState<CustomApp[]>(() => loadCustomApps())
@@ -787,7 +790,7 @@ export default function App() {
           ws,
           z: zRef.current,
           minimized: false,
-          maximized: !wide,
+          maximized: !wide && !winMoveRef.current,
           x: Math.max(6, (desktop.w - w) / 2 + offset - 60),
           y: Math.max(6, (desktop.h - h) / 2 + offset - 30),
           w,
@@ -828,7 +831,7 @@ export default function App() {
 
   const onTitlePointerDown = (e: React.PointerEvent, win: Win) => {
     focusWin(win.id)
-    if (win.maximized || !wide || isMxui) return
+    if (win.maximized || (!wide && !winMove) || (isMxui && !winMove)) return
     dragRef.current = { id: win.id, dx: e.clientX - win.x, dy: e.clientY - win.y }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
   }
@@ -951,6 +954,7 @@ export default function App() {
           saverOn={saverOn} setSaverOn={setSaverOn}
           permitHw={permitHw} setPermitHw={setPermitHw}
           uiMode={uiMode} setUiMode={setUiMode}
+          androidWinMove={androidWinMove} setAndroidWinMove={setAndroidWinMove}
         />
       )
       case 'youtube': return <YoutubeApp />
@@ -1073,6 +1077,10 @@ export default function App() {
     : uiMode === 'dxui' ? 'dxui'
     : viewport.w < 760 ? 'mxui-classic' : 'dxui'
   const isMxui = resolvedUi !== 'dxui'
+  // Android 限定：DXUI / MXUI-Classic で PC のようにウィンドウを移動・リサイズできるモード（設定で切替）
+  const winMove = isAndroidOs && androidWinMove && resolvedUi !== 'mxui-liquid'
+  const winMoveRef = useRef(false)
+  winMoveRef.current = winMove
   const showHome = () => {
     setWindows((prev) => prev.map((w) => ({ ...w, minimized: true })))
     setActiveId(null)
@@ -1089,7 +1097,7 @@ export default function App() {
 
   return (
     <LangContext.Provider value={lang}>
-    <div className={`os-root${kbOpen ? ' kb-open' : ''}${inputUnlock ? ' input-unlock' : ''}`} data-theme={theme} data-ui={resolvedUi} data-iconsize={iconSize} data-motion={reduceMotion || safeMode ? 'reduced' : undefined} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
+    <div className={`os-root${kbOpen ? ' kb-open' : ''}${inputUnlock ? ' input-unlock' : ''}`} data-theme={theme} data-ui={resolvedUi} data-iconsize={iconSize} data-motion={reduceMotion || safeMode ? 'reduced' : undefined} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': winMove ? Math.max(0.5, Math.round(uiScale * 0.8 * 100) / 100) : uiScale } as React.CSSProperties}>
       <div
         className="os-desktop"
         ref={desktopRef}
@@ -1161,11 +1169,13 @@ export default function App() {
         )}
         {windows.map((win) => {
           const meta = metaOf(win.id)
-          const full = win.maximized || !wide || isMxui
+          const full = win.maximized || ((!wide || isMxui) && !winMove)
           // 最小化中・別デスクトップのウィンドウも描画し続ける（YouTube等の再生を止めないため、見えないだけにする）
           const hiddenWin = (win.minimized || win.ws !== ws) && !minIds.includes(win.id)
           const baseStyle: React.CSSProperties = full
-            ? { inset: 0, width: '100%', height: '100%', zIndex: win.z }
+            ? isMxui
+              ? { position: 'fixed', top: resolvedUi === 'mxui-liquid' ? 56 : 30, bottom: kbOpen ? 0 : resolvedUi === 'mxui-liquid' ? 104 : 54, left: 0, right: 0, zIndex: win.z }
+              : { inset: 0, width: '100%', height: '100%', zIndex: win.z }
             : { left: win.x, top: win.y, width: win.w, height: win.h, zIndex: win.z }
           const style: React.CSSProperties = hiddenWin ? { ...baseStyle, visibility: 'hidden', pointerEvents: 'none' } : baseStyle
           return (
@@ -1180,18 +1190,18 @@ export default function App() {
                 onPointerDown={(e) => onTitlePointerDown(e, win)}
                 onPointerMove={onTitlePointerMove}
                 onPointerUp={onTitlePointerUp}
-                onDoubleClick={() => wide && toggleMax(win.id)}
+                onDoubleClick={() => (wide || winMove) && toggleMax(win.id)}
               >
                 <span className={`app-icon tiny ${meta.cls}`}>{meta.icon}</span>
                 <span className="os-title">{appName(win.id)}</span>
                 <div className="os-win-buttons" onPointerDown={(e) => e.stopPropagation()}>
                   <button title="最小化" onClick={() => minimizeWin(win.id)}>―</button>
-                  {wide && <button title={win.maximized ? '元に戻す' : '最大化'} onClick={() => toggleMax(win.id)}>{win.maximized ? '🗗' : '🗖'}</button>}
+                  {(wide || winMove) && <button title={win.maximized ? '元に戻す' : '最大化'} onClick={() => toggleMax(win.id)}>{win.maximized ? '🗗' : '🗖'}</button>}
                   <button title="閉じる" className="close" onClick={() => closeWin(win.id)}>✕</button>
                 </div>
               </div>
               <div className="os-window-body">{renderContent(win.id)}</div>
-              {!full && wide && (
+              {!full && (wide || winMove) && (
                 <>
                   <div
                     className="os-resize-edge right"

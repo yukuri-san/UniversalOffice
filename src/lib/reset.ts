@@ -8,7 +8,7 @@ export const SETTINGS_KEYS = [
   'webx-mute-notes', 'webx-screensaver', 'webx-brightness', 'webx-clipboard',
   'webx-pin-hash', 'webx-pin-len', 'webx-widget-config', 'webx-widget-note', 'webx-widget-agenda',
   'webx-boot-delay', 'webx-safe-mode', 'webx-boot-target', 'webx-widget-weather',
-  'webx-permit-hwinfo', 'webx-setup-version', 'webx-ui-mode',
+  'webx-permit-hwinfo', 'webx-setup-version', 'webx-ui-mode', 'webx-android-winmove',
   'webx-boot-default', 'webx-fast-boot', 'webx-dev-enabled', 'webx-bios-pin',
 ]
 

@@ -84,6 +84,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   const [formColor, setFormColor] = useState<EventColor>('blue')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setEvents(await listEvents())
@@ -271,6 +272,52 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     await refresh()
   }
 
+  // 予定を別の日にドラッグ＆ドロップで移動する
+  // 繰り返し予定はドラッグした出現日と同じ日数だけ開始日をずらし、シリーズごと移動する
+  const moveEventToDate = async (id: string, occurrenceDate: string, targetDate: string) => {
+    if (occurrenceDate === targetDate) return
+    const ev = events.find((e) => e.id === id)
+    if (!ev) return
+    const diffDays = Math.round(
+      (new Date(`${targetDate}T00:00:00`).getTime() - new Date(`${occurrenceDate}T00:00:00`).getTime()) / 86400000,
+    )
+    const base = new Date(`${ev.date}T00:00:00`)
+    base.setDate(base.getDate() + diffDays)
+    await saveEvent({
+      id: ev.id,
+      date: ymd(base.getFullYear(), base.getMonth(), base.getDate()),
+      title: ev.title,
+      memo: ev.memo,
+      ...(ev.time ? { time: ev.time } : {}),
+      ...(ev.color ? { color: ev.color } : {}),
+      ...(ev.repeat && ev.repeat !== 'none' ? { repeat: ev.repeat } : {}),
+      ...(ev.reminder !== undefined && ev.reminder >= 0 ? { reminder: ev.reminder } : {}),
+    })
+    await refresh()
+  }
+
+  const onEventDragStart = (e: React.DragEvent, ev: CalEvent, occurrenceDate: string) => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ id: ev.id, date: occurrenceDate }))
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  const onCellDragOver = (e: React.DragEvent, date: string) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    if (dragOverDate !== date) setDragOverDate(date)
+  }
+
+  const onCellDrop = (e: React.DragEvent, date: string) => {
+    e.preventDefault()
+    setDragOverDate(null)
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain')) as { id: string; date: string }
+      if (data?.id && data?.date) void moveEventToDate(data.id, data.date, date)
+    } catch {
+      /* ドラッグ元が予定でない場合は無視 */
+    }
+  }
+
   const selectedEvents = eventsByDate.get(selected) ?? []
   // 時刻順に並べる（終日は先頭、時刻ありは時刻順）
   const sortedSelectedEvents = useMemo(
@@ -355,6 +402,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
         </span>
         <span className="cal-count">{t('eventsThisMonth').replace('{n}', String(monthEventCount))}</span>
       </div>
+      <p className="cal-drag-hint">{t('dragEventHint')}</p>
       {searchQuery.trim() !== '' && (
         <div className="cal-search-results">
           {searchResults.length === 0 ? (
@@ -391,11 +439,11 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
               const isToday = date === todayStr()
               const isSelected = date === selected
               return (
-                <button key={date} className={`cal-cell cal-week-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`} onClick={() => setSelected(date)}>
+                <button key={date} className={`cal-cell cal-week-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}${dragOverDate === date ? ' drag-over' : ''}`} onClick={() => setSelected(date)} onDragOver={(e) => onCellDragOver(e, date)} onDragLeave={() => setDragOverDate((d) => (d === date ? null : d))} onDrop={(e) => onCellDrop(e, date)}>
                   <span className="cal-day">{Number(date.slice(8))}</span>
                   {dayEvents.length === 0
                     ? <span className="cal-more">—</span>
-                    : dayEvents.map((e) => <span key={`${e.id}@${date}`} className={`cal-event cal-event-c-${e.color ?? 'blue'}`}>{e.time && <span className="cal-event-time">{e.time}</span>}{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
+                    : dayEvents.map((e) => <span key={`${e.id}@${date}`} draggable onDragStart={(ev) => onEventDragStart(ev, e, date)} className={`cal-event cal-event-c-${e.color ?? 'blue'}`}>{e.time && <span className="cal-event-time">{e.time}</span>}{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
                 </button>
               )
             }) : cells.map((date, i) => {
@@ -404,9 +452,9 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
               const isToday = date === todayStr()
               const isSelected = date === selected
               return (
-                <button key={i} className={`cal-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`} onClick={() => setSelected(date)}>
+                <button key={i} className={`cal-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}${dragOverDate === date ? ' drag-over' : ''}`} onClick={() => setSelected(date)} onDragOver={(e) => onCellDragOver(e, date)} onDragLeave={() => setDragOverDate((d) => (d === date ? null : d))} onDrop={(e) => onCellDrop(e, date)}>
                   <span className="cal-day">{Number(date.slice(8))}</span>
-                  {dayEvents.slice(0, 2).map((e) => <span key={`${e.id}@${date}`} className={`cal-event cal-event-c-${e.color ?? 'blue'}`}>{e.time && <span className="cal-event-time">{e.time}</span>}{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
+                  {dayEvents.slice(0, 2).map((e) => <span key={`${e.id}@${date}`} draggable onDragStart={(ev) => onEventDragStart(ev, e, date)} className={`cal-event cal-event-c-${e.color ?? 'blue'}`}>{e.time && <span className="cal-event-time">{e.time}</span>}{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
                   {dayEvents.length > 2 && <span className="cal-more">{t('moreEvents').replace('{n}', String(dayEvents.length - 2))}</span>}
                 </button>
               )
@@ -421,7 +469,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
             <ul className="cal-event-list">
               {sortedSelectedEvents.map((e) => (
                 <li key={e.id} className={editingId === e.id ? 'editing' : ''}>
-                  <div>
+                  <div draggable onDragStart={(ev) => onEventDragStart(ev, e, selected)}>
                     <strong><span className="cal-color-dot" style={{ backgroundColor: eventColorHex(e.color) }} />{e.time ? <span className="cal-event-time">{e.time} </span> : <span className="cal-event-time">{t('allDay')} </span>}{e.title}</strong>
                     {(e.repeat ?? 'none') !== 'none' && <span className="cal-repeat-badge">↻ {t(e.repeat === 'daily' ? 'repeatDaily' : e.repeat === 'weekly' ? 'repeatWeekly' : 'repeatMonthly')}</span>}
                     {e.memo && <small>{e.memo}</small>}
