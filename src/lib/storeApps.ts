@@ -222,6 +222,11 @@ export const STORE_APPS: StoreAppDef[] = [
     category: 'life',
   },
   {
+    id: 'diary', icon: '日', cls: 'diary', name: '日記',
+    desc: '日付ごとに出来事と気分を記録。タイトル・本文の検索や過去の日記の編集もできます。', version: '1.0.0', notes: '新規アプリです。日付ごとの記録・5段階の気分・検索・編集ができます。',
+    category: 'life',
+  },
+  {
     id: 'kakeibo', icon: '家', cls: 'kakeibo', name: '家計簿',
     desc: '収入と支出を記録して、月ごとの収支とカテゴリ内訳を確認できます。', version: '1.0.0', notes: '新規アプリです。収入・支出の記録、月ごとの収支とカテゴリ内訳が使えます。',
     category: 'life',
@@ -271,4 +276,29 @@ export const STORE_APPS: StoreAppDef[] = [
     desc: '生年月日から年齢（歳・か月・日）と生まれてからの日数を計算します。', version: '1.0.0', notes: '新規アプリです。生年月日から年齢と経過日数を計算できます。',
     category: 'calc',
   },
+  {
+    id: 'weather', icon: '🌤️', cls: 'weather', name: '天気',
+    desc: '各地の天気予報。今の天気・24時間・7日間を表示し、地名検索もできます。',
+    version: '1.0.0', category: 'life',
+    notes: '新規追加：現在の天気・体感温度・湿度・風速、24時間予報、7日間予報、地名検索（Open-Meteo）',
+  },
+  {
+    id: 'gallery', icon: '🖼️', cls: 'gallery', name: 'ギャラリー',
+    desc: '写真を取り込んで眺めるギャラリー。壁紙設定もできます。写真は端末内に保存。',
+    version: '1.0.0', category: 'life',
+    notes: '新規追加：写真の取り込み（自動縮小）・グリッド表示・ビューア・壁紙設定・削除。端末内保存',
+  },
+  {
+    id: 'music', icon: '🎵', cls: 'music', name: 'ミュージック',
+    desc: '音声ファイルを取り込んで再生するプレイヤー。プレイリストとバックグラウンド再生に対応。',
+    version: '1.0.0', category: 'life',
+    notes: '新規追加：曲の取り込み・再生/一時停止・前後スキップ・シーク・音量・自動で次へ。端末内保存',
+  },
+  {
+    id: 'qr', icon: 'QR', cls: 'qr', name: 'QR・バーコード',
+    desc: 'QRコードと各種バーコードの作成・読み取り。Wi-Fiや連絡先のQR、JANコードにも対応。',
+    version: '1.0.0', category: 'tool',
+    notes: '新規追加：QR（テキスト/Wi-Fi/連絡先/メール/電話/SMS）・CODE128・EAN-13/8・UPC・CODE39・ITF-14・MSI・Pharmacode の作成、カメラと画像からの読み取り',
+  },
 ]
+

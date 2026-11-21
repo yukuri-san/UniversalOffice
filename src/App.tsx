@@ -27,6 +27,11 @@ import { PassGen, TextCount, ColorPicker, Morse } from './components/store/Tools
 import { DayCalc, Bmi, SplitBill, Currency, Wareki } from './components/store/ToolsB'
 import { Pomodoro, Metronome, WhiteNoise, Flashcards } from './components/store/Life'
 import { TodoList } from './components/store/TodoList'
+import { Diary } from './components/store/Diary'
+import { WeatherApp } from './components/store/WeatherApp'
+import { GalleryApp } from './components/store/GalleryApp'
+import { MusicApp } from './components/store/MusicApp'
+import { QrApp } from './components/store/QrApp'
 import { Kakeibo, HabitTracker, ShoppingList, ReactionTest, SimonGame, Counter, Roulette, CoinFlip, Countdown, AgeCalc } from './components/store/Apps2'
 import SysInfo from './components/SysInfo'
 import TaskManager from './components/TaskManager'
@@ -52,7 +57,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets'
 
 interface Win {
   id: WindowApp
@@ -125,6 +130,11 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   slot: { icon: '🎰', cls: 'slot' },
   runner: { icon: '🦖', cls: 'runner' },
   todo: { icon: '✓', cls: 'todo' },
+  diary: { icon: '日', cls: 'diary' },
+  weather: { icon: '🌤️', cls: 'weather' },
+  gallery: { icon: '🖼️', cls: 'gallery' },
+  music: { icon: '🎵', cls: 'music' },
+  qr: { icon: 'QR', cls: 'qr' },
   kakeibo: { icon: '家', cls: 'kakeibo' },
   habit: { icon: '継', cls: 'habit' },
   shopping: { icon: '買', cls: 'shopping' },
@@ -508,6 +518,12 @@ export default function App() {
   const [wpPreset, setWpPreset] = useState(() => localStorage.getItem('webx-wp-preset') || 'aurora')
   const [wpCustom, setWpCustom] = useState<string | null>(() => localStorage.getItem('webx-wp-custom'))
   const [wpUseCustom, setWpUseCustom] = useState(() => localStorage.getItem('webx-wp-use') === 'custom')
+  // ギャラリー等から壁紙が設定されたら即反映する
+  useEffect(() => {
+    const onWp = () => { setWpCustom(localStorage.getItem('webx-wp-custom')); setWpUseCustom(localStorage.getItem('webx-wp-use') === 'custom') }
+    window.addEventListener('webx-wallpaper-changed', onWp)
+    return () => window.removeEventListener('webx-wallpaper-changed', onWp)
+  }, [])
   useEffect(() => { localStorage.setItem('webx-wp-preset', wpPreset) }, [wpPreset])
   useEffect(() => { localStorage.setItem('webx-wp-use', wpUseCustom ? 'custom' : 'preset') }, [wpUseCustom])
   useEffect(() => {
@@ -852,6 +868,11 @@ export default function App() {
       case 'slot': return <Slot />
       case 'runner': return <Runner />
       case 'todo': return <TodoList />
+      case 'diary': return <Diary />
+      case 'weather': return <WeatherApp />
+      case 'gallery': return <GalleryApp />
+      case 'music': return <MusicApp />
+      case 'qr': return <QrApp />
       case 'kakeibo': return <Kakeibo />
       case 'habit': return <HabitTracker />
       case 'shopping': return <ShoppingList />
