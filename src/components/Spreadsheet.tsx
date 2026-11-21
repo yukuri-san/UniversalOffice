@@ -245,8 +245,23 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
 
   const addRow = () => setGrid((prev) => [...prev, Array(prev[0]?.length ?? 1).fill('')])
   const addCol = () => setGrid((prev) => prev.map((row) => [...row, '']))
-  const deleteRow = () => setGrid((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== selected.r) : prev))
-  const deleteCol = () => setGrid((prev) => (prev[0].length > 1 ? prev.map((row) => row.filter((_, i) => i !== selected.c)) : prev))
+  const deleteRow = () => {
+    if (grid.length <= 1) return
+    setGrid((prev) => prev.filter((_, i) => i !== selected.r))
+    // 末尾の行を消したとき選択位置が範囲外に残らないよう詰める
+    const r = Math.min(selected.r, grid.length - 2)
+    setSelected({ r, c: selected.c })
+    setPendingFocus({ r, c: selected.c })
+  }
+  const deleteCol = () => {
+    const cols = grid[0]?.length ?? 1
+    if (cols <= 1) return
+    setGrid((prev) => prev.map((row) => row.filter((_, i) => i !== selected.c)))
+    // 末尾の列を消したとき選択位置が範囲外に残らないよう詰める
+    const c = Math.min(selected.c, cols - 2)
+    setSelected({ r: selected.r, c })
+    setPendingFocus({ r: selected.r, c })
+  }
   const insertRow = () => setGrid((prev) => {
     const cols = prev[0]?.length ?? 1
     return [...prev.slice(0, selected.r), Array(cols).fill(''), ...prev.slice(selected.r)]
