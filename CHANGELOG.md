@@ -1,3 +1,13 @@
+## v1.23.0
+
+表計算のセル書式設定。
+
+- 選択中のセルに太字・斜体・文字色・背景色・配置（左／中央／右）を設定できるツールバーを追加
+- 書式は端末内に保存（保存キー `universal-office-sheet-styles`）。行・列の挿入／削除・ソートをしても書式がセルについて回る
+- 印刷（PDF）にも書式を反映（CSV 保存は従来どおり計算結果の値のみ）
+- 表示は8言語対応（新規キー cellBold／cellItalic／cellTextColor／cellBg／cellAlignLeft／cellAlignCenter／cellAlignRight／cellClearFormat）
+- 速度テストの不具合修正：Service Worker が他サイト宛ての通信まで横取りしてキャッシュしようとしていたため、測定（特にアップロード）が失敗していた。自サイト宛て GET のみに限定し、速度テストは Cloudflare に届かない環境向けの代替測定（自サイト経由）と段階別エラー表示を追加（アプリ v1.0.1）
+
 ## v1.22.0ex
 
 特別版アップデート。

@@ -311,8 +311,8 @@ export const STORE_APPS: StoreAppDef[] = [
   },
   {
     id: 'speedtest', icon: '🚀', cls: 'speedtest', name: '速度テスト',
-    desc: '通信速度（ping/下り/上り）を測定', version: '1.0.0', category: 'tool',
-    notes: '新規追加（v1.22.0ex）。Cloudflare の測定用サーバーで応答速度・ダウンロード・アップロードを測ります。',
+    desc: '通信速度（ping/下り/上り）を測定', version: '1.0.1', category: 'tool',
+    notes: 'v1.0.1：測定できない不具合を修正（Service Worker の干渉を解消）。Cloudflare に届かない環境では自サイト経由の代替測定に切り替え、失敗時は段階を表示します。',
   },
   {
     id: 'qr', icon: 'QR', cls: 'qr', name: 'QR・バーコード',

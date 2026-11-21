@@ -137,7 +137,28 @@ export function NoiseApp() {
   )
 }
 
-interface SpeedResult { ping: number; down: number; up: number; at: string }
+interface SpeedResult { ping: number; down: number; up: number | null; at: string; fallback?: boolean }
+
+async function measureDownViaOwnBundle(rounds: number): Promise<number> {
+  // 予備方式：自サイトの JS 本体をキャッシュ回避で複数回読み、実効速度を出す
+  const script = document.querySelector('script[type="module"][src]') as HTMLScriptElement | null
+  const base = script?.src ?? new URL('index.html', location.href).href
+  let totalBytes = 0
+  const t0 = performance.now()
+  for (let i = 0; i < rounds; i++) {
+    const res = await fetch(`${base}${base.includes('?') ? '&' : '?'}speed=${Date.now()}-${i}`, { cache: 'no-store' })
+    if (!res.ok || !res.body) throw new Error('own bundle failed')
+    const reader = res.body.getReader()
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      totalBytes += value?.length ?? 0
+    }
+  }
+  const sec = (performance.now() - t0) / 1000
+  return Math.round((totalBytes * 8 / sec) / 1_000_000 * 10) / 10
+}
+
 export function SpeedTestApp() {
   const [phase, setPhase] = useState('')
   const [progress, setProgress] = useState(0)
@@ -149,55 +170,81 @@ export function SpeedTestApp() {
   const run = async () => {
     setError('')
     setResult(null)
+    let fallback = false
+    let stage = '応答速度'
     try {
-      // Ping（3回の平均）
+      // Ping（3回の平均）。Cloudflare が使えない場合は自サイトで代替測定
       setPhase('応答速度を測定中…')
       const pings: number[] = []
       for (let i = 0; i < 3; i++) {
         const t0 = performance.now()
-        await fetch('https://speed.cloudflare.com/__down?bytes=0', { cache: 'no-store' })
+        try {
+          await fetch('https://speed.cloudflare.com/__down?bytes=0', { cache: 'no-store' })
+        } catch {
+          fallback = true
+          await fetch(`version.json?speed=${Date.now()}`, { cache: 'no-store' })
+        }
         pings.push(performance.now() - t0)
         setProgress((i + 1) / 3 * 20)
       }
       const ping = Math.round(pings.reduce((a, b) => a + b, 0) / pings.length)
-      // Download（10MB をストリームで読みながら計測）
+      // Download
+      stage = 'ダウンロード'
       setPhase('ダウンロード速度を測定中…')
-      const bytes = 10_000_000
-      const t0 = performance.now()
-      const res = await fetch(`https://speed.cloudflare.com/__down?bytes=${bytes}`, { cache: 'no-store' })
-      if (!res.body) throw new Error('no body')
-      const reader = res.body.getReader()
-      let received = 0
-      for (;;) {
-        const { done, value } = await reader.read()
-        if (done) break
-        received += value?.length ?? 0
-        setProgress(20 + (received / bytes) * 50)
+      let down: number
+      if (!fallback) {
+        try {
+          const bytes = 10_000_000
+          const t0 = performance.now()
+          const res = await fetch(`https://speed.cloudflare.com/__down?bytes=${bytes}`, { cache: 'no-store' })
+          if (!res.body) throw new Error('no body')
+          const reader = res.body.getReader()
+          let received = 0
+          for (;;) {
+            const { done, value } = await reader.read()
+            if (done) break
+            received += value?.length ?? 0
+            setProgress(20 + (received / bytes) * 50)
+          }
+          const sec = (performance.now() - t0) / 1000
+          down = Math.round((received * 8 / sec) / 1_000_000 * 10) / 10
+        } catch {
+          fallback = true
+          down = await measureDownViaOwnBundle(3)
+        }
+      } else {
+        down = await measureDownViaOwnBundle(3)
+        setProgress(70)
       }
-      const downSec = (performance.now() - t0) / 1000
-      const down = Math.round((received * 8 / downSec) / 1_000_000 * 10) / 10
-      // Upload（2MB）
-      setPhase('アップロード速度を測定中…')
-      const payload = new Blob([new Uint8Array(2_000_000)], { type: 'application/octet-stream' })
-      const t1 = performance.now()
-      await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: payload })
-      const upSec = (performance.now() - t1) / 1000
-      const up = Math.round((2_000_000 * 8 / upSec) / 1_000_000 * 10) / 10
+      // Upload（Cloudflare のみ。予備方式では測れない）
+      stage = 'アップロード'
+      let up: number | null = null
+      if (!fallback) {
+        setPhase('アップロード速度を測定中…')
+        try {
+          const payload = new Blob([new Uint8Array(2_000_000)], { type: 'application/octet-stream' })
+          const t1 = performance.now()
+          const upRes = await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: payload })
+          if (!upRes.ok) throw new Error('up failed')
+          const upSec = (performance.now() - t1) / 1000
+          up = Math.round((2_000_000 * 8 / upSec) / 1_000_000 * 10) / 10
+        } catch { up = null }
+      }
       setProgress(100)
-      const r: SpeedResult = { ping, down, up, at: new Date().toLocaleString('ja-JP') }
+      const r: SpeedResult = { ping, down, up, at: new Date().toLocaleString('ja-JP'), fallback }
       setResult(r)
       localStorage.setItem('webx-speed-last', JSON.stringify(r))
       setPhase('')
     } catch {
       setPhase('')
       setProgress(0)
-      setError('測定できませんでした（通信環境を確認してください）')
+      setError(`${stage}の測定に失敗しました。時間をおいてもう一度お試しください`)
     }
   }
 
   return (
     <div className="wxapp sensor-app">
-      <p className="wxapp-note">通信速度を測定します（測定用サーバー Cloudflare を利用。約12MBの通信が発生します）。</p>
+      <p className="wxapp-note">通信速度を測定します（測定用サーバー Cloudflare を利用。約12MBの通信が発生します）。Cloudflare に届かない環境では、自サイトからのダウンロードで代替測定します（その場合アップロードは測れません）。</p>
       {error && <p className="wxapp-error">{error}</p>}
       {phase && <p className="wxapp-note">{phase}</p>}
       {phase && <div className="noise-bar"><span style={{ width: `${progress}%` }} /></div>}
@@ -205,8 +252,8 @@ export function SpeedTestApp() {
         <div className="speed-results">
           <div><span>応答速度</span><strong>{result.ping} ms</strong></div>
           <div><span>ダウンロード</span><strong>{result.down} Mbps</strong></div>
-          <div><span>アップロード</span><strong>{result.up} Mbps</strong></div>
-          <p className="wxapp-note">測定日時：{result.at}</p>
+          <div><span>アップロード</span><strong>{result.up !== null ? `${result.up} Mbps` : '測定不可'}</strong></div>
+          <p className="wxapp-note">測定日時：{result.at}{result.fallback ? '（代替方式で測定）' : ''}</p>
         </div>
       )}
       <button className="btn primary" onClick={() => void run()} disabled={!!phase}>{phase ? '測定中…' : '速度テスト開始'}</button>

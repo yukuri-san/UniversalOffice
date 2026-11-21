@@ -89,6 +89,11 @@ footer { margin-top: 8px; color: #7a8798; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px; margin-bottom: 12px; }
 .toolbar button { border: 1px solid #c6d0dd; background: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 14px; }
 .toolbar .meta { margin-left: auto; font-size: 13px; color: #526173; }
+.fmt-group { display: inline-flex; gap: 4px; align-items: center; border: 1px solid #dde3ec; border-radius: 8px; padding: 3px 6px; background: #f8fafc; }
+.fmt-group button { padding: 5px 9px; font-size: 13px; }
+.fmt-group button.fmt-active { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; }
+.fmt-color { display: inline-flex; align-items: center; gap: 2px; cursor: pointer; font-size: 14px; padding: 2px 4px; border: 1px solid #c6d0dd; border-radius: 8px; background: #fff; }
+.fmt-color input[type="color"] { width: 26px; height: 22px; padding: 0; border: none; background: none; cursor: pointer; }
 .sheet-wrap { overflow: auto; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; }
 table.sheet { border-collapse: collapse; min-width: 100%; }
 table.sheet th, table.sheet td { border: 1px solid #e0e6ef; padding: 0; }

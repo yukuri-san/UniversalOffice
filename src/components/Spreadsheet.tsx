@@ -8,6 +8,53 @@ import { listDocs } from '../lib/store'
 
 const GRID_KEY = 'universal-office-sheet-grid'
 const NAME_KEY = 'universal-office-sheet-name'
+const STYLE_KEY = 'universal-office-sheet-styles'
+
+/** セルの書式。キーは `${row},${col}` */
+type CellStyle = { b?: boolean; i?: boolean; color?: string; bg?: string; align?: 'left' | 'center' | 'right' }
+type StyleMap = Record<string, CellStyle>
+
+const styleKey = (r: number, c: number) => `${r},${c}`
+
+function loadStyles(): StyleMap {
+  try {
+    const saved = localStorage.getItem(STYLE_KEY)
+    if (saved) return JSON.parse(saved) as StyleMap
+  } catch { /* ignore */ }
+  return {}
+}
+
+/** 行・列の挿入／削除／ソートに合わせて書式マップの座標を付け替える。null を返すとその書式は消える */
+function remapStyles(styles: StyleMap, mapPos: (r: number, c: number) => { r: number; c: number } | null): StyleMap {
+  const next: StyleMap = {}
+  for (const [key, s] of Object.entries(styles)) {
+    const [r, c] = key.split(',').map(Number)
+    const p = mapPos(r, c)
+    if (p) next[styleKey(p.r, p.c)] = s
+  }
+  return next
+}
+
+function styleToCss(s?: CellStyle): React.CSSProperties {
+  return {
+    fontWeight: s?.b ? 'bold' : undefined,
+    fontStyle: s?.i ? 'italic' : undefined,
+    color: s?.color || undefined,
+    backgroundColor: s?.bg || undefined,
+    textAlign: s?.align || undefined,
+  }
+}
+
+/** 印刷用 HTML の style 属性（色はカラーピッカー由来の hex のみ） */
+function styleToAttr(s?: CellStyle): string {
+  const parts: string[] = []
+  if (s?.b) parts.push('font-weight:bold')
+  if (s?.i) parts.push('font-style:italic')
+  if (s?.color) parts.push(`color:${s.color}`)
+  if (s?.bg) parts.push(`background-color:${s.bg}`)
+  if (s?.align) parts.push(`text-align:${s.align}`)
+  return parts.length ? ` style="${parts.join(';')}"` : ''
+}
 
 const SAMPLE: string[][] = [
   ['名前', '個数', '単価', '金額'],
@@ -182,6 +229,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     return SAMPLE
   })
   const [filename, setFilename] = useState(() => localStorage.getItem(NAME_KEY) || 'sheet.csv')
+  const [styles, setStyles] = useState<StyleMap>(loadStyles)
   const [homeOpen, setHomeOpen] = useState(false)
   const [selected, setSelected] = useState({ r: 0, c: 0 })
   const [focused, setFocused] = useState<{ r: number; c: number } | null>(null)
@@ -206,6 +254,9 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     localStorage.setItem(GRID_KEY, JSON.stringify(grid))
   }, [grid])
   useEffect(() => {
+    localStorage.setItem(STYLE_KEY, JSON.stringify(styles))
+  }, [styles])
+  useEffect(() => {
     localStorage.setItem(NAME_KEY, filename)
   }, [filename])
 
@@ -228,6 +279,32 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const setCell = (r: number, c: number, value: string) => {
     setGrid((prev) => prev.map((row, ri) => (ri === r ? row.map((cell, ci) => (ci === c ? value : cell)) : row)))
   }
+
+  /** 選択中のセルの書式を更新する。patch が null なら書式をすべて消す */
+  const updateStyle = (patch: Partial<CellStyle> | null) => {
+    const key = styleKey(selected.r, selected.c)
+    setStyles((prev) => {
+      if (patch === null) {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      }
+      const merged = { ...(prev[key] ?? {}), ...patch }
+      const cleaned: CellStyle = {}
+      if (merged.b) cleaned.b = true
+      if (merged.i) cleaned.i = true
+      if (merged.color) cleaned.color = merged.color
+      if (merged.bg) cleaned.bg = merged.bg
+      if (merged.align) cleaned.align = merged.align
+      if (Object.keys(cleaned).length === 0) {
+        const next = { ...prev }
+        delete next[key]
+        return next
+      }
+      return { ...prev, [key]: cleaned }
+    })
+  }
+  const curStyle = styles[styleKey(selected.r, selected.c)]
 
   /** キーボードでセル間を移動する。端を超えたら行・列を自動追加する */
   const moveSelection = (dr: number, dc: number) => {
@@ -252,6 +329,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const deleteRow = () => {
     if (grid.length <= 1) return
     setGrid((prev) => prev.filter((_, i) => i !== selected.r))
+    setStyles((prev) => remapStyles(prev, (r, c) => (r === selected.r ? null : r > selected.r ? { r: r - 1, c } : { r, c })))
     // 末尾の行を消したとき選択位置が範囲外に残らないよう詰める
     const r = Math.min(selected.r, grid.length - 2)
     setSelected({ r, c: selected.c })
@@ -261,31 +339,45 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     const cols = grid[0]?.length ?? 1
     if (cols <= 1) return
     setGrid((prev) => prev.map((row) => row.filter((_, i) => i !== selected.c)))
+    setStyles((prev) => remapStyles(prev, (r, c) => (c === selected.c ? null : c > selected.c ? { r, c: c - 1 } : { r, c })))
     // 末尾の列を消したとき選択位置が範囲外に残らないよう詰める
     const c = Math.min(selected.c, cols - 2)
     setSelected({ r: selected.r, c })
     setPendingFocus({ r: selected.r, c })
   }
-  const insertRow = () => setGrid((prev) => {
-    const cols = prev[0]?.length ?? 1
-    return [...prev.slice(0, selected.r), Array(cols).fill(''), ...prev.slice(selected.r)]
-  })
-  const insertCol = () => setGrid((prev) => prev.map((row) => [...row.slice(0, selected.c), '', ...row.slice(selected.c)]))
-  const clear = () => setGrid((prev) => prev.map((row) => row.map(() => '')))
+  const insertRow = () => {
+    setGrid((prev) => {
+      const cols = prev[0]?.length ?? 1
+      return [...prev.slice(0, selected.r), Array(cols).fill(''), ...prev.slice(selected.r)]
+    })
+    setStyles((prev) => remapStyles(prev, (r, c) => (r >= selected.r ? { r: r + 1, c } : { r, c })))
+  }
+  const insertCol = () => {
+    setGrid((prev) => prev.map((row) => [...row.slice(0, selected.c), '', ...row.slice(selected.c)]))
+    setStyles((prev) => remapStyles(prev, (r, c) => (c >= selected.c ? { r, c: c + 1 } : { r, c })))
+  }
+  const clear = () => {
+    setGrid((prev) => prev.map((row) => row.map(() => '')))
+    setStyles({})
+  }
 
   const sortByColumn = (dir: 1 | -1) => {
-    setGrid((prev) => {
-      const [head, ...body] = prev
-      const sorted = [...body].sort((a, b) => {
-        const av = a[selected.c] ?? ''
-        const bv = b[selected.c] ?? ''
-        const an = Number(av)
-        const bn = Number(bv)
-        if (!Number.isNaN(an) && !Number.isNaN(bn) && av !== '' && bv !== '') return (an - bn) * dir
-        return av.localeCompare(bv, 'ja') * dir
-      })
-      return [head, ...sorted]
+    const [head, ...body] = grid
+    // 並び替え前後の行番号の対応表を作り、書式も行について回らせる（先頭行は固定）
+    const order = body.map((_, i) => i).sort((ia, ib) => {
+      const av = body[ia][selected.c] ?? ''
+      const bv = body[ib][selected.c] ?? ''
+      const an = Number(av)
+      const bn = Number(bv)
+      if (!Number.isNaN(an) && !Number.isNaN(bn) && av !== '' && bv !== '') return (an - bn) * dir
+      return av.localeCompare(bv, 'ja') * dir
     })
+    setGrid([head, ...order.map((i) => body[i])])
+    setStyles((prev) => remapStyles(prev, (r, c) => {
+      if (r === 0) return { r, c }
+      const newBodyIdx = order.indexOf(r - 1)
+      return newBodyIdx < 0 ? null : { r: newBodyIdx + 1, c }
+    }))
   }
 
   const openCsv = async (file: File) => {
@@ -304,10 +396,10 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   }
 
   const printSheet = () => {
-    const head = computed[0]?.map((c) => `<th>${escapeHtml(c)}</th>`).join('') ?? ''
+    const head = computed[0]?.map((c, ci) => `<th${styleToAttr(styles[styleKey(0, ci)])}>${escapeHtml(c)}</th>`).join('') ?? ''
     const body = computed
       .slice(1)
-      .map((row) => `<tr>${row.map((c) => `<td>${escapeHtml(c)}</td>`).join('')}</tr>`)
+      .map((row, ri) => `<tr>${row.map((c, ci) => `<td${styleToAttr(styles[styleKey(ri + 1, ci)])}>${escapeHtml(c)}</td>`).join('')}</tr>`)
       .join('')
     printHtml(filename.replace(/\.csv$/i, ''), `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`)
   }
@@ -385,6 +477,16 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <button onClick={deleteCol}>{t('delCol')}</button>
         <button onClick={() => sortByColumn(1)}>{t('sortAsc')}</button>
         <button onClick={() => sortByColumn(-1)}>{t('sortDesc')}</button>
+        <span className="fmt-group" role="group" aria-label="セル書式">
+          <button className={curStyle?.b ? 'fmt-active' : ''} onClick={() => updateStyle({ b: !curStyle?.b })} title={t('cellBold')} aria-pressed={!!curStyle?.b}><b>B</b></button>
+          <button className={curStyle?.i ? 'fmt-active' : ''} onClick={() => updateStyle({ i: !curStyle?.i })} title={t('cellItalic')} aria-pressed={!!curStyle?.i}><i>I</i></button>
+          <label className="fmt-color" title={t('cellTextColor')}>A<input type="color" value={curStyle?.color ?? '#1f2937'} onChange={(e) => updateStyle({ color: e.target.value })} aria-label={t('cellTextColor')} /></label>
+          <label className="fmt-color" title={t('cellBg')}>■<input type="color" value={curStyle?.bg ?? '#ffffff'} onChange={(e) => updateStyle({ bg: e.target.value })} aria-label={t('cellBg')} /></label>
+          <button className={curStyle?.align === 'left' ? 'fmt-active' : ''} onClick={() => updateStyle({ align: curStyle?.align === 'left' ? undefined : 'left' })} title={t('cellAlignLeft')} aria-pressed={curStyle?.align === 'left'}>⇤</button>
+          <button className={curStyle?.align === 'center' ? 'fmt-active' : ''} onClick={() => updateStyle({ align: curStyle?.align === 'center' ? undefined : 'center' })} title={t('cellAlignCenter')} aria-pressed={curStyle?.align === 'center'}>≡</button>
+          <button className={curStyle?.align === 'right' ? 'fmt-active' : ''} onClick={() => updateStyle({ align: curStyle?.align === 'right' ? undefined : 'right' })} title={t('cellAlignRight')} aria-pressed={curStyle?.align === 'right'}>⇥</button>
+          <button onClick={() => updateStyle(null)}>{t('cellClearFormat')}</button>
+        </span>
         <label className="check-inline"><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> {t('freeze')}</label>
         <span className="meta">{grid.length} 行 × {grid[0]?.length ?? 0} 列</span>
         <button onClick={() => setChartOpen((v) => !v)}>📊 グラフ</button>
@@ -434,6 +536,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
                       <input
                         ref={(el) => { if (el) cellRefs.current.set(`${r}-${c}`, el); else cellRefs.current.delete(`${r}-${c}`) }}
                         value={isFocused ? cell : (computed[r]?.[c] ?? cell)}
+                        style={styleToCss(styles[styleKey(r, c)])}
                         onFocus={() => { setSelected({ r, c }); setFocused({ r, c }) }}
                         onBlur={() => setFocused(null)}
                         onChange={(e) => setCell(r, c, e.target.value)}
@@ -447,7 +550,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </tbody>
         </table>
       </div>
-      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
+      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
     </section>
   )
 }
