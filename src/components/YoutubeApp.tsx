@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLang } from '../lib/i18n'
 
 function extractId(input: string): string | null {
@@ -185,6 +185,14 @@ export default function YoutubeApp() {
   const [openFolder, setOpenFolder] = useState<string | null>(null)
   const [listState, setListState] = useState<'idle' | 'loading' | 'error'>('idle')
   const titlesRef = useRef<Record<string, string>>(loadTitles())
+  const playerRef = useRef<HTMLDivElement>(null)
+
+  // フォルダ内の操作で再生が始まったら、プレイヤーまで自動でスクロールする
+  useEffect(() => {
+    if (target) {
+      playerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [target])
 
   const saveFolders = useCallback((next: PlaylistFolder[]) => {
     setFolders(next)
@@ -285,7 +293,7 @@ export default function YoutubeApp() {
       <p className="browser-note">{t('ytNote')}</p>
       {error && <p className="yt-error">{error}</p>}
       {target ? (
-        <div className="yt-player">
+        <div className="yt-player" ref={playerRef}>
           <iframe
             key={embedSrc}
             src={embedSrc}
