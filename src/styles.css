@@ -689,3 +689,29 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
   .backstage-side { width: 100%; }
 }
 .os-resize-handle::after { content: ''; position: absolute; right: 3px; bottom: 3px; width: 10px; height: 10px; border-right: 2px solid rgba(90,110,140,.65); border-bottom: 2px solid rgba(90,110,140,.65); border-bottom-right-radius: 6px; }
+
+/* App Store */
+.store-app { padding: 16px; overflow-y: auto; height: 100%; }
+.store-head { margin: 6px 0 8px; font-size: 16px; }
+.store-note { color: #5b6a80; font-size: 13px; margin: 0 0 12px; }
+.store-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 22px; }
+.store-row { display: flex; align-items: center; gap: 12px; background: #f6f8fb; border: 1px solid #e1e7f0; border-radius: 12px; padding: 10px 12px; }
+.store-meta { flex: 1; min-width: 0; }
+.store-name { font-weight: 600; display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.store-ver { color: #7a879c; font-size: 12px; font-weight: 400; }
+.store-state { color: #1a7f37; font-size: 12px; font-weight: 400; }
+.store-desc { color: #5b6a80; font-size: 13px; }
+.store-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.app-icon.store { background: linear-gradient(135deg, #7c3aed, #2563eb); }
+.app-icon.unit { background: linear-gradient(135deg, #0ea5e9, #22c55e); }
+.icon-badge { position: absolute; top: -4px; right: -4px; background: #e0245e; color: #fff; font-size: 11px; font-weight: 700; min-width: 18px; height: 18px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; padding: 0 4px; }
+.desktop-icon, .start-app { position: relative; }
+/* Unit converter */
+.unit-app { padding: 18px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; height: 100%; }
+.unit-cats { display: flex; gap: 8px; flex-wrap: wrap; }
+.unit-row { display: flex; gap: 10px; align-items: stretch; }
+.unit-row select { border: 1px solid #c6d0dd; border-radius: 8px; padding: 8px; font-size: 14px; background: #fff; max-width: 46%; }
+.unit-input { flex: 1; border: 1px solid #c6d0dd; border-radius: 8px; padding: 10px; font-size: 18px; min-width: 0; }
+.unit-result { flex: 1; border: 1px solid #e1e7f0; background: #f6f8fb; border-radius: 8px; padding: 10px; font-size: 18px; font-weight: 600; min-width: 0; overflow-x: auto; white-space: nowrap; }
+.unit-swap { align-self: center; }
+.unit-note { color: #7a879c; font-size: 12px; }

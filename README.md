@@ -6,7 +6,7 @@
 **使う**：https://yukuri-san.github.io/UniversalOffice/
 Android の Chrome から開けば「アプリをインストール」で PWA としてインストールでき、オフラインでも動きます。
 
-- 現在のバージョン：v1.11.0（[変更履歴](CHANGELOG.md)）
+- 現在のバージョン：v1.12.0（[変更履歴](CHANGELOG.md)）
 - 使い方：[取扱説明書](MANUAL.md)（アプリ内にも「取扱説明書」アプリがあります）
 - ライセンス：[Apache License 2.0](LICENSE)
 
@@ -21,7 +21,7 @@ Android の Chrome から開けば「アプリをインストール」で PWA �
 - キーボードショートカット：環境（Windows / Mac 系 / iPad 系 / Android）を判定し、Mod キー（Windows は Ctrl、Mac・iPad は ⌘）を自動で切り替え。Mod+1〜9 でアプリ起動、Mod+Tab でウィンドウ切り替え、Mod+M 最小化、Mod+Shift+M 最大化、Mod+Shift+W 閉じる、Mod+/ で一覧
 - ソフトウェアキーボードを開閉しても画面がずれないよう、表示領域（visualViewport）に同期
 
-## アプリ（15＋2）
+## アプリ（標準16＋2／ストア制）
 
 - **ワードプロセッサ**：Word 風 UI（後述）
 - **スプレッドシート**：数式つき表計算、CSV 入出力

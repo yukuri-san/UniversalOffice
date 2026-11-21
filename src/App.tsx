@@ -17,12 +17,15 @@ import Terminal from './components/Terminal'
 import MemoDb from './components/MemoDb'
 import AboutWindow from './components/AboutWindow'
 import ManualWindow from './components/ManualWindow'
+import AppStore from './components/AppStore'
+import UnitConverter from './components/UnitConverter'
+import { STORE_APPS } from './lib/storeApps'
 import { requestPersist } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit'
 
 interface Win {
   id: WindowApp
@@ -53,8 +56,10 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   memodb: { icon: 'デ', cls: 'memodb' },
   about: { icon: 'W', cls: 'about' },
   manual: { icon: '説', cls: 'manual' },
+  store: { icon: '店', cls: 'store' },
+  unit: { icon: '換', cls: 'unit' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>([])
@@ -67,6 +72,55 @@ export default function App() {
   const [notes, setNotes] = useState<{ id: number; text: string; time: string }[]>([])
   const [notesOpen, setNotesOpen] = useState(false)
   const [selectedIcon, setSelectedIcon] = useState<WindowApp | null>(null)
+  const [installedApps, setInstalledApps] = useState<string[]>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('webx-installed-apps') ?? '[]')
+      return Array.isArray(v) ? v.filter((x) => typeof x === 'string') : []
+    } catch {
+      return []
+    }
+  })
+  const [appVersions, setAppVersions] = useState<Record<string, string>>(() => {
+    try {
+      const v = JSON.parse(localStorage.getItem('webx-app-versions') ?? '{}')
+      return v && typeof v === 'object' ? v : {}
+    } catch {
+      return {}
+    }
+  })
+  const visibleApps: WindowApp[] = [...APP_ORDER, ...STORE_APPS.filter((a) => installedApps.includes(a.id)).map((a) => a.id as WindowApp)]
+  const updatableCount = STORE_APPS.filter((a) => installedApps.includes(a.id) && appVersions[a.id] !== a.version).length
+  const installApp = (id: string) => {
+    const def = STORE_APPS.find((a) => a.id === id)
+    if (!def) return
+    setInstalledApps((prev) => {
+      const next = prev.includes(id) ? prev : [...prev, id]
+      localStorage.setItem('webx-installed-apps', JSON.stringify(next))
+      return next
+    })
+    setAppVersions((prev) => {
+      const next = { ...prev, [id]: def.version }
+      localStorage.setItem('webx-app-versions', JSON.stringify(next))
+      return next
+    })
+  }
+  const uninstallApp = (id: string) => {
+    setInstalledApps((prev) => {
+      const next = prev.filter((x) => x !== id)
+      localStorage.setItem('webx-installed-apps', JSON.stringify(next))
+      return next
+    })
+    setWindows((prev) => prev.filter((w) => w.id !== id))
+  }
+  const updateStoreApp = (id: string) => {
+    const def = STORE_APPS.find((a) => a.id === id)
+    if (!def) return
+    setAppVersions((prev) => {
+      const next = { ...prev, [id]: def.version }
+      localStorage.setItem('webx-app-versions', JSON.stringify(next))
+      return next
+    })
+  }
   const [uiScaleSetting, setUiScaleSetting] = useState<string>(() => localStorage.getItem('webx-ui-scale') ?? 'auto')
   const [viewport, setViewport] = useState({ w: window.innerWidth, h: window.innerHeight })
   useEffect(() => {
@@ -100,7 +154,7 @@ export default function App() {
   const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('ykr-lang') as Lang) || 'ja')
   const [theme, setTheme] = useState<ThemeId>(() => (localStorage.getItem('ykr-theme') as ThemeId) || 'light')
   const t = (key: string) => translate(lang, key)
-  const appName = (app: WindowApp) => t(app)
+  const appName = (app: WindowApp) => STORE_APPS.find((a) => a.id === app)?.name ?? t(app)
 
   useEffect(() => {
     localStorage.setItem('ykr-lang', lang)
@@ -218,6 +272,7 @@ export default function App() {
   }, [])
 
   const openApp = useCallback((app: WindowApp) => {
+    if (STORE_APPS.some((a) => a.id === app) && !installedApps.includes(app)) app = 'store'
     setStartOpen(false)
     setWindows((prev) => {
       if (prev.some((w) => w.id === app)) return prev
@@ -242,7 +297,7 @@ export default function App() {
     zRef.current += 1
     setActiveId(app)
     setWindows((prev) => prev.map((w) => (w.id === app ? { ...w, z: zRef.current, minimized: false } : w)))
-  }, [desktop, wide])
+  }, [desktop, wide, installedApps])
 
   const closeWin = (id: WindowApp) => {
     setWindows((prev) => prev.filter((w) => w.id !== id))
@@ -286,7 +341,7 @@ export default function App() {
       const key = e.key
       if (/^[1-9]$/.test(key)) {
         e.preventDefault()
-        openApp(APP_ORDER[Number(key) - 1])
+        openApp(visibleApps[Number(key) - 1])
         return
       }
       if (key === 'Tab' || key === '`') {
@@ -374,6 +429,17 @@ export default function App() {
       case 'memodb': return <MemoDb />
       case 'about': return <AboutWindow openDocs={(doc) => { localStorage.setItem('webx-docs-initial', doc); openApp('docs') }} />
       case 'manual': return <ManualWindow />
+      case 'store': return (
+        <AppStore
+          installed={installedApps}
+          versions={appVersions}
+          coreApps={APP_ORDER.filter((a) => a !== 'store').map((a) => ({ id: a, name: appName(a), icon: APP_META[a].icon, cls: APP_META[a].cls }))}
+          onInstall={installApp}
+          onUninstall={uninstallApp}
+          onUpdateApp={updateStoreApp}
+        />
+      )
+      case 'unit': return <UnitConverter />
     }
   }
 
@@ -394,7 +460,7 @@ export default function App() {
         style={wpUseCustom && wpCustom ? { backgroundImage: `url(${wpCustom})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       >
         <div className="desktop-icons">
-          {APP_ORDER.map((app) => (
+          {visibleApps.map((app) => (
             <button
               key={app}
               className={selectedIcon === app ? 'desktop-icon selected' : 'desktop-icon'}
@@ -403,6 +469,7 @@ export default function App() {
             >
               <span className={`app-icon big ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
               <span className="desktop-icon-label">{appName(app)}</span>
+              {app === 'store' && updatableCount > 0 && <span className="icon-badge">{updatableCount}</span>}
             </button>
           ))}
         </div>
@@ -478,10 +545,11 @@ export default function App() {
         <div className="start-menu">
           <h2>WebX</h2>
           <div className="start-apps">
-            {APP_ORDER.map((app) => (
+            {visibleApps.map((app) => (
               <button key={app} className="start-app" onClick={() => openApp(app)}>
                 <span className={`app-icon ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
                 <span>{appName(app)}</span>
+                {app === 'store' && updatableCount > 0 && <span className="icon-badge">{updatableCount}</span>}
               </button>
             ))}
           </div>
@@ -528,7 +596,7 @@ export default function App() {
 
       {ctxMenu && (
         <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }} onClick={(e) => e.stopPropagation()}>
-          {APP_ORDER.map((app) => (
+          {visibleApps.map((app) => (
             <button key={app} onClick={() => { openApp(app); setCtxMenu(null) }}>
               <span className={`app-icon tiny ${APP_META[app].cls}`}>{APP_META[app].icon}</span>
               {appName(app)}

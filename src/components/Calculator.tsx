@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 type Op = '+' | '-' | '×' | '÷'
 
@@ -24,6 +24,46 @@ export default function Calculator() {
   const [op, setOp] = useState<Op | null>(null)
   const [waiting, setWaiting] = useState(false)
   const [history, setHistory] = useState<string[]>([])
+  const rootRef = useRef<HTMLDivElement>(null)
+
+  // 起動時にフォーカスを当て、キーボード入力を受け取れるようにする
+  useEffect(() => {
+    rootRef.current?.focus()
+  }, [])
+
+  const backspace = () => {
+    setDisplay(display.length > 1 ? display.slice(0, -1) : '0')
+  }
+
+  // キーボード対応：電卓にフォーカスがあるときだけ受け取る
+  const handleKey = (e: React.KeyboardEvent) => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+    const k = e.key
+    if (/^[0-9]$/.test(k)) {
+      inputDigit(k)
+    } else if (k === '.' || k === ',') {
+      inputDot()
+    } else if (k === '+') {
+      chooseOp('+')
+    } else if (k === '-') {
+      chooseOp('-')
+    } else if (k === '*' || k === 'x' || k === 'X') {
+      chooseOp('×')
+    } else if (k === '/') {
+      e.preventDefault()
+      chooseOp('÷')
+    } else if (k === 'Enter' || k === '=') {
+      // Enter はフォーカス中のボタンも押してしまうため既定動作を止める
+      e.preventDefault()
+      equals()
+    } else if (k === 'Escape') {
+      clearAll()
+    } else if (k === 'Backspace') {
+      backspace()
+    } else if (k === '%') {
+      setDisplay(fmt(parseFloat(display) / 100))
+    }
+  }
 
   const inputDigit = (d: string) => {
     if (waiting) {
@@ -92,14 +132,14 @@ export default function Calculator() {
     { label: '2', action: () => inputDigit('2') },
     { label: '3', action: () => inputDigit('3') },
     { label: '+', action: () => chooseOp('+'), cls: 'op' },
-    { label: '⌫', action: () => setDisplay(display.length > 1 ? display.slice(0, -1) : '0') },
+    { label: '⌫', action: backspace },
     { label: '0', action: () => inputDigit('0') },
     { label: '.', action: inputDot },
     { label: '=', action: equals, cls: 'op eq' },
   ]
 
   return (
-    <div className="calc-app">
+    <div className="calc-app" tabIndex={0} ref={rootRef} onKeyDown={handleKey}>
       <div className="calc-display">
         <small>{acc !== null && op ? `${fmt(acc)} ${op}` : ''}</small>
         <strong>{display}</strong>
@@ -109,6 +149,7 @@ export default function Calculator() {
           <button key={k.label} className={k.cls ?? ''} onClick={k.action}>{k.label}</button>
         ))}
       </div>
+      <div className="calc-hint">キーボード：数字・+ - * / ／ Enter＝・Esc＝C・⌫＝削除</div>
       {history.length > 0 && (
         <ul className="calc-history">
           {history.map((h, i) => <li key={i}>{h}</li>)}

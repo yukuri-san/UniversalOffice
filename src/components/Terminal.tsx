@@ -9,6 +9,7 @@ const APP_NAMES: Record<string, string> = {
   word: 'ワードプロセッサ', sheet: 'スプレッドシート', note: 'メモ帳', calendar: 'カレンダー',
   browser: 'ブラウザ', youtube: 'YouTube', files: 'エクスプローラー', trash: 'ゴミ箱',
   settings: '設定', calculator: '電卓', clock: '時計', paint: 'ペイント', terminal: 'ターミナル', manual: '取扱説明書', memodb: 'メモDB',
+  store: 'ストア', unit: '単位変換（ストア）',
 }
 
 export default function Terminal({ openApp }: { openApp: (app: ShellApp) => void }) {
