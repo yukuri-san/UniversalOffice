@@ -356,7 +356,7 @@ export default function App() {
 
   return (
     <LangContext.Provider value={lang}>
-    <div className="os-root" data-theme={theme} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ zoom: uiScale } as React.CSSProperties}>
+    <div className="os-root" data-theme={theme} data-wallpaper={wpUseCustom ? 'custom' : wpPreset} style={{ '--ui-scale': uiScale } as React.CSSProperties}>
       <div
         className="os-desktop"
         ref={desktopRef}

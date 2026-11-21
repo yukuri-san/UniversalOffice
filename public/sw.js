@@ -1,4 +1,4 @@
-const CACHE = 'universal-office-v15'
+const CACHE = 'universal-office-v16'
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(['./', './index.html'])))
   self.skipWaiting()
@@ -19,4 +19,8 @@ self.addEventListener('fetch', (event) => {
       })
       .catch(() => caches.match(event.request))
   )
+})
+
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting()
 })

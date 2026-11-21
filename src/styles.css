@@ -650,3 +650,6 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
   .paint-main { flex-direction: column; }
   .paint-layers { width: 100%; border-left: 0; border-top: 1px solid #d5dce8; }
 }
+
+/* UI scale applies only to chrome (icons, menus, taskbar, window title bars), not the desktop */
+.desktop-icon, .start-menu, .os-taskbar, .os-titlebar, .ctx-menu, .notes-panel { zoom: var(--ui-scale, 1); }

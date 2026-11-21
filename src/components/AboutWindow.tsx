@@ -32,7 +32,7 @@ export default function AboutWindow({ openDocs }: { openDocs: (doc: DocKind) => 
         <div><dt>{t('backend')}</dt><dd>{info ? info.backend : '…'}</dd></div>
         <div><dt>{t('webxUsage')}</dt><dd>{info ? formatBytes(info.own) : '…'}</dd></div>
       </dl>
-      <p className="about-copy">© 2026 yukuri-san — MIT License</p>
+      <p className="about-copy">© 2026 yukuri-san — Apache License 2.0</p>
       <div className="about-actions">
         <button onClick={() => openDocs('license')}>{t('viewLicense')}</button>
         <button onClick={() => openDocs('readme')}>{t('viewReadme')}</button>
