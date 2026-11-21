@@ -14,8 +14,8 @@
 | --- | --- |
 | `src/App.tsx` | OS シェル：デスクトップ、ウィンドウ管理、タスクバー、スタートメニュー、通知、ロック、仮想デスクトップ、DXUI／MXUI、起動フロー（スプラッシュ／BIOS／回復／セットアップ） |
 | `src/components/` | 標準アプリと OS 部品（Settings、Calendar、Spreadsheet、Terminal、DeveloperApp、BootScreens など） |
-| `src/components/store/` | ストアアプリ（カテゴリ別ファイル） |
-| `src/components/games/` | ストアのゲーム |
+| `src/components/store/` | ストアアプリ（カテゴリ別ファイル。Mega1.tsx〜Mega5.tsx は大量追加分、MediaConv.tsx は FFmpeg WASM 変換） |
+| `src/components/games/` | ストアのゲーム（SushiTyping.tsx は寿司打風タイピング：ローマ字判定エンジン＋単語バンク内蔵） |
 | `src/lib/store.ts` | 保存層：OPFS（Worker 経由→メインスレッド）／IndexedDB の自動切替、ドキュメント・予定・バックアップ |
 | `src/lib/storeApps.ts` | ストアカタログ（id／名前／バージョン／更新内容） |
 | `src/lib/storeCheck.ts` | store.json の取得と比較（ストア更新は本体更新と独立） |
