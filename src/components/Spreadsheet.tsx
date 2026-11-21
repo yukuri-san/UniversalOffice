@@ -10,8 +10,9 @@ const GRID_KEY = 'universal-office-sheet-grid'
 const NAME_KEY = 'universal-office-sheet-name'
 const STYLE_KEY = 'universal-office-sheet-styles'
 
-/** セルの書式。キーは `${row},${col}` */
-type CellStyle = { b?: boolean; i?: boolean; color?: string; bg?: string; align?: 'left' | 'center' | 'right' }
+/** セルの書式。キーは `${row},${col}`。fmt は数値書式（未指定＝標準） */
+type NumFmt = 'number' | 'currency' | 'percent'
+type CellStyle = { b?: boolean; i?: boolean; color?: string; bg?: string; align?: 'left' | 'center' | 'right'; fmt?: NumFmt }
 type StyleMap = Record<string, CellStyle>
 
 const styleKey = (r: number, c: number) => `${r},${c}`
@@ -54,6 +55,19 @@ function styleToAttr(s?: CellStyle): string {
   if (s?.bg) parts.push(`background-color:${s.bg}`)
   if (s?.align) parts.push(`text-align:${s.align}`)
   return parts.length ? ` style="${parts.join(';')}"` : ''
+}
+
+/** 計算結果の表示値を数値書式に合わせて整える。数値でないセルや空欄はそのまま返す（入力値・数式そのものは変わらない） */
+export function formatCellValue(value: string, fmt?: NumFmt): string {
+  if (!fmt) return value
+  if (value.trim() === '') return value
+  const n = Number(value)
+  if (Number.isNaN(n)) return value
+  switch (fmt) {
+    case 'number': return n.toLocaleString('ja-JP')
+    case 'currency': return `¥${n.toLocaleString('ja-JP')}`
+    case 'percent': return `${Number((n * 100).toFixed(10)).toLocaleString('ja-JP')}%`
+  }
 }
 
 const SAMPLE: string[][] = [
@@ -334,6 +348,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
       if (merged.color) cleaned.color = merged.color
       if (merged.bg) cleaned.bg = merged.bg
       if (merged.align) cleaned.align = merged.align
+      if (merged.fmt) cleaned.fmt = merged.fmt
       if (Object.keys(cleaned).length === 0) {
         const next = { ...prev }
         delete next[key]
@@ -538,10 +553,10 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   }
 
   const printSheet = () => {
-    const head = computed[0]?.map((c, ci) => `<th${styleToAttr(styles[styleKey(0, ci)])}>${escapeHtml(c)}</th>`).join('') ?? ''
+    const head = computed[0]?.map((c, ci) => `<th${styleToAttr(styles[styleKey(0, ci)])}>${escapeHtml(formatCellValue(c, styles[styleKey(0, ci)]?.fmt))}</th>`).join('') ?? ''
     const body = computed
       .slice(1)
-      .map((row, ri) => `<tr>${row.map((c, ci) => `<td${styleToAttr(styles[styleKey(ri + 1, ci)])}>${escapeHtml(c)}</td>`).join('')}</tr>`)
+      .map((row, ri) => `<tr>${row.map((c, ci) => `<td${styleToAttr(styles[styleKey(ri + 1, ci)])}>${escapeHtml(formatCellValue(c, styles[styleKey(ri + 1, ci)]?.fmt))}</td>`).join('')}</tr>`)
       .join('')
     printHtml(filename.replace(/\.csv$/i, ''), `<table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`)
   }
@@ -631,6 +646,12 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           <button className={curStyle?.align === 'left' ? 'fmt-active' : ''} onClick={() => updateStyle({ align: curStyle?.align === 'left' ? undefined : 'left' })} title={t('cellAlignLeft')} aria-pressed={curStyle?.align === 'left'}>⇤</button>
           <button className={curStyle?.align === 'center' ? 'fmt-active' : ''} onClick={() => updateStyle({ align: curStyle?.align === 'center' ? undefined : 'center' })} title={t('cellAlignCenter')} aria-pressed={curStyle?.align === 'center'}>≡</button>
           <button className={curStyle?.align === 'right' ? 'fmt-active' : ''} onClick={() => updateStyle({ align: curStyle?.align === 'right' ? undefined : 'right' })} title={t('cellAlignRight')} aria-pressed={curStyle?.align === 'right'}>⇥</button>
+          <select value={curStyle?.fmt ?? 'general'} onChange={(e) => updateStyle({ fmt: e.target.value === 'general' ? undefined : (e.target.value as NumFmt) })} title={t('cellNumFmt')} aria-label={t('cellNumFmt')}>
+            <option value="general">{t('fmtGeneral')}</option>
+            <option value="number">{t('fmtNumber')}</option>
+            <option value="currency">{t('fmtCurrency')}</option>
+            <option value="percent">{t('fmtPercent')}</option>
+          </select>
           <button onClick={() => updateStyle(null)}>{t('cellClearFormat')}</button>
         </span>
         <label className="check-inline"><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> {t('freeze')}</label>
@@ -698,7 +719,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
                     <td key={c} className={r === selected.r && c === selected.c ? 'sel-cell' : ''}>
                       <input
                         ref={(el) => { if (el) cellRefs.current.set(`${r}-${c}`, el); else cellRefs.current.delete(`${r}-${c}`) }}
-                        value={isFocused ? cell : (computed[r]?.[c] ?? cell)}
+                        value={isFocused ? cell : formatCellValue(computed[r]?.[c] ?? cell, styles[styleKey(r, c)]?.fmt)}
                         style={styleToCss(styles[styleKey(r, c)])}
                         onFocus={() => { setSelected({ r, c }); setFocused({ r, c }); beginEdit() }}
                         onBlur={() => { setFocused(null); commitEdit() }}
@@ -713,7 +734,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </tbody>
         </table>
       </div>
-      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
+      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。</p>
     </section>
   )
 }
