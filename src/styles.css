@@ -653,3 +653,13 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 
 /* UI scale applies only to chrome (icons, menus, taskbar, window title bars), not the desktop */
 .desktop-icon, .start-menu, .os-taskbar, .os-titlebar, .ctx-menu, .notes-panel { zoom: var(--ui-scale, 1); }
+
+.yt-folders { margin-top: 18px; }
+.yt-folders h4 { margin: 0 0 10px; font-size: 14px; }
+.yt-folder-list { display: flex; flex-direction: column; gap: 10px; }
+.yt-folder { border: 1px solid #e3e8f0; border-radius: 14px; padding: 10px 12px; background: #fff; }
+.yt-folder.on { border-color: #f0b429; background: #fffdf4; }
+.yt-folder-head { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 10px; border: 0; background: transparent; cursor: pointer; font-size: 14px; font-weight: 600; padding: 2px 0 8px; text-align: left; }
+.yt-folder-head small { color: #7a8798; font-weight: 400; }
+.yt-folder-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 6px; }
+.yt-folder-actions button { border: 1px solid #c6d0dd; background: #fff; border-radius: 999px; padding: 5px 12px; font-size: 12.5px; cursor: pointer; }
