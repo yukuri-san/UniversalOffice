@@ -51,7 +51,7 @@ export default function ClockApp() {
       if (left <= 0 && !timerDoneRef.current) {
         timerDoneRef.current = true
         setTimerEnd(null)
-        notifyOs(`⏰ ${t('timer')}`)
+        notifyOs(`⏰ ${t('timer')}`, 'clock')
         try {
           const ctx = new AudioContext()
           const osc = ctx.createOscillator()

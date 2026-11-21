@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { ownUsageBytes, storageInfo } from '../lib/store'
 import { APP_VERSION } from '../lib/version'
+import { STORE_APPS } from '../lib/storeApps'
+import { notifyOs } from '../lib/notify'
+import { compareVersions, fetchLatestVersion } from '../lib/updateCheck'
 import type { AppId } from './Backstage'
 
 export type ShellApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'manual' | 'memodb'
@@ -10,6 +13,43 @@ const APP_NAMES: Record<string, string> = {
   browser: 'ブラウザ', youtube: 'YouTube', files: 'エクスプローラー', trash: 'ゴミ箱',
   settings: '設定', calculator: '電卓', clock: '時計', paint: 'ペイント', terminal: 'ターミナル', manual: '取扱説明書', memodb: 'メモDB',
   store: 'ストア', unit: '単位変換（ストア）',
+  ...Object.fromEntries(STORE_APPS.filter((a) => a.id !== 'unit').map((a) => [a.id, `${a.name}（ストア）`])),
+}
+
+const THEME_IDS = ['light', 'dark', 'ipados', 'macos', 'win11', 'win7', 'winxp', 'win95', 'cyber', 'sakura', 'ocean', 'sunset']
+
+/** 安全な四則演算（括弧・小数・% 対応、eval は使わない） */
+function calcExpr(src: string): number {
+  const tokens = src.replace(/\s+/g, '').match(/(\d+\.?\d*|\.\d+|[+\-*/%()])/g)
+  if (!tokens || tokens.join('') !== src.replace(/\s+/g, '')) throw new Error('invalid')
+  let pos = 0
+  const peek = () => tokens[pos]
+  const next = () => tokens[pos++]
+  const parseExpr = (): number => {
+    let v = parseTerm()
+    while (peek() === '+' || peek() === '-') { const op = next(); const r = parseTerm(); v = op === '+' ? v + r : v - r }
+    return v
+  }
+  const parseTerm = (): number => {
+    let v = parseFactor()
+    while (peek() === '*' || peek() === '/' || peek() === '%') {
+      const op = next(); const r = parseFactor()
+      v = op === '*' ? v * r : op === '/' ? v / r : v % r
+    }
+    return v
+  }
+  const parseFactor = (): number => {
+    const tk = next()
+    if (tk === '(') { const v = parseExpr(); if (next() !== ')') throw new Error('paren'); return v }
+    if (tk === '-') return -parseFactor()
+    if (tk === '+') return parseFactor()
+    const n = Number(tk)
+    if (Number.isNaN(n)) throw new Error('num')
+    return n
+  }
+  const v = parseExpr()
+  if (pos !== tokens.length) throw new Error('trail')
+  return v
 }
 
 const HISTORY_KEY = 'webx-terminal-history'
@@ -26,7 +66,7 @@ function loadHistory(): string[] {
   }
 }
 
-export default function Terminal({ openApp }: { openApp: (app: ShellApp) => void }) {
+export default function Terminal({ openApp, onClose }: { openApp: (app: ShellApp) => void; onClose?: () => void }) {
   const [lines, setLines] = useState<string[]>([
     `WebX ターミナル v${APP_VERSION}`,
     'コマンド一覧は「help」と入力してください。',
@@ -99,7 +139,13 @@ export default function Terminal({ openApp }: { openApp: (app: ShellApp) => void
           'storage         ストレージ情報',
           'echo <文字>     そのまま表示',
           'history         実行したコマンドの履歴',
+          'calc <式>       計算する（例：calc (12+8)/4）',
+          'games           ゲーム一覧',
+          'theme [テーマ]  テーマ表示／変更（例：theme cyber）',
+          'notify <文字>   通知を送る（テスト）',
+          'update          更新があるか確認',
           'clear           画面を消す',
+          'exit            ターミナルを閉じる',
           'about           WebX について',
         )
         break
@@ -125,6 +171,44 @@ export default function Terminal({ openApp }: { openApp: (app: ShellApp) => void
       }
       case 'version':
         out.push(`WebX v${APP_VERSION}`)
+        break
+      case 'calc': {
+        const expr = args.join(' ')
+        if (!expr) { out.push('使い方：calc (12+8)/4'); break }
+        try {
+          const v = calcExpr(expr)
+          out.push(`${expr} = ${Math.round(v * 1e10) / 1e10}`)
+        } catch { out.push(`計算できません：${expr}`) }
+        break
+      }
+      case 'games':
+        out.push(STORE_APPS.filter((a) => a.category === 'game').map((a) => `${a.id} = ${a.name}`).join('\n'))
+        break
+      case 'theme': {
+        const id = args[0]
+        if (!id) {
+          out.push(`現在のテーマ：${localStorage.getItem('ykr-theme') || 'light'}`)
+          out.push(`使えるテーマ：${THEME_IDS.join(' / ')}`)
+        } else if (THEME_IDS.includes(id)) {
+          window.dispatchEvent(new CustomEvent('webx-theme-set', { detail: id }))
+          out.push(`テーマを ${id} に変更しました`)
+        } else out.push(`テーマが見つかりません：${id}`)
+        break
+      }
+      case 'notify':
+        if (args.length) { notifyOs(args.join(' '), 'terminal'); out.push('通知を送りました') }
+        else out.push('使い方：notify <文字>')
+        break
+      case 'update': {
+        const latest = await fetchLatestVersion()
+        if (!latest) out.push('更新情報を取得できませんでした')
+        else if (compareVersions(latest, APP_VERSION) > 0) out.push(`新しいバージョン v${latest} があります（現在 v${APP_VERSION}）。ストアで更新できます`)
+        else out.push(`最新です（v${APP_VERSION}）`)
+        break
+      }
+      case 'exit':
+        out.push('終了します')
+        window.setTimeout(() => onClose?.(), 60)
         break
       case 'date':
         out.push(new Date().toLocaleString('ja-JP'))

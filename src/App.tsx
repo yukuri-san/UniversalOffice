@@ -120,7 +120,7 @@ export default function App() {
   const [toast, setToast] = useState('')
   const [platform] = useState(detectPlatform)
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null)
-  const [notes, setNotes] = useState<{ id: number; text: string; time: string }[]>([])
+  const [notes, setNotes] = useState<{ id: number; text: string; time: string; app?: string }[]>([])
   const [notesOpen, setNotesOpen] = useState(false)
   const [selectedIcon, setSelectedIcon] = useState<WindowApp | null>(null)
   const [installedApps, setInstalledApps] = useState<string[]>(() => {
@@ -194,8 +194,10 @@ export default function App() {
 
   useEffect(() => {
     const onNotify = (e: Event) => {
-      const text = (e as CustomEvent<string>).detail
-      setNotes((prev) => [{ id: Date.now() + Math.random(), text, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) }, ...prev].slice(0, 30))
+      const detail = (e as CustomEvent<{ text: string; app?: string } | string>).detail
+      const text = typeof detail === 'string' ? detail : detail.text
+      const app = typeof detail === 'string' ? undefined : detail.app
+      setNotes((prev) => [{ id: Date.now() + Math.random(), text, app, time: new Date().toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' }) }, ...prev].slice(0, 30))
       showToast(text)
     }
     window.addEventListener('webx-notify', onNotify)
@@ -215,6 +217,15 @@ export default function App() {
     localStorage.setItem('ykr-theme', theme)
   }, [theme])
   useEffect(() => {
+    const ids: ThemeId[] = ['light', 'dark', 'ipados', 'macos', 'win11', 'win7', 'winxp', 'win95', 'cyber', 'sakura', 'ocean', 'sunset']
+    const onThemeSet = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail as ThemeId
+      if (ids.includes(id)) setTheme(id)
+    }
+    window.addEventListener('webx-theme-set', onThemeSet)
+    return () => window.removeEventListener('webx-theme-set', onThemeSet)
+  }, [])
+  useEffect(() => {
     void requestPersist()
   }, [])
   // 起動時に更新があれば通知する（WebX 本体＋インストール済みストアアプリ）
@@ -223,14 +234,14 @@ export default function App() {
       void (async () => {
         const latest = await fetchLatestVersion()
         if (latest && compareVersions(latest, APP_VERSION) > 0) {
-          notifyOs(`WebX の新しいバージョン v${latest} があります（ストアで更新できます）`)
+          notifyOs(`WebX の新しいバージョン v${latest} があります（ストアで更新できます）`, 'store')
         }
         try {
           const installedNow: string[] = JSON.parse(localStorage.getItem('webx-installed-apps') ?? '[]')
           const versionsNow: Record<string, string> = JSON.parse(localStorage.getItem('webx-app-versions') ?? '{}')
           const outdated = STORE_APPS.filter((a) => installedNow.includes(a.id) && versionsNow[a.id] !== a.version)
           if (outdated.length > 0) {
-            notifyOs(`アプリの更新があります：${outdated.map((a) => `${a.name} v${a.version}`).join('、')}（ストアで更新できます）`)
+            notifyOs(`アプリの更新があります：${outdated.map((a) => `${a.name} v${a.version}`).join('、')}（ストアで更新できます）`, 'store')
           }
         } catch { /* 保存データが壊れている場合は通知しない */ }
       })()
@@ -346,6 +357,8 @@ export default function App() {
   const openApp = useCallback((app: WindowApp) => {
     if (STORE_APPS.some((a) => a.id === app) && !installedApps.includes(app)) app = 'store'
     setStartOpen(false)
+    // そのアプリを開いたら、宛先がそのアプリの通知は消える
+    setNotes((prev) => prev.filter((n) => n.app !== app))
     setWindows((prev) => {
       if (prev.some((w) => w.id === app)) return prev
       const offset = (prev.length % 5) * 34
@@ -505,7 +518,7 @@ export default function App() {
       case 'calculator': return <Calculator />
       case 'clock': return <ClockApp />
       case 'paint': return <Paint />
-      case 'terminal': return <Terminal openApp={openApp} />
+      case 'terminal': return <Terminal openApp={openApp} onClose={() => closeWin('terminal')} />
       case 'docs': return <DocsWindow />
       case 'memodb': return <MemoDb />
       case 'about': return <AboutWindow openDocs={(doc) => { localStorage.setItem('webx-docs-initial', doc); openApp('docs') }} />
@@ -743,7 +756,18 @@ export default function App() {
           ) : (
             <ul>
               {notes.map((n) => (
-                <li key={n.id}><span>{n.text}</span><small>{n.time}</small></li>
+                <li
+                  key={n.id}
+                  className={n.app ? 'note-item clickable' : 'note-item'}
+                  onClick={() => {
+                    if (!n.app) return
+                    setNotes((prev) => prev.filter((x) => x.id !== n.id))
+                    setNotesOpen(false)
+                    openApp(n.app as WindowApp)
+                  }}
+                >
+                  <span>{n.text}{n.app ? ' ›' : ''}</span><small>{n.time}</small>
+                </li>
               ))}
             </ul>
           )}

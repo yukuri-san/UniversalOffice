@@ -19,7 +19,7 @@ type CheckState = 'idle' | 'checking' | 'done' | 'error'
 // WebX 本体の更新確認・適用もここで行う（設定からは移管済み）。
 export default function AppStore({ installed, versions, coreApps, onInstall, onUninstall, onUpdateApp }: Props) {
   const [check, setCheck] = useState<CheckState>('idle')
-  const [category, setCategory] = useState<StoreCategory | 'all'>('all')
+  const [category, setCategory] = useState<StoreCategory | 'all' | 'updates'>('all')
   const [latest, setLatest] = useState('')
   const [summary, setSummary] = useState('')
 
@@ -75,14 +75,26 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
       <p className="store-note">インストールしたアプリだけがデスクトップやスタートメニューに表示されます。更新はアプリごとに個別に行います。</p>
       <div className="store-cats">
         <button className={category === 'all' ? 'chip on' : 'chip'} onClick={() => setCategory('all')}>すべて（{STORE_APPS.length}）</button>
+        {outdatedApps.length > 0 && (
+          <button className={category === 'updates' ? 'chip on update' : 'chip update'} onClick={() => setCategory('updates')}>🔄 更新あり（{outdatedApps.length}）</button>
+        )}
         {STORE_CATEGORIES.map((c) => (
           <button key={c.id} className={category === c.id ? 'chip on' : 'chip'} onClick={() => setCategory(c.id)}>
             {c.label}（{STORE_APPS.filter((a) => a.category === c.id).length}）
           </button>
         ))}
       </div>
+      {category === 'updates' && outdatedApps.length > 0 && (
+        <div className="store-bulk">
+          <span>{outdatedApps.length} 件のアプリに更新があります</span>
+          <button className="btn accent" onClick={() => outdatedApps.forEach((a) => onUpdateApp(a.id))}>すべて更新</button>
+        </div>
+      )}
+      {category === 'updates' && outdatedApps.length === 0 && (
+        <p className="store-note">更新があるアプリはありません。すべて最新です。</p>
+      )}
       <div className="store-list">
-        {STORE_APPS.filter((a) => category === 'all' || a.category === category).map((app) => {
+        {STORE_APPS.filter((a) => category === 'all' || (category === 'updates' ? outdatedApps.some((o) => o.id === a.id) : a.category === category)).map((app) => {
           const isIn = installed.includes(app.id)
           const cur = versions[app.id]
           const outdated = isIn && cur !== app.version

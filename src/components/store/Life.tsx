@@ -33,10 +33,10 @@ export function Pomodoro() {
       beep(880, 0.2); beep(880, 0.2, 0.3)
       if (phaseRef.current === 'work') {
         setCycles((c) => c + 1)
-        notifyOs('ポモドーロ：作業が終わりました。休憩しましょう')
+        notifyOs('ポモドーロ：作業が終わりました。休憩しましょう', 'pomodoro')
         setPhase('break'); setLeft(breakMin * 60)
       } else {
-        notifyOs('ポモドーロ：休憩が終わりました。次の作業へ')
+        notifyOs('ポモドーロ：休憩が終わりました。次の作業へ', 'pomodoro')
         setPhase('work'); setLeft(workMin * 60)
       }
     }, 1000)
