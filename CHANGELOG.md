@@ -1,3 +1,18 @@
+## v1.42.0（2026-11-22）
+
+開発者用システム関数「WebX API」と開発者向けドキュメントを追加した。
+
+- マイApp（サンドボックス内の HTML アプリ）から、グローバルオブジェクト `WebX` で WebX のシステム関数を呼べるようになった（SDK は自動注入、すべての関数は Promise を返す）
+  - `WebX.notify(text)`：通知センターへ通知（タップで自アプリが開く）
+  - `WebX.openApp(id)`：他のアプリを開く
+  - `WebX.storage.get/set/remove/keys`：アプリ専用ストレージ（アプリごとに分離、1値 200KB まで）
+  - `WebX.system.info()/theme()/lang()/version()`：バージョン・テーマ・言語・画面サイズなどのシステム情報
+  - `WebX.clipboard.write(text)`：クリップボードへコピー
+  - 呼び出しは対象 iframe からの postMessage のみ受け付け、未対応の機能はエラーになる
+- 開発者アプリに「システム関数（API）」タブを追加：関数一覧と、試せるサンプルApp の作成ボタン
+- ドキュメントに DEVELOPER.md を追加（ドキュメント画面に DEVELOPER タブ）：API の仕様・戻り値・サンプルコード・制限事項を記載
+- MANUAL の開発者アプリの章に WebX API の案内を追加
+
 ## v1.41.0a（2026-11-22）
 
 PWA が開かなくなる問題への対策（軽微な修正）。

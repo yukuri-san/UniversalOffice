@@ -485,6 +485,7 @@ DOS／Windows CMD 風のコマンドで、WebX の保存ファイルをファイ
 
 - プレイグラウンド：JavaScript の実行（コンソール出力つき）と HTML のライブプレビュー
 - マイApp作成：名前・アイコン・HTML コードで自分のアプリを作成。デスクトップとスタートメニューに並び、通常のアプリと同じように開けます（実行はサンドボックス内）
+- システム関数（API）：マイApp の HTML から `WebX.notify()`（通知）、`WebX.storage`（アプリ専用の保存領域）、`WebX.system.info()`（システム情報）、`WebX.openApp()`（アプリ起動）、`WebX.clipboard.write()` などのシステム関数を呼べます。開発者アプリの「システム関数（API）」タブに関数一覧とサンプルがあり、詳しい仕様はドキュメントの DEVELOPER.md にあります
 - ストレージ検査：localStorage のキー一覧・容量・削除、保存方式と使用量の確認
 - BIOS の Advanced で開発者アプリ自体の表示／非表示を切り替えられます
 

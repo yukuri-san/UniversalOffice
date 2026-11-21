@@ -2,8 +2,43 @@ import { useEffect, useState } from 'react'
 import { loadCustomApps, newCustomId, saveCustomApps, type CustomApp } from '../lib/customApps'
 import { ownUsageBytes, storageInfo } from '../lib/store'
 
-/* 開発者アプリ：プレイグラウンド／マイApp作成／ストレージ検査 */
-type Tab = 'play' | 'apps' | 'storage'
+/* 開発者アプリ：プレイグラウンド／マイApp作成／システム関数（API）／ストレージ検査 */
+type Tab = 'play' | 'apps' | 'api' | 'storage'
+
+const API_LIST: { sig: string; desc: string }[] = [
+  { sig: 'WebX.notify(text)', desc: 'OS の通知センターに通知を出す。通知タップで自分のアプリが開く' },
+  { sig: 'WebX.openApp(id)', desc: '指定したアプリを開く（例：\'calendar\'、ストアアプリやマイAppの ID も可）' },
+  { sig: 'WebX.storage.get(key, fallback?)', desc: '自分のアプリ専用ストレージから値を読む（JSON 化できる値）' },
+  { sig: 'WebX.storage.set(key, value)', desc: '自分のアプリ専用ストレージへ保存する（1値 200KB まで）' },
+  { sig: 'WebX.storage.remove(key)', desc: '保存した値を消す' },
+  { sig: 'WebX.storage.keys()', desc: '保存済みキーの一覧を返す' },
+  { sig: 'WebX.system.info()', desc: 'WebX のバージョン・テーマ・言語・画面サイズなどのシステム情報を返す' },
+  { sig: 'WebX.system.theme() / lang() / version()', desc: 'テーマ ID／言語コード／WebX バージョンだけを返す' },
+  { sig: 'WebX.clipboard.write(text)', desc: 'クリップボードへテキストをコピーする' },
+]
+
+const SAMPLE_API_HTML = `<!doctype html>
+<html><head><meta charset="utf-8"></head>
+<body style="font-family:sans-serif;padding:16px">
+<h1>WebX API サンプル</h1>
+<p>WebX のシステム関数を試すサンプルです。</p>
+<button id="b1">通知を出す</button>
+<button id="b2">システム情報</button>
+<button id="b3">カウント保存</button>
+<button id="b4">カレンダーを開く</button>
+<pre id="out" style="white-space:pre-wrap"></pre>
+<script>
+const out = document.getElementById('out')
+document.getElementById('b1').onclick = () => WebX.notify('サンプルAppからの通知です')
+document.getElementById('b2').onclick = async () => { out.textContent = JSON.stringify(await WebX.system.info(), null, 2) }
+document.getElementById('b3').onclick = async () => {
+  const n = (await WebX.storage.get('count', 0)) + 1
+  await WebX.storage.set('count', n)
+  out.textContent = '保存したカウント: ' + n
+}
+document.getElementById('b4').onclick = () => WebX.openApp('calendar')
+</` + `script>
+</body></html>`
 const PG_KEY = 'webx-dev-playground'
 const DEFAULT_JS = `// JavaScript を書いて「実行」すると下に結果が出ます\nconst xs = [1, 2, 3, 4, 5]\nconsole.log('合計:', xs.reduce((a, b) => a + b, 0))\n'答えは ' + xs.reduce((a, b) => a + b, 0)`
 const DEFAULT_HTML = `<!doctype html>\n<html><body style="font-family:sans-serif;padding:16px">\n<h1>マイApp</h1>\n<p>ここに HTML を書くとアプリになります。</p>\n<button onclick="document.body.style.background='#e0f2fe'">色を変える</button>\n</body></html>`
@@ -76,6 +111,7 @@ export default function DeveloperApp({ openApp }: { openApp: (id: string) => voi
       <div className="wxapp-tabs">
         <button className={tab === 'play' ? 'chip on' : 'chip'} onClick={() => setTab('play')}>▶ プレイグラウンド</button>
         <button className={tab === 'apps' ? 'chip on' : 'chip'} onClick={() => setTab('apps')}>📦 マイApp作成</button>
+        <button className={tab === 'api' ? 'chip on' : 'chip'} onClick={() => setTab('api')}>🧩 システム関数（API）</button>
         <button className={tab === 'storage' ? 'chip on' : 'chip'} onClick={() => setTab('storage')}>🗄 ストレージ検査</button>
       </div>
 
@@ -119,7 +155,31 @@ export default function DeveloperApp({ openApp }: { openApp: (id: string) => voi
             <button className="btn primary" onClick={saveApp}>{editId ? '上書き保存' : 'アプリを作成'}</button>
             <button className="btn" onClick={startNew}>新規</button>
           </div>
-          <p className="wxapp-note">作ったアプリはデスクトップとスタートメニューに並び、通常のアプリと同じように開けます。実行はサンドボックス内（WebX 本体のデータには触れません）。</p>
+          <p className="wxapp-note">作ったアプリはデスクトップとスタートメニューに並び、通常のアプリと同じように開けます。実行はサンドボックス内で、WebX の機能は「システム関数（API）」タブの WebX API 経由でのみ使えます。</p>
+        </>
+      )}
+
+      {tab === 'api' && (
+        <>
+          <p className="wxapp-note">マイApp の HTML からは、グローバルオブジェクト <code>WebX</code> で WebX のシステム関数を呼べます（SDK は自動で読み込まれます）。すべての関数は Promise を返すので <code>await</code> で結果を受け取れます。詳しい仕様はドキュメントの DEVELOPER.md にあります。</p>
+          <div className="dev-ls-list">
+            {API_LIST.map((a) => (
+              <div key={a.sig} className="dev-ls-row">
+                <code>{a.sig}</code>
+                <span>{a.desc}</span>
+              </div>
+            ))}
+          </div>
+          <div className="wxapp-toolbar">
+            <button className="btn primary" onClick={() => {
+              const app: CustomApp = { id: newCustomId(), name: 'WebX API サンプル', icon: '🧩', html: SAMPLE_API_HTML, createdAt: Date.now() }
+              const next = [...apps, app]
+              setApps(next)
+              saveCustomApps(next)
+              openApp(app.id)
+            }}>サンプルAppを作成して開く</button>
+          </div>
+          <p className="wxapp-note">ストレージはアプリごとに分離されていて、他のアプリのデータには触れません。対応していない機能の呼び出しはエラーになります。</p>
         </>
       )}
 

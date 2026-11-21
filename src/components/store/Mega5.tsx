@@ -363,3 +363,58 @@ export function Subs() {
     </div>
   )
 }
+
+/* ---------- 睡眠記録 ---------- */
+interface SleepRec { id: number; date: string; bed: string; wake: string; quality: number; memo: string }
+const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return (h || 0) * 60 + (m || 0) }
+const sleepMin = (bed: string, wake: string) => { let d = toMin(wake) - toMin(bed); if (d <= 0) d += 1440; return d }
+const fmtDur = (min: number) => `${Math.floor(min / 60)}時間${min % 60}分`
+export function SleepLog() {
+  const [items, setItems] = useState<SleepRec[]>(() => load('webx-sleep', []))
+  const [date, setDate] = useState(todayStr())
+  const [bed, setBed] = useState('23:30')
+  const [wake, setWake] = useState('07:00')
+  const [quality, setQuality] = useState(3)
+  const [memo, setMemo] = useState('')
+  const persist = (next: SleepRec[]) => { setItems(next); save('webx-sleep', next) }
+  const add = () => {
+    if (!bed || !wake) return
+    const rec: SleepRec = { id: Date.now(), date, bed, wake, quality, memo: memo.trim() }
+    persist([rec, ...items].sort((a, b) => b.date.localeCompare(a.date)))
+    setMemo('')
+  }
+  const avg = items.length ? Math.round(items.reduce((s, r) => s + sleepMin(r.bed, r.wake), 0) / items.length) : 0
+  const last7 = items.slice(0, 7)
+  const avg7 = last7.length ? Math.round(last7.reduce((s, r) => s + sleepMin(r.bed, r.wake), 0) / last7.length) : 0
+  return (
+    <div className="sa-app">
+      <div className="sa-row">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <label>就寝 <input type="time" value={bed} onChange={(e) => setBed(e.target.value)} /></label>
+        <label>起床 <input type="time" value={wake} onChange={(e) => setWake(e.target.value)} /></label>
+      </div>
+      <div className="sa-row">
+        <select value={quality} onChange={(e) => setQuality(Number(e.target.value))}>
+          {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>眠りの質 {n}</option>)}
+        </select>
+        <input type="text" value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="メモ（任意）" style={{ flex: 1 }} />
+        <button className="btn accent" onClick={add}>追加</button>
+      </div>
+      <div className="sa-stats">
+        <span>平均睡眠時間 <b>{items.length ? fmtDur(avg) : '—'}</b></span>
+        <span>直近7件の平均 <b>{last7.length ? fmtDur(avg7) : '—'}</b></span>
+        <span>記録数 <b>{items.length}</b></span>
+      </div>
+      <div className="sa-log">
+        {items.map((r) => (
+          <div key={r.id} className="sa-cardrow">
+            <span><b>{r.date}</b> <span className="sa-note">{r.bed}〜{r.wake}</span><br /><b>{fmtDur(sleepMin(r.bed, r.wake))}</b> <span style={{ color: '#d97706' }}>{stars(r.quality)}</span>{r.memo && <span className="sa-note">　{r.memo}</span>}</span>
+            <button className="btn small" onClick={() => persist(items.filter((x) => x.id !== r.id))}>削除</button>
+          </div>
+        ))}
+        {items.length === 0 && <p className="sa-note">まだ記録がありません。就寝・起床時刻を入れて追加してください。</p>}
+      </div>
+      <p className="sa-note">就寝・起床時刻から睡眠時間を自動計算します。日をまたぐ睡眠にも対応しています。記録は端末内に保存されます。</p>
+    </div>
+  )
+}

@@ -607,6 +607,11 @@ export const STORE_APPS: StoreAppDef[] = [
     category: 'life',
   },
   {
+    id: 'sleep', icon: '眠', cls: 'sleep', name: '睡眠記録',
+    desc: '就寝・起床時刻を記録し、睡眠時間を自動計算。平均睡眠時間も表示します。', version: '1.0.0', notes: '新規アプリです。就寝・起床時刻の記録と睡眠時間の自動計算ができます。',
+    category: 'life',
+  },
+  {
     id: 'mediaconv', icon: '変', cls: 'mediaconv', name: 'メディア変換',
     desc: '動画を GIF／音声（MP3）／WebM に変換。FFmpeg を端末内で実行し、ファイルは外部送信されません。', version: '1.0.0', notes: '新規アプリです。FFmpeg（WASM）で動画を GIF・MP3・WebM に変換できます。初回のみエンジン読み込みにネット接続が必要です。',
     category: 'tool',
