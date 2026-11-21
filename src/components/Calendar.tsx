@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Backstage, { type AppId } from './Backstage'
 import { LOCALES, useLang } from '../lib/i18n'
-import { deleteEvent, listEvents, saveEvent, type CalEvent, type RepeatKind } from '../lib/store'
+import { deleteEvent, listEvents, saveEvent, EVENT_COLORS, type CalEvent, type EventColor, type RepeatKind } from '../lib/store'
 
 function weekdayNames(locale: string): string[] {
   const fmt = new Intl.DateTimeFormat(locale, { weekday: 'short' })
@@ -63,6 +63,11 @@ function todayStr(): string {
   return ymd(now.getFullYear(), now.getMonth(), now.getDate())
 }
 
+// 予定の色（未指定は青）の表示色
+function eventColorHex(color?: EventColor): string {
+  return EVENT_COLORS.find((c) => c.id === (color ?? 'blue'))?.hex ?? '#3b82f6'
+}
+
 export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void }) {
   const { lang, t } = useLang()
   const now = new Date()
@@ -76,6 +81,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   const [formTime, setFormTime] = useState('')
   const [formRepeat, setFormRepeat] = useState<RepeatKind>('none')
   const [formReminder, setFormReminder] = useState(-1)
+  const [formColor, setFormColor] = useState<EventColor>('blue')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
@@ -85,6 +91,13 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
 
   useEffect(() => {
     void refresh()
+  }, [refresh])
+
+  // 他の場所で予定が変わったら（追加・編集・削除）追随して再読み込みする
+  useEffect(() => {
+    const onChanged = () => { void refresh() }
+    window.addEventListener('webx-events-changed', onChanged)
+    return () => window.removeEventListener('webx-events-changed', onChanged)
   }, [refresh])
 
   // キーボード：←/→ で前月・次月（週表示では前週・次週）、T で今日（入力中は除く）
@@ -207,6 +220,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
       ...(formTime ? { time: formTime } : {}),
       title: formTitle.trim(),
       memo: formMemo.trim(),
+      color: formColor,
       ...(formRepeat !== 'none' ? { repeat: formRepeat } : {}),
       ...(formReminder >= 0 ? { reminder: formReminder } : {}),
     })
@@ -215,6 +229,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setFormTime('')
     setFormRepeat('none')
     setFormReminder(-1)
+    setFormColor('blue')
     setEditingId(null)
     await refresh()
   }
@@ -226,6 +241,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setFormTime(e.time ?? '')
     setFormRepeat(e.repeat ?? 'none')
     setFormReminder(e.reminder ?? -1)
+    setFormColor(e.color ?? 'blue')
   }
 
   const cancelEdit = () => {
@@ -234,6 +250,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setFormMemo('')
     setFormTime('')
     setFormRepeat('none')
+    setFormColor('blue')
   }
 
   // 予定フォーム：Enter で追加・保存、Esc で編集中をキャンセル
@@ -350,6 +367,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                   <li key={`${e.id}@${date}`}>
                     <button onClick={() => jumpToResult(date)}>
                       <span className="cal-search-date">{new Intl.DateTimeFormat(LOCALES[lang], { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' }).format(new Date(`${date}T00:00:00`))}</span>
+                      <span className="cal-color-dot" style={{ backgroundColor: eventColorHex(e.color) }} />
                       {e.time && <span className="cal-event-time">{e.time}</span>}
                       {(e.repeat ?? 'none') !== 'none' && <span className="cal-repeat-badge">↻ {t(e.repeat === 'daily' ? 'repeatDaily' : e.repeat === 'weekly' ? 'repeatWeekly' : 'repeatMonthly')}</span>}
                       <strong>{e.title}</strong>
@@ -377,7 +395,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                   <span className="cal-day">{Number(date.slice(8))}</span>
                   {dayEvents.length === 0
                     ? <span className="cal-more">—</span>
-                    : dayEvents.map((e) => <span key={`${e.id}@${date}`} className="cal-event">{e.time && <span className="cal-event-time">{e.time}</span>}{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
+                    : dayEvents.map((e) => <span key={`${e.id}@${date}`} className={`cal-event cal-event-c-${e.color ?? 'blue'}`}>{e.time && <span className="cal-event-time">{e.time}</span>}{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
                 </button>
               )
             }) : cells.map((date, i) => {
@@ -388,7 +406,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
               return (
                 <button key={i} className={`cal-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`} onClick={() => setSelected(date)}>
                   <span className="cal-day">{Number(date.slice(8))}</span>
-                  {dayEvents.slice(0, 2).map((e) => <span key={`${e.id}@${date}`} className="cal-event">{e.time && <span className="cal-event-time">{e.time}</span>}{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
+                  {dayEvents.slice(0, 2).map((e) => <span key={`${e.id}@${date}`} className={`cal-event cal-event-c-${e.color ?? 'blue'}`}>{e.time && <span className="cal-event-time">{e.time}</span>}{(e.repeat ?? 'none') !== 'none' && '↻ '}{e.title}</span>)}
                   {dayEvents.length > 2 && <span className="cal-more">{t('moreEvents').replace('{n}', String(dayEvents.length - 2))}</span>}
                 </button>
               )
@@ -404,7 +422,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
               {sortedSelectedEvents.map((e) => (
                 <li key={e.id} className={editingId === e.id ? 'editing' : ''}>
                   <div>
-                    <strong>{e.time ? <span className="cal-event-time">{e.time} </span> : <span className="cal-event-time">{t('allDay')} </span>}{e.title}</strong>
+                    <strong><span className="cal-color-dot" style={{ backgroundColor: eventColorHex(e.color) }} />{e.time ? <span className="cal-event-time">{e.time} </span> : <span className="cal-event-time">{t('allDay')} </span>}{e.title}</strong>
                     {(e.repeat ?? 'none') !== 'none' && <span className="cal-repeat-badge">↻ {t(e.repeat === 'daily' ? 'repeatDaily' : e.repeat === 'weekly' ? 'repeatWeekly' : 'repeatMonthly')}</span>}
                     {e.memo && <small>{e.memo}</small>}
                   </div>
@@ -439,6 +457,22 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                 <option value={3}>{t('reminder3d')}</option>
                 <option value={7}>{t('reminder7d')}</option>
               </select>
+            </label>
+            <label className="cal-repeat-row">
+              <span>{t('eventColor')}</span>
+              <span className="cal-color-row">
+                {EVENT_COLORS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    className={`cal-color-swatch${formColor === c.id ? ' selected' : ''}`}
+                    style={{ backgroundColor: c.hex }}
+                    onClick={() => setFormColor(c.id)}
+                    aria-label={t(`color${c.id[0].toUpperCase()}${c.id.slice(1)}`)}
+                    title={t(`color${c.id[0].toUpperCase()}${c.id.slice(1)}`)}
+                  />
+                ))}
+              </span>
             </label>
             <button onClick={() => void addEvent()}>{editingId ? t('saveEvent') : t('addEvent')}</button>
             {editingId && <button className="cal-cancel" onClick={cancelEdit}>{t('cancelBtn')}</button>}

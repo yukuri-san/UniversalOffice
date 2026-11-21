@@ -1243,7 +1243,7 @@ export default function App() {
           </div>
           <label className="cc-slider">
             {t('brightnessLabel')}
-            <input type="range" min={0} max={60} value={brightness} onChange={(e) => setBrightness(Number(e.target.value))} />
+            <input type="range" min={40} max={100} value={100 - brightness} onChange={(e) => setBrightness(100 - Number(e.target.value))} />
           </label>
           <div className="cc-actions">
             <button className="btn" onClick={() => { setLocked(true); setCcOpen(false) }}>{t('lockNow')}</button>

@@ -75,8 +75,13 @@ interface Req {
   text?: string
 }
 
-self.onmessage = async (e: MessageEvent<Req>) => {
-  const req = e.data
+// 操作は必ず直列に実行する（書き込み途中のファイルを読みにいく等の競合を防ぐ）
+let chain: Promise<void> = Promise.resolve()
+self.onmessage = (e: MessageEvent<Req>) => {
+  chain = chain.then(() => handleMessage(e.data)).catch(() => { /* ignore */ })
+}
+
+async function handleMessage(req: Req): Promise<void> {
   try {
     let result: unknown = null
     switch (req.op) {

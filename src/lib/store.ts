@@ -13,6 +13,18 @@ export interface LocalDoc {
 
 export type RepeatKind = 'none' | 'daily' | 'weekly' | 'monthly'
 
+export type EventColor = 'blue' | 'green' | 'red' | 'amber' | 'purple' | 'pink'
+
+// 予定の色分けパレット（id と表示色）。既存データとの互換のため CalEvent.color は任意
+export const EVENT_COLORS: { id: EventColor; hex: string }[] = [
+  { id: 'blue', hex: '#3b82f6' },
+  { id: 'green', hex: '#22c55e' },
+  { id: 'red', hex: '#ef4444' },
+  { id: 'amber', hex: '#f59e0b' },
+  { id: 'purple', hex: '#a855f7' },
+  { id: 'pink', hex: '#ec4899' },
+]
+
 export interface CalEvent {
   id: string
   date: string // YYYY-MM-DD
@@ -21,6 +33,7 @@ export interface CalEvent {
   memo: string
   repeat?: RepeatKind // 未指定は 'none' と同じ（既存データとの互換のため）
   reminder?: number // 何日前に通知するか（0=当日、未指定は通知なし）
+  color?: EventColor // 未指定は 'blue' と同じ（既存データとの互換のため）
   createdAt: number
 }
 
@@ -111,8 +124,10 @@ async function opfsMainReadAll(dirName: string): Promise<unknown[]> {
     const out: unknown[] = []
     for await (const handle of dir.values() as AsyncIterable<AnyHandle>) {
       if (handle.kind === 'file' && String(handle.name).endsWith('.json')) {
-        const file = await handle.getFile()
-        out.push(JSON.parse(await file.text()))
+        try {
+          const file = await handle.getFile()
+          out.push(JSON.parse(await file.text()))
+        } catch { /* 壊れたファイルは読み飛ばす */ }
       }
     }
     return out
@@ -212,7 +227,12 @@ async function opfsReadJson(dirName: string, fileName: string): Promise<unknown 
 async function opfsReadAll(dirName: string): Promise<unknown[]> {
   if (resolvedBackend === 'worker') {
     const texts = (await workerCall('readAll', dirName)) as string[]
-    return texts.map((t) => JSON.parse(t))
+    const out: unknown[] = []
+    for (const t of texts) {
+      // 書き込み途中など壊れたファイルが1つあっても全体を落とさない
+      try { out.push(JSON.parse(t)) } catch { /* skip */ }
+    }
+    return out
   }
   return opfsMainReadAll(dirName)
 }

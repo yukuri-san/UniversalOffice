@@ -140,6 +140,13 @@ export default function Paint() {
   const [size, setSize] = useState(6)
   const [brushOpacity, setBrushOpacity] = useState(1)
   const [textEdit, setTextEdit] = useState<{ x: number; y: number; fontPx: number; displayPx: number } | null>(null)
+  const textInputRef = useRef<HTMLInputElement | null>(null)
+  useEffect(() => {
+    if (textEdit) {
+      const id = window.setTimeout(() => { textInputRef.current?.focus(); textInputRef.current?.select() }, 30)
+      return () => window.clearTimeout(id)
+    }
+  }, [textEdit])
   const [textValue, setTextValue] = useState('')
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
@@ -522,6 +529,7 @@ export default function Paint() {
             />
             {textEdit && (
               <input
+                ref={textInputRef}
                 autoFocus
                 className="paint-text-input"
                 style={{

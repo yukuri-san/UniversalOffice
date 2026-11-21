@@ -118,7 +118,7 @@ export default function SysInfo() {
         ['GPU レンダラー', gpu.renderer],
         ['端末メモリ（目安）', nav.deviceMemory ? `約 ${nav.deviceMemory} GB` : '取得できません'],
         ['JS ヒープ使用量', heap ? `${mb(heap.used)} ／ 上限 ${mb(heap.limit)}` : '取得できません'],
-        ['バッテリー残量', battery ? `${Math.round(battery.level * 100)}%` : '取得できません'],
+        ['バッテリー残量', battery && Number.isFinite(battery.level) ? `${Math.round(battery.level * 100)}%` : '取得できません'],
         ['充電状態', battery ? (battery.charging ? '充電中' : '放電中（バッテリー駆動）') : '取得できません'],
         ['充電完了まで', battery ? (battery.charging ? fmtTime(battery.chargingTime) : '—') : '取得できません'],
         ['残り使用可能時間', battery ? (!battery.charging ? fmtTime(battery.dischargingTime) : '—') : '取得できません'],

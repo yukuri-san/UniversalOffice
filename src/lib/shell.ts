@@ -209,7 +209,7 @@ export async function execCommand(raw: string, state: ShellState, ctx: ShellCont
     case 'apps': return done(ctx.apps.map((a) => `  ${a.id.padEnd(16)} ${a.name}`))
     case 'open': {
       if (!args[0]) return done(['使い方: open <アプリid>（apps で一覧）'])
-      const app = ctx.apps.find((a) => a.id === args[0].toLowerCase())
+      const app = ctx.apps.find((a) => a.id === args[0].toLowerCase()) ?? ctx.apps.find((a) => a.name === args[0])
       if (!app) return done([`アプリ '${args[0]}' が見つかりません`])
       ctx.openApp(app.id)
       return done([`${app.name} を起動しました`])
