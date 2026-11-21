@@ -132,6 +132,18 @@ export default function Tetris() {
     lock(); draw()
   }
 
+  const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const onTouchStart = (e: React.TouchEvent) => { touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart.current || !running) return
+    const dx = e.changedTouches[0].clientX - touchStart.current.x
+    const dy = e.changedTouches[0].clientY - touchStart.current.y
+    touchStart.current = null
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 18) { rot(); return }
+    if (Math.abs(dx) > Math.abs(dy)) move(dx > 0 ? 1 : -1)
+    else if (dy > 0) hard()
+  }
+
   const onKey = (e: React.KeyboardEvent) => {
     if (!running) return
     if (e.key === 'ArrowLeft') { e.preventDefault(); move(-1) }
@@ -149,10 +161,10 @@ export default function Tetris() {
         <div className="game-stat">レベル<b>{level}</b></div>
         {over && <p className="game-over">ゲームオーバー</p>}
         <button className="btn accent" onClick={start}>{running ? 'リスタート' : 'スタート'}</button>
-        <p className="game-help">←→ 移動／↓ ソフト／↑ 回転／Space ハードドロップ。画面下のボタンでも操作できます。</p>
+        <p className="game-help">←→ 移動／↓ ソフト／↑ 回転／Space ハードドロップ。タッチ：タップ=回転、左右スワイプ=移動、下スワイプ=ハードドロップ。ボタンでも操作できます。</p>
       </div>
       <div className="game-main">
-        <canvas ref={canvasRef} width={COLS * CELL} height={ROWS * CELL} className="game-canvas" />
+        <canvas ref={canvasRef} width={COLS * CELL} height={ROWS * CELL} className="game-canvas" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd} />
         <div className="game-pad">
           <button className="btn" onClick={() => move(-1)}>←</button>
           <button className="btn" onClick={rot}>↻</button>

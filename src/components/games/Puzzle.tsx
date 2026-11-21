@@ -26,7 +26,16 @@ export function Minesweeper() {
   const [cells, setCells] = useState<MCell[][] | null>(null)
   const [state, setState] = useState<'ready' | 'playing' | 'won' | 'lost'>('ready')
   const [flags, setFlags] = useState(0)
+  const [flagMode, setFlagMode] = useState(false)
   const open = (r: number, c: number) => {
+    if (flagMode && cells) {
+      if (cells[r][c].open || state === 'won' || state === 'lost') return
+      const nb = cells.map((row) => row.map((cell) => ({ ...cell })))
+      nb[r][c].flag = !nb[r][c].flag
+      setFlags((f) => f + (nb[r][c].flag ? 1 : -1))
+      setCells(nb)
+      return
+    }
     let board = cells
     if (!board) { board = genMines(r, c); setState('playing') }
     if (board[r][c].flag || board[r][c].open) return
@@ -63,6 +72,7 @@ export function Minesweeper() {
         <span className="game-stat inline">旗<b>{flags}</b></span>
         {state === 'won' && <span className="game-win">クリア！🎉</span>}
         {state === 'lost' && <span className="game-over">地雷を踏んだ…</span>}
+        <button className={flagMode ? 'btn accent' : 'btn'} onClick={() => setFlagMode((v) => !v)}>🚩 旗モード{flagMode ? ' ON' : ''}</button>
         <button className="btn accent" onClick={reset}>リスタート</button>
       </div>
       <div className="mine-grid">
@@ -80,7 +90,7 @@ export function Minesweeper() {
           ))
         )}
       </div>
-      <p className="game-help">クリックで開く／右クリック（長押し不可）で旗。最初のクリックは必ず安全です。</p>
+      <p className="game-help">タップで開く。旗モードを ON にするとタップで旗を立てられます（PC は右クリックでも可）。最初のタップは必ず安全です。</p>
     </div>
   )
 }

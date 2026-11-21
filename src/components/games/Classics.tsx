@@ -63,6 +63,16 @@ export function Game2048() {
     return () => window.removeEventListener('keydown', onKey)
   }, [move])
   const reset = () => { setBoard(addRandom(addRandom(emptyBoard()))); setScore(0); setOver(false); setWon(false) }
+  const touchStart = useRef<{ x: number; y: number } | null>(null)
+  const onTouchStart = (e: React.TouchEvent) => { touchStart.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStart.current) return
+    const dx = e.changedTouches[0].clientX - touchStart.current.x
+    const dy = e.changedTouches[0].clientY - touchStart.current.y
+    touchStart.current = null
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return
+    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'))
+  }
   return (
     <div className="game-app col">
       <div className="game-bar">
@@ -71,7 +81,7 @@ export function Game2048() {
         {over && <span className="game-over">ゲームオーバー</span>}
         <button className="btn accent" onClick={reset}>リスタート</button>
       </div>
-      <div className="g2048">
+      <div className="g2048" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {board.flat().map((v, i) => (
           <div key={i} className="g2048-cell" style={{ background: v ? TILE_COLORS[v] ?? '#3c3a32' : '#cdc1b4', color: v >= 8 ? '#f9f6f2' : '#776e65', fontSize: v >= 1024 ? 20 : 26 }}>
             {v || ''}
@@ -98,6 +108,7 @@ export function Snake() {
   const [running, setRunning] = useState(false)
   const st = useRef({ snake: [{ x: 10, y: 10 }], dir: { x: 1, y: 0 }, food: { x: 15, y: 10 } })
   const dirRef = useRef({ x: 1, y: 0 })
+  const touchPos = useRef<{ x: number; y: number } | null>(null)
   useEffect(() => {
     if (!running) return
     const cv = canvasRef.current; if (!cv) return
@@ -147,7 +158,18 @@ export function Snake() {
         {over && <span className="game-over">ゲームオーバー</span>}
         <button className="btn accent" onClick={start}>{running ? 'リスタート' : 'スタート'}</button>
       </div>
-      <canvas ref={canvasRef} width={SW * SC} height={SH * SC} className="game-canvas" />
+      <canvas ref={canvasRef} width={SW * SC} height={SH * SC} className="game-canvas"
+        onTouchStart={(e) => { touchPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY } }}
+        onTouchEnd={(e) => {
+          if (!touchPos.current) return
+          const dx = e.changedTouches[0].clientX - touchPos.current.x
+          const dy = e.changedTouches[0].clientY - touchPos.current.y
+          touchPos.current = null
+          if (Math.max(Math.abs(dx), Math.abs(dy)) < 16) return
+          if (Math.abs(dx) > Math.abs(dy)) turn(dx > 0 ? 1 : -1, 0)
+          else turn(0, dy > 0 ? 1 : -1)
+        }}
+      />
       <div className="game-pad">
         <button className="btn" onClick={() => turn(0, -1)}>↑</button>
         <button className="btn" onClick={() => turn(-1, 0)}>←</button>

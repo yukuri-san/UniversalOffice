@@ -116,22 +116,22 @@ export const STORE_APPS: StoreAppDef[] = [
   },
   {
     id: 'tetris', icon: '🧩', cls: 'tetris', name: 'テトリス',
-    desc: '定番の落ちものパズル。ラインを消してハイスコアを目指そう。', version: '1.0.0',
+    desc: '定番の落ちものパズル。ラインを消してハイスコアを目指そう。', version: '1.0.1',
     category: 'game',
   },
   {
     id: 'suika', icon: '🍉', cls: 'suika', name: 'スイカゲーム',
-    desc: '果物を落としてくっつけて進化。大きなスイカを作ろう。', version: '1.0.0',
+    desc: '果物を落としてくっつけて進化。大きなスイカを作ろう。', version: '1.0.1',
     category: 'game',
   },
   {
     id: 'g2048', icon: '🔢', cls: 'g2048', name: '2048',
-    desc: 'タイルを滑らせて同じ数字を合体。2048 を目指すパズル。', version: '1.0.0',
+    desc: 'タイルを滑らせて同じ数字を合体。2048 を目指すパズル。', version: '1.0.1',
     category: 'game',
   },
   {
     id: 'snake', icon: '🐍', cls: 'snake', name: 'スネーク',
-    desc: 'エサを食べて長くなるヘビ。壁と自分に当たると終了。', version: '1.0.0',
+    desc: 'エサを食べて長くなるヘビ。壁と自分に当たると終了。', version: '1.0.1',
     category: 'game',
   },
   {
@@ -141,7 +141,7 @@ export const STORE_APPS: StoreAppDef[] = [
   },
   {
     id: 'minesweeper', icon: '💣', cls: 'minesweeper', name: 'マインスイーパ',
-    desc: '数字をヒントに地雷を避ける定番パズル。', version: '1.0.0',
+    desc: '数字をヒントに地雷を避ける定番パズル。', version: '1.0.1',
     category: 'game',
   },
   {
@@ -211,7 +211,7 @@ export const STORE_APPS: StoreAppDef[] = [
   },
   {
     id: 'runner', icon: '🦖', cls: 'runner', name: 'ランナー',
-    desc: 'ジャンプでサボテンを避け続けるエンドレスラン。', version: '1.0.0',
+    desc: 'ジャンプでサボテンを避け続けるエンドレスラン。', version: '1.0.1',
     category: 'game',
   },
 ]

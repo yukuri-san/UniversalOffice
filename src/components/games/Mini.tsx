@@ -261,6 +261,12 @@ export function Runner() {
     if (running && s.y === 0) s.vy = -10.5
   }
   useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.code === 'Space') { e.preventDefault(); jump() } }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running])
+  useEffect(() => {
     if (!running) return
     const cv = canvasRef.current; if (!cv) return
     const ctx = cv.getContext('2d'); if (!ctx) return

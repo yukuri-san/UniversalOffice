@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
-// スイカゲーム風：同じ果物をくっつけて大きくする物理パズル（簡易物理）
+// スイカゲーム風：同じ果物をくっつけて大きくする物理パズル（簡易物理 v1.0.1）
 const W = 340, H = 480, WALL = 6
+const LINE_Y = 52
 const FRUITS = [
   { name: '🍒', r: 13, score: 1, color: '#ef4444' },
   { name: '🍓', r: 20, score: 3, color: '#f43f5e' },
@@ -21,21 +22,24 @@ export default function Suika() {
   const [score, setScore] = useState(0)
   const [over, setOver] = useState(false)
   const [started, setStarted] = useState(false)
+  const [warn, setWarn] = useState(false)
   const balls = useRef<Ball[]>([])
   const nextType = useRef(0)
   const dropX = useRef(W / 2)
   const canDropAt = useRef(0)
   const idRef = useRef(1)
   const overRef = useRef(false)
+  const overTimer = useRef(0)
   const raf = useRef(0)
   const [nextShown, setNextShown] = useState(0)
 
-  const randNext = () => Math.floor(Math.random() * 5) // 最初の5種から落ちる
+  const randNext = () => Math.floor(Math.random() * 5)
 
   const reset = () => {
     balls.current = []
     overRef.current = false
-    setOver(false); setScore(0); setStarted(true)
+    overTimer.current = 0
+    setOver(false); setScore(0); setStarted(true); setWarn(false)
     nextType.current = randNext(); setNextShown(nextType.current)
     canDropAt.current = 0
   }
@@ -44,10 +48,10 @@ export default function Suika() {
     if (!started || overRef.current) return
     const now = performance.now()
     if (now < canDropAt.current) return
-    canDropAt.current = now + 450
+    canDropAt.current = now + 500
     const t = nextType.current
     const r = FRUITS[t].r
-    balls.current.push({ id: idRef.current++, x: Math.min(Math.max(x, WALL + r), W - WALL - r), y: r + 4, vx: 0, vy: 0, t, born: now })
+    balls.current.push({ id: idRef.current++, x: Math.min(Math.max(x, WALL + r), W - WALL - r), y: r + 6, vx: 0, vy: 0, t, born: now })
     nextType.current = randNext(); setNextShown(nextType.current)
   }
 
@@ -55,76 +59,102 @@ export default function Suika() {
     if (!started) return
     const cv = canvasRef.current; if (!cv) return
     const ctx = cv.getContext('2d'); if (!ctx) return
-    const tick = () => {
+    let last = performance.now()
+    const tick = (nowMs: number) => {
+      const dt = Math.min((nowMs - last) / 16.7, 2.5)
+      last = nowMs
       const bs = balls.current
-      // physics
-      for (const b of bs) {
-        b.vy += 0.35
-        b.x += b.vx; b.y += b.vy
-        b.vx *= 0.99
-        const r = FRUITS[b.t].r
-        if (b.x < WALL + r) { b.x = WALL + r; b.vx = Math.abs(b.vx) * 0.4 }
-        if (b.x > W - WALL - r) { b.x = W - WALL - r; b.vx = -Math.abs(b.vx) * 0.4 }
-        if (b.y > H - WALL - r) { b.y = H - WALL - r; b.vy = 0; b.vx *= 0.92 }
-      }
-      // collisions (数回反復して安定させる)
-      for (let iter = 0; iter < 3; iter++) {
-        for (let i = 0; i < bs.length; i++) {
-          for (let j = i + 1; j < bs.length; j++) {
-            const a = bs[i], b = bs[j]
-            const ra = FRUITS[a.t].r, rb = FRUITS[b.t].r
-            const dx = b.x - a.x, dy = b.y - a.y
-            const dist = Math.hypot(dx, dy) || 0.01
-            const min = ra + rb
-            if (dist < min) {
-              const push = (min - dist) / 2
-              const nx = dx / dist, ny = dy / dist
-              a.x -= nx * push; a.y -= ny * push
-              b.x += nx * push; b.y += ny * push
-              a.vx -= nx * 0.08; b.vx += nx * 0.08
-              if (a.y + ra > H - WALL) a.y = H - WALL - ra
-              if (b.y + rb > H - WALL) b.y = H - WALL - rb
+      // 物理（サブステップで安定化）
+      const SUB = 2
+      for (let sub = 0; sub < SUB; sub++) {
+        for (const b of bs) {
+          b.vy = Math.min(b.vy + 0.32 * dt, 14)
+          b.y += (b.vy * dt) / SUB
+          b.x += (b.vx * dt) / SUB
+          b.vx *= 0.995
+          const r = FRUITS[b.t].r
+          if (b.x < WALL + r) { b.x = WALL + r; b.vx = Math.abs(b.vx) * 0.3 }
+          if (b.x > W - WALL - r) { b.x = W - WALL - r; b.vx = -Math.abs(b.vx) * 0.3 }
+          if (b.y > H - WALL - r) { b.y = H - WALL - r; b.vy = 0; b.vx *= 0.9 }
+          if (b.y < r + 2) { b.y = r + 2; b.vy = Math.abs(b.vy) * 0.2 }
+        }
+        for (let iter = 0; iter < 4; iter++) {
+          for (let i = 0; i < bs.length; i++) {
+            for (let j = i + 1; j < bs.length; j++) {
+              const a = bs[i], b = bs[j]
+              const ra = FRUITS[a.t].r, rb = FRUITS[b.t].r
+              const dx = b.x - a.x, dy = b.y - a.y
+              const dist = Math.hypot(dx, dy) || 0.01
+              const min = ra + rb
+              if (dist < min) {
+                const push = (min - dist) / 2
+                const nx = dx / dist, ny = dy / dist
+                a.x -= nx * push; a.y -= ny * push
+                b.x += nx * push; b.y += ny * push
+                // 触れている間は互いの速度を均す（跳ね返りを抑える）
+                const rvx = (a.vx + b.vx) / 2, rvy = (a.vy + b.vy) / 2
+                a.vx = rvx; b.vx = rvx
+                if (ny > 0.5) { a.vy = Math.min(a.vy, rvy); }
+                // 壁・床からはみ出さないよう戻す
+                if (a.x < WALL + ra) a.x = WALL + ra
+                if (a.x > W - WALL - ra) a.x = W - WALL - ra
+                if (a.y > H - WALL - ra) a.y = H - WALL - ra
+                if (b.x < WALL + rb) b.x = WALL + rb
+                if (b.x > W - WALL - rb) b.x = W - WALL - rb
+                if (b.y > H - WALL - rb) b.y = H - WALL - rb
+              }
             }
           }
         }
       }
-      // merge
+      // 合体：しっかり接触（中心距離が半径合計の92%以下）＋両方とも生まれてから300ms以上
       const now = performance.now()
-      outer: for (let i = 0; i < bs.length; i++) {
-        for (let j = i + 1; j < bs.length; j++) {
-          const a = bs[i], b = bs[j]
-          if (a.t !== b.t || a.t >= FRUITS.length - 1) continue
-          if (now - a.born < 120 || now - b.born < 120) continue
-          const dist = Math.hypot(b.x - a.x, b.y - a.y)
-          if (dist < (FRUITS[a.t].r + FRUITS[b.t].r) * 0.82) {
-            const nt = a.t + 1
-            const nb: Ball = { id: idRef.current++, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, vx: 0, vy: -1, t: nt, born: now }
-            balls.current = bs.filter((x) => x.id !== a.id && x.id !== b.id)
-            balls.current.push(nb)
-            setScore((s) => s + FRUITS[nt].score)
-            break outer
+      let merged = true
+      while (merged) {
+        merged = false
+        outer: for (let i = 0; i < balls.current.length; i++) {
+          for (let j = i + 1; j < balls.current.length; j++) {
+            const a = balls.current[i], b = balls.current[j]
+            if (a.t !== b.t || a.t >= FRUITS.length - 1) continue
+            if (now - a.born < 300 || now - b.born < 300) continue
+            const dist = Math.hypot(b.x - a.x, b.y - a.y)
+            if (dist < (FRUITS[a.t].r + FRUITS[b.t].r) * 0.92) {
+              const nt = a.t + 1
+              const nb: Ball = { id: idRef.current++, x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, vx: (a.vx + b.vx) / 2, vy: Math.min(a.vy, b.vy), t: nt, born: now }
+              balls.current = balls.current.filter((x) => x.id !== a.id && x.id !== b.id)
+              balls.current.push(nb)
+              setScore((s) => s + FRUITS[nt].score)
+              merged = true
+              break outer
+            }
           }
         }
       }
-      // game over: 上のラインを超えた状態が続く
-      const top = balls.current.some((b) => now - b.born > 900 && b.y - FRUITS[b.t].r < 46 && Math.abs(b.vy) < 0.6)
-      if (top && !overRef.current) {
-        overRef.current = true
-        setOver(true)
+      // ゲームオーバー：落下から1.2秒以上たった果物が、ラインより上で「ほぼ静止」したまま2秒続いたら
+      const danger = balls.current.some((b) => now - b.born > 1200 && b.y - FRUITS[b.t].r < LINE_Y && Math.abs(b.vy) < 0.35 && Math.abs(b.vx) < 0.35)
+      if (danger) {
+        overTimer.current += 1
+        if (overTimer.current === 1) setWarn(true)
+        if (overTimer.current > 120 && !overRef.current) {
+          overRef.current = true
+          setOver(true); setWarn(false)
+        }
+      } else {
+        overTimer.current = 0
+        setWarn(false)
       }
       // draw
       ctx.fillStyle = '#fef9ec'; ctx.fillRect(0, 0, W, H)
       ctx.strokeStyle = '#d6c9a8'; ctx.lineWidth = WALL
       ctx.strokeRect(WALL / 2, WALL / 2, W - WALL, H - WALL)
-      ctx.setLineDash([6, 6]); ctx.strokeStyle = '#ef4444'; ctx.lineWidth = 2
-      ctx.beginPath(); ctx.moveTo(WALL, 46); ctx.lineTo(W - WALL, 46); ctx.stroke(); ctx.setLineDash([])
-      // drop guide
+      ctx.setLineDash([6, 6]); ctx.strokeStyle = overTimer.current > 0 ? '#dc2626' : '#f59e0b'; ctx.lineWidth = 2
+      ctx.beginPath(); ctx.moveTo(WALL, LINE_Y); ctx.lineTo(W - WALL, LINE_Y); ctx.stroke(); ctx.setLineDash([])
       if (!overRef.current) {
         const t = nextType.current, r = FRUITS[t].r
         ctx.font = `${r * 2}px serif`
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
         ctx.globalAlpha = 0.75
-        ctx.fillText(FRUITS[t].name, Math.min(Math.max(dropX.current, WALL + r), W - WALL - r), r + 4)
+        ctx.fillText(FRUITS[t].name, Math.min(Math.max(dropX.current, WALL + r), W - WALL - r), r + 6)
         ctx.globalAlpha = 1
       }
       for (const b of balls.current) {
@@ -152,6 +182,7 @@ export default function Suika() {
         <span className="game-stat inline">スコア<b>{score}</b></span>
         <span className="game-stat inline">次<b>{FRUITS[nextShown].name}</b></span>
         <button className="btn accent" onClick={reset}>{started ? 'リスタート' : 'スタート'}</button>
+        {warn && !over && <span className="game-over">あふれそう…！</span>}
         {over && <span className="game-over">ゲームオーバー！</span>}
       </div>
       <canvas
@@ -159,7 +190,7 @@ export default function Suika() {
         onPointerMove={onMove}
         onPointerDown={(e) => { onMove(e); drop(dropX.current) }}
       />
-      <p className="game-help">動かして位置を決め、クリック／タップで落下。同じ果物同士がくっつくと進化します。赤い線を超えるとゲームオーバー。</p>
+      <p className="game-help">動かして位置を決め、クリック／タップで落下。同じ果物同士がくっつくと進化します。上の線を超えたまま止まるとゲームオーバー。</p>
       <p className="game-help">進化：🍒→🍓→🍇→🍊→🍎→🍐→🍑→🍍→🍈→🍉</p>
     </div>
   )

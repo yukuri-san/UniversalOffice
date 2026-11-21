@@ -12,12 +12,29 @@ const APP_NAMES: Record<string, string> = {
   store: 'ストア', unit: '単位変換（ストア）',
 }
 
+const HISTORY_KEY = 'webx-terminal-history'
+const HISTORY_MAX = 100
+
+function loadHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY)
+    if (!raw) return []
+    const parsed: unknown = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string').slice(-HISTORY_MAX) : []
+  } catch {
+    return []
+  }
+}
+
 export default function Terminal({ openApp }: { openApp: (app: ShellApp) => void }) {
   const [lines, setLines] = useState<string[]>([
     `WebX ターミナル v${APP_VERSION}`,
     'コマンド一覧は「help」と入力してください。',
   ])
   const [input, setInput] = useState('')
+  const [history, setHistory] = useState<string[]>(loadHistory)
+  const histIdx = useRef(-1) // -1 = 入力中（履歴をたどっていない）
+  const draft = useRef('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -25,8 +42,48 @@ export default function Terminal({ openApp }: { openApp: (app: ShellApp) => void
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [lines])
 
+  const pushHistory = (cmd: string) => {
+    setHistory((prev) => {
+      if (prev.length > 0 && prev[prev.length - 1] === cmd) return prev
+      const next = [...prev, cmd].slice(-HISTORY_MAX)
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(next))
+      } catch {
+        // 保存できなくても履歴表示には影響しない
+      }
+      return next
+    })
+    histIdx.current = -1
+    draft.current = ''
+  }
+
+  const onHistoryKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return
+    if (history.length === 0) return
+    e.preventDefault()
+    if (e.key === 'ArrowUp') {
+      if (histIdx.current === -1) {
+        draft.current = input
+        histIdx.current = history.length - 1
+      } else if (histIdx.current > 0) {
+        histIdx.current -= 1
+      }
+      setInput(history[histIdx.current])
+    } else {
+      if (histIdx.current === -1) return
+      if (histIdx.current < history.length - 1) {
+        histIdx.current += 1
+        setInput(history[histIdx.current])
+      } else {
+        histIdx.current = -1
+        setInput(draft.current)
+      }
+    }
+  }
+
   const run = async (raw: string) => {
     const cmd = raw.trim()
+    if (cmd) pushHistory(cmd)
     const out: string[] = [`$ ${cmd}`]
     const [name, ...args] = cmd.split(/\s+/)
     switch (name.toLowerCase()) {
@@ -41,8 +98,16 @@ export default function Terminal({ openApp }: { openApp: (app: ShellApp) => void
           'date            現在日時',
           'storage         ストレージ情報',
           'echo <文字>     そのまま表示',
+          'history         実行したコマンドの履歴',
           'clear           画面を消す',
           'about           WebX について',
+        )
+        break
+      case 'history':
+        out.push(
+          history.length === 0
+            ? '履歴はありません'
+            : history.map((h, i) => `${String(i + 1).padStart(3, ' ')}  ${h}`).join('\n'),
         )
         break
       case 'apps':
@@ -102,7 +167,18 @@ export default function Terminal({ openApp }: { openApp: (app: ShellApp) => void
         }}
       >
         <span>$</span>
-        <input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} autoFocus autoComplete="off" />
+        <input
+          ref={inputRef}
+          value={input}
+          onChange={(e) => {
+            histIdx.current = -1
+            draft.current = e.target.value
+            setInput(e.target.value)
+          }}
+          onKeyDown={onHistoryKey}
+          autoFocus
+          autoComplete="off"
+        />
       </form>
     </div>
   )
