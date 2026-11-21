@@ -47,7 +47,7 @@ const ja: Dict = {
   grpFont: 'フォント', grpPara: '段落', grpStyle: 'スタイル', grpEdit: '編集', grpInsert: '挿入',
   grpTable: '表', grpPage: 'ページ設定', grpView: '表示', grpDoc: '文書',
   undo: '元に戻す', redo: 'やり直し', bold: '太字', italic: '斜体', underline: '下線', strike: '打消し',
-  textColor: '文字色', highlight: 'ハイライト', clearFormat: '書式クリア',
+  textColor: '文字色', cellBg: '背景色', highlight: 'ハイライト', clearFormat: '書式クリア',
   alignLeft: '左揃え', alignCenter: '中央揃え', alignRight: '右揃え', alignJustify: '両端揃え',
   bullets: '箇条書き', numbering: '番号リスト', lineHeight: '行間', paraSpace: '段落間隔', firstIndent: '字下げ',
   letterSpacing: '文字間隔', superscript: '上付き', subscript: '下付き', bodyText: '本文',
@@ -201,6 +201,9 @@ const ja: Dict = {
   uiMxuiClassic: 'MXUI-Classic（Android風）',
   uiMxuiLiquid: 'MXUI-Liquid（iOS風）',
   uiSystemNote: '自動では画面幅が狭いときにMXUI-Classicになります。MXUIではアプリが全画面表示になり、モバイル向けの操作バーに切り替わります。',
+  storeStaleTitle: 'ストアに新しいアプリ・更新があります',
+  storeStaleDesc: 'この端末のキャッシュが古いため、まだ表示・利用できません。ストアの更新にはキャッシュの更新も必要です。',
+  storeStaleBtn: 'キャッシュを更新して再読み込み',
 }
 
 const en: Dict = {
@@ -224,7 +227,7 @@ const en: Dict = {
   grpFont: 'Font', grpPara: 'Paragraph', grpStyle: 'Styles', grpEdit: 'Editing', grpInsert: 'Insert',
   grpTable: 'Table', grpPage: 'Page setup', grpView: 'View', grpDoc: 'Document',
   undo: 'Undo', redo: 'Redo', bold: 'Bold', italic: 'Italic', underline: 'Underline', strike: 'Strikethrough',
-  textColor: 'Text color', highlight: 'Highlight', clearFormat: 'Clear formatting',
+  textColor: 'Text color', cellBg: 'Background color', highlight: 'Highlight', clearFormat: 'Clear formatting',
   alignLeft: 'Align left', alignCenter: 'Center', alignRight: 'Align right', alignJustify: 'Justify',
   bullets: 'Bullets', numbering: 'Numbering', lineHeight: 'Line spacing', paraSpace: 'Paragraph spacing', firstIndent: 'Indent',
   letterSpacing: 'Letter spacing', superscript: 'Superscript', subscript: 'Subscript', bodyText: 'Body text',
@@ -378,6 +381,9 @@ const en: Dict = {
   uiMxuiClassic: 'MXUI-Classic (Android style)',
   uiMxuiLiquid: 'MXUI-Liquid (iOS style)',
   uiSystemNote: 'Auto uses MXUI-Classic on narrow screens. In MXUI, apps run full-screen with mobile controls.',
+  storeStaleTitle: 'New apps & updates are in the store',
+  storeStaleDesc: 'This device is running from an old cache, so they are not visible or usable yet. Store updates also need a cache refresh.',
+  storeStaleBtn: 'Refresh cache & reload',
 }
 
 const zh: Dict = {
@@ -400,7 +406,7 @@ const zh: Dict = {
   grpFont: '字体', grpPara: '段落', grpStyle: '样式', grpEdit: '编辑', grpInsert: '插入',
   grpTable: '表格', grpPage: '页面设置', grpView: '视图', grpDoc: '文档',
   undo: '撤销', redo: '重做', bold: '粗体', italic: '斜体', underline: '下划线', strike: '删除线',
-  textColor: '文字颜色', highlight: '突出显示', clearFormat: '清除格式',
+  textColor: '文字颜色', cellBg: '背景颜色', highlight: '突出显示', clearFormat: '清除格式',
   alignLeft: '左对齐', alignCenter: '居中', alignRight: '右对齐', alignJustify: '两端对齐',
   bullets: '项目符号', numbering: '编号', lineHeight: '行距', paraSpace: '段落间距', firstIndent: '首行缩进',
   letterSpacing: '字符间距', superscript: '上标', subscript: '下标', bodyText: '正文',
@@ -554,6 +560,9 @@ const zh: Dict = {
   uiMxuiClassic: 'MXUI-Classic（Android风格）',
   uiMxuiLiquid: 'MXUI-Liquid（iOS风格）',
   uiSystemNote: '自动模式在窄屏幕时使用 MXUI-Classic。MXUI 下应用全屏显示并切换为移动端操作栏。',
+  storeStaleTitle: '商店有新应用和更新',
+  storeStaleDesc: '此设备使用的是旧缓存，因此尚不可见或使用。商店更新也需要刷新缓存。',
+  storeStaleBtn: '刷新缓存并重新加载',
 }
 
 const ko: Dict = {
@@ -576,7 +585,7 @@ const ko: Dict = {
   grpFont: '글꼴', grpPara: '단락', grpStyle: '스타일', grpEdit: '편집', grpInsert: '삽입',
   grpTable: '표', grpPage: '페이지 설정', grpView: '보기', grpDoc: '문서',
   undo: '실행 취소', redo: '다시 실행', bold: '굵게', italic: '기울임', underline: '밑줄', strike: '취소선',
-  textColor: '글자 색', highlight: '강조', clearFormat: '서식 지우기',
+  textColor: '글자 색', cellBg: '배경색', highlight: '강조', clearFormat: '서식 지우기',
   alignLeft: '왼쪽 맞춤', alignCenter: '가운데 맞춤', alignRight: '오른쪽 맞춤', alignJustify: '양쪽 맞춤',
   bullets: '글머리 기호', numbering: '번호 매기기', lineHeight: '줄 간격', paraSpace: '단락 간격', firstIndent: '첫 줄 들여쓰기',
   letterSpacing: '자간', superscript: '위 첨자', subscript: '아래 첨자', bodyText: '본문',
@@ -730,6 +739,9 @@ const ko: Dict = {
   uiMxuiClassic: 'MXUI-Classic(Android 스타일)',
   uiMxuiLiquid: 'MXUI-Liquid(iOS 스타일)',
   uiSystemNote: '자동은 화면이 좁을 때 MXUI-Classic이 됩니다. MXUI에서는 앱이 전체 화면으로 표시되고 모바일용 조작 바로 바뀝니다.',
+  storeStaleTitle: '스토어에 새 앱과 업데이트가 있습니다',
+  storeStaleDesc: '이 기기는 오래된 캐시로 실행 중이라 아직 표시·사용할 수 없습니다. 스토어 업데이트에는 캐시 새로고침도 필요합니다.',
+  storeStaleBtn: '캐시를 새로고치고 다시 로드',
 }
 
 const th: Dict = {
@@ -752,7 +764,7 @@ const th: Dict = {
   grpFont: 'แบบอักษร', grpPara: 'ย่อหน้า', grpStyle: 'สไตล์', grpEdit: 'แก้ไข', grpInsert: 'แทรก',
   grpTable: 'ตาราง', grpPage: 'ตั้งค่าหน้า', grpView: 'มุมมอง', grpDoc: 'เอกสาร',
   undo: 'เลิกทำ', redo: 'ทำซ้ำ', bold: 'ตัวหนา', italic: 'ตัวเอียง', underline: 'ขีดเส้นใต้', strike: 'ขีดทับ',
-  textColor: 'สีตัวอักษร', highlight: 'ไฮไลต์', clearFormat: 'ล้างรูปแบบ',
+  textColor: 'สีตัวอักษร', cellBg: 'สีพื้นหลัง', highlight: 'ไฮไลต์', clearFormat: 'ล้างรูปแบบ',
   alignLeft: 'ชิดซ้าย', alignCenter: 'กึ่งกลาง', alignRight: 'ชิดขวา', alignJustify: 'กระจาย',
   bullets: 'สัญลักษณ์', numbering: 'ลำดับเลข', lineHeight: 'ระยะบรรทัด', paraSpace: 'ระยะย่อหน้า', firstIndent: 'เยื้องบรรทัดแรก',
   letterSpacing: 'ระยะตัวอักษร', superscript: 'ตัวยก', subscript: 'ตัวห้อย', bodyText: 'ข้อความ',
@@ -906,6 +918,9 @@ const th: Dict = {
   uiMxuiClassic: 'MXUI-Classic (สไตล์ Android)',
   uiMxuiLiquid: 'MXUI-Liquid (สไตล์ iOS)',
   uiSystemNote: 'อัตโนมัติจะใช้ MXUI-Classic เมื่อหน้าจอแคบ ใน MXUI แอปจะแสดงเต็มหน้าจอพร้อมแถบควบคุมสำหรับมือถือ',
+  storeStaleTitle: 'มีแอปและอัปเดตใหม่ในสโตร์',
+  storeStaleDesc: 'อุปกรณ์นี้ใช้แคชเก่าอยู่ จึงยังมองไม่เห็นหรือใช้งานไม่ได้ การอัปเดตสโตร์ต้องรีเฟรชแคชด้วย',
+  storeStaleBtn: 'รีเฟรชแคชและโหลดใหม่',
 }
 
 const es: Dict = {
@@ -981,7 +996,7 @@ const es: Dict = {
   italic: 'Cursiva',
   underline: 'Subrayado',
   strike: 'Tachado',
-  textColor: 'Color del texto',
+  textColor: 'Color del texto', cellBg: 'Color de fondo',
   highlight: 'Resaltado',
   clearFormat: 'Borrar formato',
   alignLeft: 'Alinear a la izquierda',
@@ -1261,6 +1276,9 @@ const es: Dict = {
   uiMxuiClassic: 'MXUI-Classic (estilo Android)',
   uiMxuiLiquid: 'MXUI-Liquid (estilo iOS)',
   uiSystemNote: 'El modo automático usa MXUI-Classic en pantallas estrechas. En MXUI las apps se muestran a pantalla completa con controles móviles.',
+  storeStaleTitle: 'Hay apps y actualizaciones nuevas en la tienda',
+  storeStaleDesc: 'Este dispositivo usa una caché antigua, así que aún no se ven ni se pueden usar. Las actualizaciones de la tienda también necesitan refrescar la caché.',
+  storeStaleBtn: 'Refrescar caché y recargar',
 }
 
 const fr: Dict = {
@@ -1336,7 +1354,7 @@ const fr: Dict = {
   italic: 'Italique',
   underline: 'Souligné',
   strike: 'Barré',
-  textColor: 'Couleur du texte',
+  textColor: 'Couleur du texte', cellBg: 'Couleur de fond',
   highlight: 'Surlignage',
   clearFormat: 'Effacer le formatage',
   alignLeft: 'Aligner à gauche',
@@ -1616,6 +1634,9 @@ const fr: Dict = {
   uiMxuiClassic: 'MXUI-Classic (style Android)',
   uiMxuiLiquid: 'MXUI-Liquid (style iOS)',
   uiSystemNote: 'Le mode auto utilise MXUI-Classic sur les écrans étroits. En MXUI, les apps sont en plein écran avec des contrôles mobiles.',
+  storeStaleTitle: 'De nouvelles apps et mises à jour sont dans la boutique',
+  storeStaleDesc: 'Cet appareil utilise un ancien cache, elles ne sont donc pas encore visibles ni utilisables. Les mises à jour de la boutique exigent aussi un rafraîchissement du cache.',
+  storeStaleBtn: 'Rafraîchir le cache et recharger',
 }
 
 const de: Dict = {
@@ -1691,7 +1712,7 @@ const de: Dict = {
   italic: 'Kursiv',
   underline: 'Unterstrichen',
   strike: 'Durchgestrichen',
-  textColor: 'Textfarbe',
+  textColor: 'Textfarbe', cellBg: 'Hintergrundfarbe',
   highlight: 'Hervorhebung',
   clearFormat: 'Formatierung löschen',
   alignLeft: 'Linksbündig',
@@ -1971,6 +1992,9 @@ const de: Dict = {
   uiMxuiClassic: 'MXUI-Classic (Android-Stil)',
   uiMxuiLiquid: 'MXUI-Liquid (iOS-Stil)',
   uiSystemNote: 'Automatisch nutzt MXUI-Classic auf schmalen Bildschirmen. In MXUI laufen Apps im Vollbild mit mobiler Steuerung.',
+  storeStaleTitle: 'Neue Apps & Updates sind im Store',
+  storeStaleDesc: 'Dieses Gerät läuft mit altem Cache, daher sind sie noch nicht sichtbar oder nutzbar. Store-Updates brauchen auch eine Cache-Aktualisierung.',
+  storeStaleBtn: 'Cache aktualisieren & neu laden',
 }
 
 export const DICTS: Record<Lang, Dict> = { ja, en, zh, ko, th, es, fr, de }

@@ -1,4 +1,5 @@
 import { STORE_APPS } from './storeApps'
+import { compareVersions } from './updateCheck'
 
 // ストア情報の取得・照合は、OS 本体の更新処理（updateCheck.ts が扱う version.json）とは
 // 独立に行う。ストアのカタログは store.json として別ファイルで配信され、
@@ -38,6 +39,19 @@ export function catalogEntry(catalog: StoreCatalog | null, id: string): StoreCat
   if (remote) return remote
   const local = STORE_APPS.find((a) => a.id === id)
   return local ? { id: local.id, version: local.version, notes: local.notes } : undefined
+}
+
+/**
+ * カタログにはあるが、今動いている同梱カタログ（このビルド）より新しい／存在しないアプリ。
+ * これがある場合、この端末は古いキャッシュで動いていて、新しいアプリは表示も利用もできない。
+ * ストア情報の更新にはキャッシュ更新（再読み込み）が必要になる。
+ */
+export function bundledGaps(catalog: StoreCatalog | null): StoreCatalogEntry[] {
+  if (!catalog) return []
+  return catalog.apps.filter((a) => {
+    const local = STORE_APPS.find((x) => x.id === a.id)
+    return !local || compareVersions(a.version, local.version) > 0
+  })
 }
 
 /** 更新があるストアアプリの一覧（名前つき）を返す */

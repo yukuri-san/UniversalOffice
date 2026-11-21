@@ -52,7 +52,7 @@ import { Typing, Puzzle15, Hanoi, Blackjack, Slot, Runner } from './components/g
 import { listEvents, requestPersist, type CalEvent } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import { compareVersions, fetchLatestVersion } from './lib/updateCheck'
-import { fetchStoreCatalog, outdatedFromCatalog, type StoreCatalog } from './lib/storeCheck'
+import { bundledGaps, fetchStoreCatalog, outdatedFromCatalog, type StoreCatalog } from './lib/storeCheck'
 import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
@@ -447,12 +447,19 @@ export default function App() {
       let signature = ''
       if (latest && compareVersions(latest, APP_VERSION) > 0) signature += `webx:${latest};`
       let outdatedNames: string[] = []
+      let newAppCount = 0
       try {
         const installedNow: string[] = JSON.parse(localStorage.getItem('webx-installed-apps') ?? '[]')
         const versionsNow: Record<string, string> = JSON.parse(localStorage.getItem('webx-app-versions') ?? '{}')
         const outdated = outdatedFromCatalog(catalog, installedNow, versionsNow)
         outdatedNames = outdated.map((a) => `${a.name} v${a.version}`)
         if (outdated.length > 0) signature += outdated.map((a) => `${a.id}:${a.version}`).join(',')
+        // この端末のキャッシュに無い新しいアプリがある場合も知らせる（キャッシュ更新が必要）
+        const newApps = bundledGaps(catalog).filter((g) => !STORE_APPS.some((a) => a.id === g.id))
+        if (newApps.length > 0) {
+          signature += `;newapps:${newApps.map((a) => a.id).join(',')}`
+          newAppCount = newApps.length
+        }
       } catch { /* 保存データが壊れている場合は通知しない */ }
       if (!signature) return
       let last = ''
@@ -464,6 +471,9 @@ export default function App() {
       }
       if (outdatedNames.length > 0) {
         notifyOs(`アプリの更新があります：${outdatedNames.join('、')}（ストアで更新できます）`, 'store')
+      }
+      if (newAppCount > 0) {
+        notifyOs(`ストアに新しいアプリが ${newAppCount} 本あります（ストアでキャッシュを更新すると表示されます）`, 'store')
       }
     }
     const first = window.setTimeout(() => { void checkUpdates() }, 2500)

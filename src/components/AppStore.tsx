@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { STORE_APPS, STORE_CATEGORIES, type StoreCategory } from '../lib/storeApps'
-import { catalogEntry, outdatedFromCatalog, type StoreCatalog } from '../lib/storeCheck'
+import { bundledGaps, catalogEntry, outdatedFromCatalog, type StoreCatalog } from '../lib/storeCheck'
+import { performUpdate } from '../lib/updateCheck'
 import { notifyOs } from '../lib/notify'
 import { APP_VERSION } from '../lib/version'
 import { compareVersions, fetchLatestVersion } from '../lib/updateCheck'
@@ -33,6 +34,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
   const [storeSummary, setStoreSummary] = useState('')
 
   const outdatedApps = outdatedFromCatalog(catalog, installed, versions)
+  const gaps = bundledGaps(catalog)
   const webxOutdated = latest !== '' && compareVersions(latest, APP_VERSION) > 0
 
   // OS 本体の更新確認（version.json のみを見る）
@@ -95,6 +97,13 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
         </button>
       </div>
       {storeSummary && <p className="store-note">{storeSummary}</p>}
+      {gaps.length > 0 && (
+        <div className="store-stale">
+          <strong>🆕 {t('storeStaleTitle')}</strong>
+          <p>{t('storeStaleDesc')}</p>
+          <button className="btn accent" onClick={() => void performUpdate()}>{t('storeStaleBtn')}</button>
+        </div>
+      )}
       <div className="store-cats">
         <button className={category === 'all' ? 'chip on' : 'chip'} onClick={() => setCategory('all')}>すべて（{STORE_APPS.length}）</button>
         {outdatedApps.length > 0 && (

@@ -118,13 +118,14 @@ export default function UpdateInfoWindow({ target, installed, versions, onUpdate
         {!done ? (
           <button
             className="btn accent"
-            onClick={() => { onUpdateApp(app.id); setDoneApps((p) => [...p, app.id]); notifyOs(`${app.name} v${latestVer}: ${t('updDone')}`) }}
+            onClick={() => { onUpdateApp(app.id); setDoneApps((p) => [...p, app.id]); notifyOs(`${app.name} v${latestVer}: ${t('updDone')}`); void performUpdate() }}
           >
             {t('stUpdateBtn')}
           </button>
         ) : (
           <p className="update-done">✓ {t('updDone')}</p>
         )}
+        <p className="hint">{t('storeStaleDesc')}</p>
       </div>
     )
   }
@@ -152,7 +153,7 @@ export default function UpdateInfoWindow({ target, installed, versions, onUpdate
       {remaining.length > 0 && (
         <button
           className="btn accent"
-          onClick={() => { remaining.forEach((a) => onUpdateApp(a.id)); setDoneApps(outdated.map((a) => a.id)) }}
+          onClick={() => { remaining.forEach((a) => onUpdateApp(a.id)); setDoneApps(outdated.map((a) => a.id)); void performUpdate() }}
         >
           {t('stBulkUpdate')}（{remaining.length}）
         </button>
