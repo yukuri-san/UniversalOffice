@@ -40,7 +40,7 @@ footer { margin-top: 8px; color: #7a8798; }
 .ribbon input[type="range"] { width: 110px; }
 
 /* Backstage (Home) */
-.backstage { position: fixed; inset: 0; z-index: 50; display: flex; background: #f3f5f9; overflow: auto; }
+.backstage { position: absolute; inset: 0; z-index: 50; display: flex; background: #f3f5f9; overflow: auto; overscroll-behavior: contain; }
 .backstage-side { width: 320px; flex-shrink: 0; background: #2b579a; color: #fff; padding: 20px; }
 .backstage-back { background: transparent; border: 1px solid rgba(255,255,255,.4); color: #fff; border-radius: 6px; padding: 7px 14px; cursor: pointer; font-size: 14px; }
 .backstage-side h2 { margin: 18px 0 2px; font-size: 24px; }
@@ -62,7 +62,7 @@ footer { margin-top: 8px; color: #7a8798; }
 .backstage-note { color: #7a8798; font-size: 13px; margin-top: 18px; }
 
 /* Page + ruler */
-.word-app { display: flex; flex-direction: column; height: 100%; }
+.word-app { display: flex; flex-direction: column; height: 100%; position: relative; }
 .word-app .titlebar, .word-app .ribbon, .word-app .statusbar { flex-shrink: 0; }
 .page-scroll { flex: 1; min-height: 0; overflow: auto; background: #e8ecf2; border: 1px solid #dde3ec; border-radius: 10px; padding: 18px 12px 28px; }
 .ruler-scale { margin: 0 auto 8px; }
@@ -83,7 +83,7 @@ footer { margin-top: 8px; color: #7a8798; }
 .statusbar .zoomctl { display: flex; gap: 6px; align-items: center; margin-left: auto; }
 
 /* Spreadsheet */
-.sheet-app { display: flex; flex-direction: column; height: 100%; }
+.sheet-app { display: flex; flex-direction: column; height: 100%; position: relative; }
 .sheet-app .titlebar, .sheet-app .toolbar, .sheet-app .formula-bar, .sheet-app .hint { flex-shrink: 0; }
 .sheet-app .sheet-wrap { flex: 1; min-height: 0; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px; margin-bottom: 12px; }
@@ -170,7 +170,7 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .outline-empty { font-size: 13px; color: #7a8798; }
 
 /* Notepad */
-.note-app { display: flex; flex-direction: column; height: 100%; }
+.note-app { display: flex; flex-direction: column; height: 100%; position: relative; }
 .titlebar.note-title { background: #3b6ea5; border-radius: 10px; margin-bottom: 10px; flex-shrink: 0; }
 .note-body { flex: 1; min-height: 0; display: flex; gap: 10px; }
 .note-list { width: 230px; flex-shrink: 0; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px; overflow: auto; display: flex; flex-direction: column; gap: 6px; }

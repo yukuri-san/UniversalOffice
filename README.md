@@ -6,7 +6,7 @@
 **使う**：https://yukuri-san.github.io/UniversalOffice/
 Android の Chrome から開けば「アプリをインストール」で PWA としてインストールでき、オフラインでも動きます。
 
-- 現在のバージョン：v1.17.0（[変更履歴](CHANGELOG.md)）
+- 現在のバージョン：v1.18.1（[変更履歴](CHANGELOG.md)）
 - 使い方：[取扱説明書](MANUAL.md)（アプリ内にも「取扱説明書」アプリがあります）
 - ライセンス：[Apache License 2.0](LICENSE)
 

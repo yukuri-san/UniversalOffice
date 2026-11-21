@@ -24,6 +24,22 @@ function stripText(content: string): string {
   return content.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ')
 }
 
+type SortKey = 'name' | 'updated' | 'size'
+type SortDir = 'asc' | 'desc'
+
+function loadSort(): { key: SortKey; dir: SortDir } {
+  try {
+    const raw = localStorage.getItem('uo-explorer-sort')
+    if (raw) {
+      const parsed = JSON.parse(raw) as { key?: string; dir?: string }
+      const key: SortKey = parsed.key === 'name' || parsed.key === 'size' ? parsed.key : 'updated'
+      const dir: SortDir = parsed.dir === 'asc' ? 'asc' : 'desc'
+      return { key, dir }
+    }
+  } catch { /* ignore */ }
+  return { key: 'updated', dir: 'desc' }
+}
+
 function formatBytes(n: number): string {
   if (n >= 1024 * 1024 * 1024) return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`
   if (n >= 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`
@@ -38,6 +54,7 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId | 'memod
   const [eventCount, setEventCount] = useState(0)
   const [filter, setFilter] = useState('__all__')
   const [query, setQuery] = useState('')
+  const [sort, setSort] = useState(loadSort)
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
   const [ownBytes, setOwnBytes] = useState(0)
   const [msg, setMsg] = useState('')
@@ -60,9 +77,24 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId | 'memod
   }, [refresh])
 
   const q = query.trim().toLowerCase()
-  const visible = q
+  const filtered = q
     ? docs.filter((d) => d.name.toLowerCase().includes(q) || stripText(d.content).toLowerCase().includes(q))
     : docs.filter((d) => filter === '__all__' || d.folder === filter)
+  const visible = [...filtered].sort((a, b) => {
+    let cmp = 0
+    if (sort.key === 'name') cmp = a.name.localeCompare(b.name, 'ja')
+    else if (sort.key === 'updated') cmp = a.updatedAt - b.updatedAt
+    else cmp = new Blob([a.content]).size - new Blob([b.content]).size
+    return sort.dir === 'asc' ? cmp : -cmp
+  })
+
+  const changeSort = (key: SortKey) => {
+    const next = key === sort.key
+      ? { key, dir: (sort.dir === 'asc' ? 'desc' : 'asc') as SortDir }
+      : { key, dir: (key === 'name' ? 'asc' : 'desc') as SortDir }
+    setSort(next)
+    try { localStorage.setItem('uo-explorer-sort', JSON.stringify(next)) } catch { /* ignore */ }
+  }
   const docsSize = docs.reduce((sum, d) => sum + new Blob([d.content]).size, 0)
   const usagePct = info && info.quota > 0 ? Math.min(100, (ownBytes / info.quota) * 100) : 0
 
@@ -141,6 +173,21 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId | 'memod
       <div className="explorer-search">
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('fileSearch')} />
         {q && <span>{visible.length} 件</span>}
+        <label className="explorer-sort">
+          {t('sortBy')}
+          <select
+            value={sort.key}
+            onChange={(e) => changeSort(e.target.value as SortKey)}
+            aria-label={t('sortBy')}
+          >
+            <option value="name">{t('sortName')}</option>
+            <option value="updated">{t('sortDate')}</option>
+            <option value="size">{t('sortSize')}</option>
+          </select>
+        </label>
+        <button className="chip" onClick={() => changeSort(sort.key)}>
+          {sort.dir === 'asc' ? '▲' : '▼'}
+        </button>
       </div>
       <div className="fm-folders">
         <button className={filter === '__all__' ? 'chip on' : 'chip'} onClick={() => setFilter('__all__')}>{t('all')}</button>
