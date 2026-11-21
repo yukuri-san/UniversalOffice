@@ -29,6 +29,7 @@ import { Pomodoro, Metronome, WhiteNoise, Flashcards } from './components/store/
 import { TodoList } from './components/store/TodoList'
 import { Diary } from './components/store/Diary'
 import { CompassApp, LevelApp, NoiseApp, SpeedTestApp } from './components/store/Sensors'
+import YmmDic from './components/store/YmmDic'
 import DeveloperApp from './components/DeveloperApp'
 import CustomAppView from './components/CustomAppView'
 import { CUSTOM_APPS_EVENT, isCustomId, loadCustomApps, type CustomApp } from './lib/customApps'
@@ -62,7 +63,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer'
 
 interface Win {
   id: WindowApp
@@ -144,6 +145,7 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   compass: { icon: '🧭', cls: 'compass' },
   noise: { icon: '🔊', cls: 'noise' },
   speedtest: { icon: '🚀', cls: 'speedtest' },
+  ymmdic: { icon: '🗣', cls: 'ymmdic' },
   kakeibo: { icon: '家', cls: 'kakeibo' },
   habit: { icon: '継', cls: 'habit' },
   shopping: { icon: '買', cls: 'shopping' },
@@ -965,6 +967,7 @@ export default function App() {
       case 'compass': return <CompassApp />
       case 'noise': return <NoiseApp />
       case 'speedtest': return <SpeedTestApp />
+      case 'ymmdic': return <YmmDic />
       case 'kakeibo': return <Kakeibo />
       case 'habit': return <HabitTracker />
       case 'shopping': return <ShoppingList />

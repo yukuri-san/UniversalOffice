@@ -315,6 +315,12 @@ export const STORE_APPS: StoreAppDef[] = [
     notes: 'v1.0.1：測定できない不具合を修正（Service Worker の干渉を解消）。Cloudflare に届かない環境では自サイト経由の代替測定に切り替え、失敗時は段階を表示します。',
   },
   {
+    id: 'ymmdic', icon: '🗣', cls: 'ymmdic', name: 'YMM4辞書CSV',
+    desc: 'YMM4用の辞書CSV（立ち絵空間IDとセリフ）を編集。フォルダ管理・CSV入出力・自動保存対応。',
+    version: '1.0.0', category: 'tool',
+    notes: '新規追加。YMM4辞書用CSVエディタ（api.ykr3.net/ymm-csv.html）の移植版。2列CSV（1列目=立ち絵空間ID、2列目=セリフ）をファイル／フォルダで管理し、YMM4仕様（UTF-8 BOM付き・CRLF）で読み書きします。前後の会話プレビュー、JSONバックアップ、端末内への自動保存つき。',
+  },
+  {
     id: 'qr', icon: 'QR', cls: 'qr', name: 'QR・バーコード',
     desc: 'QRコードと各種バーコードの作成・読み取り。Wi-Fiや連絡先のQR、JANコードにも対応。',
     version: '1.0.0', category: 'tool',

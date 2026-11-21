@@ -255,6 +255,11 @@
       "notes": "v1.0.1：測定できない不具合を修正（Service Worker の干渉を解消）。Cloudflare に届かない環境では自サイト経由の代替測定に切り替え、失敗時は段階を表示します。"
     },
     {
+      "id": "ymmdic",
+      "version": "1.0.0",
+      "notes": "新規追加。YMM4辞書用CSVエディタ（api.ykr3.net/ymm-csv.html）の移植版。2列CSV（1列目=立ち絵空間ID、2列目=セリフ）をファイル／フォルダで管理し、YMM4仕様（UTF-8 BOM付き・CRLF）で読み書きします。前後の会話プレビュー、JSONバックアップ、端末内への自動保存つき。"
+    },
+    {
       "id": "qr",
       "version": "1.0.0",
       "notes": "新規追加：QR（テキスト/Wi-Fi/連絡先/メール/電話/SMS）・CODE128・EAN-13/8・UPC・CODE39・ITF-14・MSI・Pharmacode の作成、カメラと画像からの読み取り"
