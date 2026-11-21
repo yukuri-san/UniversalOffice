@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { STORE_APPS, STORE_CATEGORIES, type StoreCategory } from '../lib/storeApps'
 import { notifyOs } from '../lib/notify'
 import { APP_VERSION } from '../lib/version'
-import { compareVersions, fetchLatestVersion, performUpdate } from '../lib/updateCheck'
+import { compareVersions, fetchLatestVersion } from '../lib/updateCheck'
 import { useLang } from '../lib/i18n'
 
 interface Props {
@@ -12,13 +12,14 @@ interface Props {
   onInstall: (id: string) => void
   onUninstall: (id: string) => void
   onUpdateApp: (id: string) => void
+  onShowUpdate: (target: { kind: 'webx' } | { kind: 'app'; id: string } | { kind: 'apps' }) => void
 }
 
 type CheckState = 'idle' | 'checking' | 'done' | 'error'
 
 // アプリの入手・削除・更新はすべてこのストアで処理する。
 // WebX 本体の更新確認・適用もここで行う（設定からは移管済み）。
-export default function AppStore({ installed, versions, coreApps, onInstall, onUninstall, onUpdateApp }: Props) {
+export default function AppStore({ installed, versions, coreApps, onInstall, onUninstall, onUpdateApp, onShowUpdate }: Props) {
   const { t } = useLang()
   const [check, setCheck] = useState<CheckState>('idle')
   const [category, setCategory] = useState<StoreCategory | 'all' | 'updates'>('all')
@@ -44,11 +45,6 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
     setSummary(parts.join('／'))
   }
 
-  const doWebxUpdate = async () => {
-    if (!window.confirm(`WebX を v${latest} に更新しますか？（キャッシュを消して再読み込みします）`)) return
-    await performUpdate()
-  }
-
   return (
     <div className="store-app">
       <h3 className="store-head">{t('stWebxBody')}</h3>
@@ -67,7 +63,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
             {check === 'checking' ? t('checkingUpdate') : t('checkUpdate')}
           </button>
           {webxOutdated && (
-            <button className="btn accent" onClick={() => void doWebxUpdate()}>{t('updateNow')}</button>
+            <button className="btn accent" onClick={() => onShowUpdate({ kind: 'webx' })}>{t('updateNow')}</button>
           )}
         </div>
       </div>
@@ -89,7 +85,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
       {category === 'updates' && outdatedApps.length > 0 && (
         <div className="store-bulk">
           <span>{outdatedApps.length} × {t('stUpdateBtn')}</span>
-          <button className="btn accent" onClick={() => outdatedApps.forEach((a) => onUpdateApp(a.id))}>{t('stBulkUpdate')}</button>
+          <button className="btn accent" onClick={() => onShowUpdate({ kind: 'apps' })}>{t('stBulkUpdate')}</button>
         </div>
       )}
       {category === 'updates' && outdatedApps.length === 0 && (
@@ -126,10 +122,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
                 {isIn && outdated && (
                   <button
                     className="btn accent"
-                    onClick={() => {
-                      onUpdateApp(app.id)
-                      notifyOs(`「${app.name}」を v${app.version} に更新しました`)
-                    }}
+                    onClick={() => onShowUpdate({ kind: 'app', id: app.id })}
                   >
                     {t('stUpdateBtn')}
                   </button>

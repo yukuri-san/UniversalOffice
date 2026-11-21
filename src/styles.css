@@ -220,10 +220,12 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .cal-event-list li { display: flex; gap: 8px; align-items: flex-start; border: 1px solid #eef2f8; border-radius: 8px; padding: 8px 10px; }
 .cal-event-list li div { flex: 1; min-width: 0; }
 .cal-event-list small { display: block; color: #7a8798; overflow-wrap: anywhere; }
+.cal-event-list li.editing { border-color: #6b4fa1; background: #f6f2fb; }
 .cal-event-list button { border: 1px solid #c6d0dd; background: #fff; border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: 12px; }
 .cal-form { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid #eef2f8; padding-top: 12px; }
 .cal-form input { border: 1px solid #c6d0dd; border-radius: 6px; padding: 8px 10px; font-size: 14px; }
 .cal-form button { border: 1px solid #6b4fa1; background: #6b4fa1; color: #fff; border-radius: 8px; padding: 8px; cursor: pointer; font-weight: 600; }
+.cal-form button.cal-cancel { background: #fff; color: #333; border-color: #c6d0dd; font-weight: 400; }
 
 @media print {
   .titlebar, .ribbon, .statusbar, footer, .toolbar, .hint { display: none !important; }
@@ -1033,3 +1035,16 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .opt.danger { border-color: rgba(220, 60, 60, .5); color: #d33; }
 .os-root[data-iconsize="s"] .desktop-icon .app-icon { width: 32px; height: 32px; font-size: 16px; border-radius: 7px; }
 .os-root[data-iconsize="l"] .desktop-icon .app-icon { width: 54px; height: 54px; font-size: 27px; border-radius: 11px; }
+
+/* ===== 更新内容ウィンドウ ===== */
+.app-icon.updateinfo { background: linear-gradient(135deg, #06b6d4, #2563eb); }
+.update-info { padding: 16px; overflow-y: auto; height: 100%; box-sizing: border-box; }
+.update-info h2 { margin: 0 0 6px; font-size: 19px; display: flex; align-items: center; gap: 8px; }
+.update-info h3 { margin: 14px 0 6px; font-size: 14px; }
+.update-ver { color: var(--hatch-widget-muted, #64748b); font-size: 13px; margin: 2px 0; }
+.update-notes { font-size: 13.5px; }
+.update-note-text { font-size: 13.5px; margin: 4px 0; }
+.update-done { color: #16a34a; font-weight: 700; }
+.update-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid rgba(127, 140, 160, .25); }
+.update-row-main { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.update-info .btn.accent { margin-top: 14px; }

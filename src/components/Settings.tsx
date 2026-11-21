@@ -94,7 +94,19 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
 
   const mb = (n: number) => `${(n / 1024 / 1024).toFixed(1)} MB`
 
-  const SETTINGS_KEYS = ['ykr-theme', 'ykr-lang', 'webx-wp-preset', 'webx-wp-custom', 'webx-wp-use', 'webx-ui-scale', 'webx-user-name', 'webx-timezone', 'webx-icon-size', 'webx-icon-click', 'webx-installed-apps', 'webx-app-versions', 'webx-setup-done']
+  const SETTINGS_KEYS = ['ykr-theme', 'ykr-lang', 'webx-wp-preset', 'webx-wp-custom', 'webx-wp-use', 'webx-ui-scale', 'webx-user-name', 'webx-timezone', 'webx-icon-size', 'webx-icon-click', 'webx-installed-apps', 'webx-app-versions', 'webx-setup-done', 'webx-update-interval', 'webx-update-notified']
+  const [updInterval, setUpdInterval] = useState<number>(() => {
+    const n = Number(localStorage.getItem('webx-update-interval'))
+    return Number.isFinite(n) && n >= 1 && n <= 180 ? Math.floor(n) : 30
+  })
+  const changeUpdInterval = (raw: string) => {
+    const n = Math.min(180, Math.max(1, Math.floor(Number(raw) || 30)))
+    setUpdInterval(n)
+    try {
+      localStorage.setItem('webx-update-interval', String(n))
+      window.dispatchEvent(new Event('webx-update-interval'))
+    } catch { /* ignore */ }
+  }
   const resetSettingsOnly = () => {
     if (!window.confirm(translate(lang, 'resetSettingsDesc'))) return
     for (const k of SETTINGS_KEYS) localStorage.removeItem(k)
@@ -247,6 +259,10 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
         <div className="settings-options" style={{ marginTop: 10 }}>
           <button className="opt" onClick={onOpenStore}>ストアを開く</button>
         </div>
+        <label className="settings-note" style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+          {translate(lang, 'updCheckInterval')}
+          <input type="number" min={1} max={180} value={updInterval} onChange={(e) => changeUpdInterval(e.target.value)} style={{ width: 72 }} />
+        </label>
       </section>
 
       <section className="settings-section">

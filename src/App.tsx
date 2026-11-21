@@ -19,6 +19,7 @@ import MemoDb from './components/MemoDb'
 import AboutWindow from './components/AboutWindow'
 import ManualWindow from './components/ManualWindow'
 import AppStore from './components/AppStore'
+import UpdateInfoWindow from './components/UpdateInfoWindow'
 import UnitConverter from './components/UnitConverter'
 import { STORE_APPS } from './lib/storeApps'
 import { Dice, Janken, NumGuess, Omikuji } from './components/store/Games'
@@ -39,7 +40,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'updateinfo'
 
 interface Win {
   id: WindowApp
@@ -69,6 +70,7 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   docs: { icon: '文', cls: 'docs' },
   memodb: { icon: 'デ', cls: 'memodb' },
   about: { icon: 'W', cls: 'about' },
+  updateinfo: { icon: '更', cls: 'updateinfo' },
   manual: { icon: '説', cls: 'manual' },
   store: { icon: '店', cls: 'store' },
   unit: { icon: '換', cls: 'unit' },
@@ -241,26 +243,51 @@ export default function App() {
   useEffect(() => {
     void requestPersist()
   }, [])
-  // 起動時に更新があれば通知する（WebX 本体＋インストール済みストアアプリ）
+  // 更新チェック：起動時に加えて、設定した間隔（1〜180分）でも定期チェックし、新しい更新があれば通知する
   useEffect(() => {
-    const id = window.setTimeout(() => {
-      void (async () => {
-        const latest = await fetchLatestVersion()
-        if (latest && compareVersions(latest, APP_VERSION) > 0) {
-          notifyOs(`WebX の新しいバージョン v${latest} があります（ストアで更新できます）`, 'store')
-        }
-        try {
-          const installedNow: string[] = JSON.parse(localStorage.getItem('webx-installed-apps') ?? '[]')
-          const versionsNow: Record<string, string> = JSON.parse(localStorage.getItem('webx-app-versions') ?? '{}')
-          const outdated = STORE_APPS.filter((a) => installedNow.includes(a.id) && versionsNow[a.id] !== a.version)
-          if (outdated.length > 0) {
-            notifyOs(`アプリの更新があります：${outdated.map((a) => `${a.name} v${a.version}`).join('、')}（ストアで更新できます）`, 'store')
-          }
-        } catch { /* 保存データが壊れている場合は通知しない */ }
-      })()
-    }, 2500)
-    return () => window.clearTimeout(id)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false
+    const checkUpdates = async () => {
+      const latest = await fetchLatestVersion()
+      if (cancelled) return
+      let signature = ''
+      if (latest && compareVersions(latest, APP_VERSION) > 0) signature += `webx:${latest};`
+      let outdatedNames: string[] = []
+      try {
+        const installedNow: string[] = JSON.parse(localStorage.getItem('webx-installed-apps') ?? '[]')
+        const versionsNow: Record<string, string> = JSON.parse(localStorage.getItem('webx-app-versions') ?? '{}')
+        const outdated = STORE_APPS.filter((a) => installedNow.includes(a.id) && versionsNow[a.id] !== a.version)
+        outdatedNames = outdated.map((a) => `${a.name} v${a.version}`)
+        if (outdated.length > 0) signature += outdated.map((a) => `${a.id}:${a.version}`).join(',')
+      } catch { /* 保存データが壊れている場合は通知しない */ }
+      if (!signature) return
+      let last = ''
+      try { last = localStorage.getItem('webx-update-notified') ?? '' } catch { /* ignore */ }
+      if (signature === last) return
+      try { localStorage.setItem('webx-update-notified', signature) } catch { /* ignore */ }
+      if (latest && compareVersions(latest, APP_VERSION) > 0) {
+        notifyOs(`WebX の新しいバージョン v${latest} があります（ストアで更新できます）`, 'store')
+      }
+      if (outdatedNames.length > 0) {
+        notifyOs(`アプリの更新があります：${outdatedNames.join('、')}（ストアで更新できます）`, 'store')
+      }
+    }
+    const first = window.setTimeout(() => { void checkUpdates() }, 2500)
+    let timer = 0
+    const arm = () => {
+      window.clearInterval(timer)
+      let mins = 30
+      try { mins = Math.min(180, Math.max(1, Number(localStorage.getItem('webx-update-interval')) || 30)) } catch { /* ignore */ }
+      timer = window.setInterval(() => { void checkUpdates() }, mins * 60 * 1000)
+    }
+    arm()
+    const onIntervalChanged = () => arm()
+    window.addEventListener('webx-update-interval', onIntervalChanged)
+    return () => {
+      cancelled = true
+      window.clearTimeout(first)
+      window.clearInterval(timer)
+      window.removeEventListener('webx-update-interval', onIntervalChanged)
+    }
   }, [])
   // ソフトウェアキーボード開閉後にページ領域外が見える問題への対策：
   // visualViewport の高さにアプリの高さを同期し、閉じたときはスクロール位置を戻す
@@ -565,7 +592,11 @@ export default function App() {
           onInstall={installApp}
           onUninstall={uninstallApp}
           onUpdateApp={updateStoreApp}
+          onShowUpdate={(target) => { try { localStorage.setItem('webx-update-target', JSON.stringify(target)) } catch { /* ignore */ } openApp('updateinfo') }}
         />
+      )
+      case 'updateinfo': return (
+        <UpdateInfoWindow installed={installedApps} versions={appVersions} onUpdateApp={updateStoreApp} />
       )
       case 'unit': return <UnitConverter />
       case 'pomodoro': return <Pomodoro />

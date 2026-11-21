@@ -63,6 +63,7 @@ const ja: Dict = {
   formulaPh: '数式または値（例：=SUM(A1:B2)）', csvDl: 'CSV で保存',
   newNote: '新規メモ', notePh: 'ここに入力…', chars: '文字', lines: '行', noNotes: 'メモがありません', untitledNote: '無題のメモ',
   today: '今日', addEvent: '予定を追加', eventTitle: 'タイトル', eventMemo: 'メモ', eventsOn: 'の予定', noEvents: '予定はありません', monthView: '月表示', weekView: '週表示',
+  editEvent: '編集', saveEvent: '保存', eventsThisMonth: '今月の予定 {n} 件', confirmDeleteEvent: '「{title}」を削除しますか？', moreEvents: '他 {n} 件',
   urlPh: 'URL を入力（https://…）', goBtn: '開く', openExternal: '外部で開く',
   embedNote: '埋め込みを禁止しているサイト（Google など）は表示できません。その場合は「外部で開く」を使ってください。',
   presets: 'よく使うサイト',
@@ -151,6 +152,12 @@ const ja: Dict = {
   prevPage: '前へ',
   nextPage: '次へ',
   startSearchPh: 'アプリを検索',
+  updTitle: '更新内容',
+  updWhatsNew: '変更内容',
+  updDone: '更新しました',
+  updNoNotes: '詳しい更新内容は用意されていません',
+  updNewVer: '新しいバージョン',
+  updCheckInterval: '更新の確認間隔（分）',
 }
 
 const en: Dict = {
@@ -190,6 +197,7 @@ const en: Dict = {
   formulaPh: 'Formula or value (e.g. =SUM(A1:B2))', csvDl: 'Save as CSV',
   newNote: 'New note', notePh: 'Type here…', chars: 'chars', lines: 'lines', noNotes: 'No notes', untitledNote: 'Untitled note',
   today: 'Today', addEvent: 'Add event', eventTitle: 'Title', eventMemo: 'Memo', eventsOn: ' events', noEvents: 'No events', monthView: 'Month', weekView: 'Week',
+  editEvent: 'Edit', saveEvent: 'Save', eventsThisMonth: '{n} events this month', confirmDeleteEvent: 'Delete "{title}"?', moreEvents: '+{n} more',
   urlPh: 'Enter a URL (https://…)', goBtn: 'Open', openExternal: 'Open externally',
   embedNote: 'Sites that block embedding (such as Google) cannot be shown here. Use “Open externally” for those.',
   presets: 'Popular sites',
@@ -278,6 +286,12 @@ const en: Dict = {
   prevPage: 'Prev',
   nextPage: 'Next',
   startSearchPh: 'Search apps',
+  updTitle: "What's new",
+  updWhatsNew: 'Changes',
+  updDone: 'Updated',
+  updNoNotes: 'No detailed notes for this update',
+  updNewVer: 'New version',
+  updCheckInterval: 'Update check interval (min)',
 }
 
 const zh: Dict = {
@@ -316,6 +330,7 @@ const zh: Dict = {
   formulaPh: '公式或值（例：=SUM(A1:B2)）', csvDl: '保存为 CSV',
   newNote: '新建笔记', notePh: '在此输入…', chars: '字', lines: '行', noNotes: '暂无笔记', untitledNote: '无标题笔记',
   today: '今天', addEvent: '添加日程', eventTitle: '标题', eventMemo: '备注', eventsOn: ' 的日程', noEvents: '暂无日程', monthView: '月视图', weekView: '周视图',
+  editEvent: '编辑', saveEvent: '保存', eventsThisMonth: '本月日程 {n} 项', confirmDeleteEvent: '删除「{title}」吗？', moreEvents: '另有 {n} 项',
   urlPh: '输入 URL（https://…）', goBtn: '打开', openExternal: '在外部打开',
   embedNote: '禁止嵌入的网站（如 Google）无法在此显示，请使用“在外部打开”。',
   presets: '常用网站',
@@ -404,6 +419,12 @@ const zh: Dict = {
   prevPage: '上一页',
   nextPage: '下一页',
   startSearchPh: '搜索应用',
+  updTitle: '更新内容',
+  updWhatsNew: '变更内容',
+  updDone: '已更新',
+  updNoNotes: '此更新没有详细说明',
+  updNewVer: '新版本',
+  updCheckInterval: '检查更新间隔（分钟）',
 }
 
 const ko: Dict = {
@@ -442,6 +463,7 @@ const ko: Dict = {
   formulaPh: '수식 또는 값 (예: =SUM(A1:B2))', csvDl: 'CSV로 저장',
   newNote: '새 메모', notePh: '여기에 입력…', chars: '자', lines: '줄', noNotes: '메모가 없습니다', untitledNote: '제목 없는 메모',
   today: '오늘', addEvent: '일정 추가', eventTitle: '제목', eventMemo: '메모', eventsOn: '의 일정', noEvents: '일정이 없습니다', monthView: '월간', weekView: '주간',
+  editEvent: '편집', saveEvent: '저장', eventsThisMonth: '이번 달 일정 {n}건', confirmDeleteEvent: '「{title}」을(를) 삭제하시겠습니까?', moreEvents: '+{n}개 더',
   urlPh: 'URL 입력 (https://…)', goBtn: '열기', openExternal: '외부에서 열기',
   embedNote: '임베드를 금지한 사이트(Google 등)는 표시할 수 없습니다. “외부에서 열기”를 사용하세요.',
   presets: '자주 쓰는 사이트',
@@ -530,6 +552,12 @@ const ko: Dict = {
   prevPage: '이전',
   nextPage: '다음',
   startSearchPh: '앱 검색',
+  updTitle: '업데이트 내용',
+  updWhatsNew: '변경 내용',
+  updDone: '업데이트했습니다',
+  updNoNotes: '자세한 업데이트 내용이 없습니다',
+  updNewVer: '새 버전',
+  updCheckInterval: '업데이트 확인 간격(분)',
 }
 
 const th: Dict = {
@@ -568,6 +596,7 @@ const th: Dict = {
   formulaPh: 'สูตรหรือค่า (เช่น =SUM(A1:B2))', csvDl: 'บันทึกเป็น CSV',
   newNote: 'บันทึกใหม่', notePh: 'พิมพ์ที่นี่…', chars: 'ตัวอักษร', lines: 'บรรทัด', noNotes: 'ยังไม่มีบันทึก', untitledNote: 'บันทึกไม่มีชื่อ',
   today: 'วันนี้', addEvent: 'เพิ่มกิจกรรม', eventTitle: 'ชื่อ', eventMemo: 'บันทึกช่วยจำ', eventsOn: ' กิจกรรม', noEvents: 'ไม่มีกิจกรรม', monthView: 'รายเดือน', weekView: 'รายสัปดาห์',
+  editEvent: 'แก้ไข', saveEvent: 'บันทึก', eventsThisMonth: 'กิจกรรมเดือนนี้ {n} รายการ', confirmDeleteEvent: 'ลบ "{title}" หรือไม่', moreEvents: 'อีก {n} รายการ',
   urlPh: 'ป้อน URL (https://…)', goBtn: 'เปิด', openExternal: 'เปิดภายนอก',
   embedNote: 'ไซต์ที่ห้ามฝัง (เช่น Google) จะแสดงที่นี่ไม่ได้ โปรดใช้ “เปิดภายนอก”',
   presets: 'ไซต์ยอดนิยม',
@@ -656,6 +685,12 @@ const th: Dict = {
   prevPage: 'ก่อนหน้า',
   nextPage: 'ถัดไป',
   startSearchPh: 'ค้นหาแอป',
+  updTitle: 'มีอะไรใหม่',
+  updWhatsNew: 'การเปลี่ยนแปลง',
+  updDone: 'อัปเดตแล้ว',
+  updNoNotes: 'ไม่มีรายละเอียดการอัปเดต',
+  updNewVer: 'เวอร์ชันใหม่',
+  updCheckInterval: 'ช่วงเวลาตรวจสอบอัปเดต (นาที)',
 }
 
 const es: Dict = {
@@ -791,6 +826,7 @@ const es: Dict = {
   untitledNote: 'Nota sin título',
   today: 'Hoy',
   addEvent: 'Añadir evento',
+  editEvent: 'Editar', saveEvent: 'Guardar', eventsThisMonth: '{n} eventos este mes', confirmDeleteEvent: '¿Eliminar "{title}"?', moreEvents: '+{n} más',
   eventTitle: 'Título',
   eventMemo: 'Nota',
   eventsOn: ' eventos',
@@ -961,6 +997,12 @@ const es: Dict = {
   prevPage: 'Anterior',
   nextPage: 'Siguiente',
   startSearchPh: 'Buscar apps',
+  updTitle: 'Novedades',
+  updWhatsNew: 'Cambios',
+  updDone: 'Actualizado',
+  updNoNotes: 'Sin notas detalladas',
+  updNewVer: 'Nueva versión',
+  updCheckInterval: 'Intervalo de comprobación (min)',
 }
 
 const fr: Dict = {
@@ -1096,6 +1138,7 @@ const fr: Dict = {
   untitledNote: 'Note sans titre',
   today: 'Aujourd’hui',
   addEvent: 'Ajouter un événement',
+  editEvent: 'Modifier', saveEvent: 'Enregistrer', eventsThisMonth: '{n} événements ce mois-ci', confirmDeleteEvent: 'Supprimer « {title} » ?', moreEvents: '+{n} de plus',
   eventTitle: 'Titre',
   eventMemo: 'Note',
   eventsOn: ' événements',
@@ -1266,6 +1309,12 @@ const fr: Dict = {
   prevPage: 'Précédent',
   nextPage: 'Suivant',
   startSearchPh: 'Rechercher des apps',
+  updTitle: 'Nouveautés',
+  updWhatsNew: 'Changements',
+  updDone: 'Mis à jour',
+  updNoNotes: 'Pas de notes détaillées',
+  updNewVer: 'Nouvelle version',
+  updCheckInterval: 'Intervalle de vérification (min)',
 }
 
 const de: Dict = {
@@ -1401,6 +1450,7 @@ const de: Dict = {
   untitledNote: 'Notiz ohne Titel',
   today: 'Heute',
   addEvent: 'Termin hinzufügen',
+  editEvent: 'Bearbeiten', saveEvent: 'Speichern', eventsThisMonth: '{n} Termine in diesem Monat', confirmDeleteEvent: '„{title}" löschen?', moreEvents: '+{n} weitere',
   eventTitle: 'Titel',
   eventMemo: 'Notiz',
   eventsOn: ' Termine',
@@ -1571,6 +1621,12 @@ const de: Dict = {
   prevPage: 'Zurück',
   nextPage: 'Weiter',
   startSearchPh: 'Apps suchen',
+  updTitle: 'Was ist neu',
+  updWhatsNew: 'Änderungen',
+  updDone: 'Aktualisiert',
+  updNoNotes: 'Keine detaillierten Hinweise',
+  updNewVer: 'Neue Version',
+  updCheckInterval: 'Prüfintervall (Min.)',
 }
 
 export const DICTS: Record<Lang, Dict> = { ja, en, zh, ko, th, es, fr, de }

@@ -27,6 +27,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   const [homeOpen, setHomeOpen] = useState(false)
   const [formTitle, setFormTitle] = useState('')
   const [formMemo, setFormMemo] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const refresh = useCallback(async () => {
     setEvents(await listEvents())
@@ -128,15 +129,29 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
 
   const addEvent = async () => {
     if (!formTitle.trim()) return
-    await saveEvent({ date: selected, title: formTitle.trim(), memo: formMemo.trim() })
+    await saveEvent({ id: editingId ?? undefined, date: selected, title: formTitle.trim(), memo: formMemo.trim() })
     setFormTitle('')
     setFormMemo('')
+    setEditingId(null)
     await refresh()
   }
 
+  const startEdit = (e: CalEvent) => {
+    setEditingId(e.id)
+    setFormTitle(e.title)
+    setFormMemo(e.memo)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setFormTitle('')
+    setFormMemo('')
+  }
+
   const removeEvent = async (e: CalEvent) => {
-    if (!window.confirm(`「${e.title}」を削除しますか？`)) return
+    if (!window.confirm(t('confirmDeleteEvent').replace('{title}', e.title))) return
     await deleteEvent(e.id)
+    if (editingId === e.id) cancelEdit()
     await refresh()
   }
 
@@ -152,7 +167,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
         onSwitch={onSwitch}
         actions={[
           { label: t('today'), onClick: goToday },
-          { label: '今月の予定', hint: `${events.filter((e) => e.date.startsWith(ymd(view.y, view.m, 1).slice(0, 7))).length} 件`, onClick: () => {} },
+          { label: t('eventsThisMonth').replace('{n}', String(events.filter((e) => e.date.startsWith(ymd(view.y, view.m, 1).slice(0, 7))).length)), hint: '', onClick: () => {} },
         ]}
       />
       <div className="titlebar cal-title">
@@ -170,7 +185,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
           <button className={mode === 'month' ? 'active' : ''} onClick={() => setMode('month')}>{t('monthView')}</button>
           <button className={mode === 'week' ? 'active' : ''} onClick={() => setMode('week')}>{t('weekView')}</button>
         </span>
-        <span className="cal-count">今月の予定 {events.filter((e) => e.date.startsWith(ymd(view.y, view.m, 1).slice(0, 7))).length} 件</span>
+        <span className="cal-count">{t('eventsThisMonth').replace('{n}', String(events.filter((e) => e.date.startsWith(ymd(view.y, view.m, 1).slice(0, 7))).length))}</span>
       </div>
       <div className="cal-body">
         <div className="cal-grid-wrap">
@@ -199,7 +214,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                 <button key={i} className={`cal-cell${isToday ? ' today' : ''}${isSelected ? ' selected' : ''}`} onClick={() => setSelected(date)}>
                   <span className="cal-day">{Number(date.slice(8))}</span>
                   {dayEvents.slice(0, 2).map((e) => <span key={e.id} className="cal-event">{e.title}</span>)}
-                  {dayEvents.length > 2 && <span className="cal-more">+{dayEvents.length - 2} 件</span>}
+                  {dayEvents.length > 2 && <span className="cal-more">{t('moreEvents').replace('{n}', String(dayEvents.length - 2))}</span>}
                 </button>
               )
             })}
@@ -212,11 +227,12 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
           ) : (
             <ul className="cal-event-list">
               {selectedEvents.map((e) => (
-                <li key={e.id}>
+                <li key={e.id} className={editingId === e.id ? 'editing' : ''}>
                   <div>
                     <strong>{e.title}</strong>
                     {e.memo && <small>{e.memo}</small>}
                   </div>
+                  <button onClick={() => startEdit(e)}>{t('editEvent')}</button>
                   <button onClick={() => void removeEvent(e)}>{t('deleteBtn')}</button>
                 </li>
               ))}
@@ -225,7 +241,8 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
           <div className="cal-form">
             <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder={t('eventTitle')} aria-label={t('eventTitle')} />
             <input value={formMemo} onChange={(e) => setFormMemo(e.target.value)} placeholder={t('eventMemo')} aria-label={t('eventMemo')} />
-            <button onClick={() => void addEvent()}>{t('addEvent')}</button>
+            <button onClick={() => void addEvent()}>{editingId ? t('saveEvent') : t('addEvent')}</button>
+            {editingId && <button className="cal-cancel" onClick={cancelEdit}>{t('cancelBtn')}</button>}
           </div>
         </aside>
       </div>
