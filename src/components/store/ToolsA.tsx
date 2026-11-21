@@ -112,72 +112,99 @@ const MORSE: Record<string, string> = {
   A: '.-', B: '-...', C: '-.-.', D: '-..', E: '.', F: '..-.', G: '--.', H: '....', I: '..', J: '.---', K: '-.-', L: '.-..', M: '--', N: '-.', O: '---', P: '.--.', Q: '--.-', R: '.-.', S: '...', T: '-', U: '..-', V: '...-', W: '.--', X: '-..-', Y: '-.--', Z: '--..',
   '0': '-----', '1': '.----', '2': '..---', '3': '...--', '4': '....-', '5': '.....', '6': '-....', '7': '--...', '8': '---..', '9': '----.', ' ': '/',
 }
+/* モールス音声は WAV をその場で合成し、音声ファイルとして再生する。
+   Web Audio（AudioContext）経由では音が出ない端末・環境があるための方式。
+   音楽アプリ等と同じメディア再生の経路を使う。 */
+const MORSE_SR = 22050
+function encodeWav(samples: number[]): string {
+  const buf = new ArrayBuffer(44 + samples.length * 2)
+  const v = new DataView(buf)
+  const wstr = (off: number, s: string) => { for (let i = 0; i < s.length; i++) v.setUint8(off + i, s.charCodeAt(i)) }
+  wstr(0, 'RIFF'); v.setUint32(4, 36 + samples.length * 2, true); wstr(8, 'WAVE'); wstr(12, 'fmt ')
+  v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true)
+  v.setUint32(24, MORSE_SR, true); v.setUint32(28, MORSE_SR * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true)
+  wstr(36, 'data'); v.setUint32(40, samples.length * 2, true)
+  samples.forEach((s, i) => v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, s)) * 32767, true))
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }))
+}
+function morseWavUrl(code: string): string {
+  const unit = 0.09
+  const freq = 660
+  const samples: number[] = []
+  const pushSilence = (sec: number) => { const n = Math.floor(MORSE_SR * sec); for (let i = 0; i < n; i++) samples.push(0) }
+  const pushTone = (sec: number) => {
+    const n = Math.floor(MORSE_SR * sec)
+    const fade = Math.max(1, Math.floor(MORSE_SR * 0.005))
+    for (let i = 0; i < n; i++) {
+      const env = Math.min(1, i / fade, (n - i) / fade)
+      samples.push(Math.sin(2 * Math.PI * freq * i / MORSE_SR) * 0.5 * env)
+    }
+  }
+  for (const ch of code) {
+    if (ch === ' ') { pushSilence(unit * 3); continue }
+    if (ch === '/') { pushSilence(unit * 4); continue }
+    pushTone(ch === '.' ? unit : unit * 3)
+    pushSilence(unit)
+  }
+  pushSilence(0.05)
+  return encodeWav(samples)
+}
+function toneLoopUrl(): string {
+  // 660Hz × 1秒 ＝ ちょうど660周期で継ぎ目なくループする
+  const samples: number[] = []
+  for (let i = 0; i < MORSE_SR; i++) samples.push(Math.sin(2 * Math.PI * 660 * i / MORSE_SR) * 0.5)
+  return encodeWav(samples)
+}
 export function Morse() {
   const [text, setText] = useState('SOS')
   const [playing, setPlaying] = useState(false)
   const [msg, setMsg] = useState('')
-  const ctxRef = useRef<AudioContext | null>(null)
-  const keyerRef = useRef<{ osc: OscillatorNode; gain: GainNode } | null>(null)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const keyAudioRef = useRef<HTMLAudioElement | null>(null)
+  const urlRef = useRef<string | null>(null)
+  const keyUrlRef = useRef<string | null>(null)
   const code = text.toUpperCase().split('').map((c) => MORSE[c] ?? '').filter(Boolean).join(' ')
-  useEffect(() => () => { void ctxRef.current?.close().catch(() => undefined) }, [])
-  const ensureCtx = (): AudioContext | null => {
-    try {
-      const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
-      if (!AC) return null
-      ctxRef.current ??= new AC()
-      return ctxRef.current
-    } catch { return null }
-  }
-  const keyer = (ctx: AudioContext) => {
-    if (!keyerRef.current) {
-      const osc = ctx.createOscillator()
-      osc.type = 'sine'
-      osc.frequency.value = 660
-      const gain = ctx.createGain()
-      gain.gain.value = 0
-      osc.connect(gain); gain.connect(ctx.destination)
-      osc.start()
-      keyerRef.current = { osc, gain }
-    }
-    return keyerRef.current
-  }
+  useEffect(() => () => {
+    audioRef.current?.pause()
+    keyAudioRef.current?.pause()
+    if (urlRef.current) URL.revokeObjectURL(urlRef.current)
+    if (keyUrlRef.current) URL.revokeObjectURL(keyUrlRef.current)
+  }, [])
   const play = async () => {
-    if (playing) return
-    const ctx = ensureCtx()
-    if (!ctx) { setMsg('この端末・ブラウザでは音声（Web Audio）が使えませんでした'); return }
-    await ctx.resume()
-    if (ctx.state !== 'running') { setMsg('音声を開始できませんでした。もう一度「音で再生」を押してみてください'); return }
-    setMsg('')
-    const { gain } = keyer(ctx)
-    setPlaying(true)
-    const unit = 0.09
-    let t = ctx.currentTime + 0.06
-    const g = gain.gain
-    g.cancelScheduledValues(t)
-    g.setValueAtTime(0, t)
-    for (const ch of code) {
-      if (ch === ' ') { t += unit * 3; continue }
-      if (ch === '/') { t += unit * 4; continue }
-      const dur = ch === '.' ? unit : unit * 3
-      g.setValueAtTime(0.5, t)
-      g.setValueAtTime(0.5, Math.max(t, t + dur - 0.008))
-      g.setValueAtTime(0, t + dur)
-      t += dur + unit
+    if (playing || !code) return
+    try {
+      if (urlRef.current) URL.revokeObjectURL(urlRef.current)
+      const url = morseWavUrl(code)
+      urlRef.current = url
+      audioRef.current ??= new Audio()
+      const a = audioRef.current
+      a.src = url
+      a.onended = () => setPlaying(false)
+      setPlaying(true)
+      await a.play()
+      setMsg('')
+    } catch (e) {
+      setPlaying(false)
+      setMsg(`再生できませんでした（${e instanceof Error ? e.name : 'エラー'}）。端末のメディア音量を確認してみてください`)
     }
-    window.setTimeout(() => setPlaying(false), (t - ctx.currentTime) * 1000 + 80)
   }
   const keyDown = async () => {
-    const ctx = ensureCtx()
-    if (!ctx) { setMsg('この端末・ブラウザでは音声（Web Audio）が使えませんでした'); return }
-    await ctx.resume()
-    if (ctx.state !== 'running') { setMsg('音声を開始できませんでした。もう一度押してみてください'); return }
-    setMsg('')
-    keyer(ctx).gain.gain.setTargetAtTime(0.5, ctx.currentTime, 0.005)
+    try {
+      if (!keyUrlRef.current) keyUrlRef.current = toneLoopUrl()
+      keyAudioRef.current ??= new Audio()
+      const a = keyAudioRef.current
+      if (!a.src) { a.src = keyUrlRef.current; a.loop = true }
+      await a.play()
+      setMsg('')
+    } catch (e) {
+      setMsg(`再生できませんでした（${e instanceof Error ? e.name : 'エラー'}）。端末のメディア音量を確認してみてください`)
+    }
   }
   const keyUp = () => {
-    const ctx = ctxRef.current
-    if (!ctx || !keyerRef.current) return
-    keyerRef.current.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.005)
+    const a = keyAudioRef.current
+    if (!a) return
+    a.pause()
+    a.currentTime = 0
   }
   return (
     <div className="sa-app">
@@ -193,7 +220,7 @@ export function Morse() {
         </button>
       </div>
       {msg && <p className="sa-note" style={{ color: '#dc2626' }}>{msg}</p>}
-      <p className="sa-note">対応は A〜Z と 0〜9 とスペースのみです。音が出ないときは端末のメディア音量も確認してみてください。電鍵ボタンで音が出るか試せます。</p>
+      <p className="sa-note">対応は A〜Z と 0〜9 とスペースのみです。再生は音声ファイル（WAV）をメディア再生する方式です。音が出ないときは端末のメディア音量も確認してみてください。電鍵ボタンで音が出るか試せます。</p>
     </div>
   )
 }

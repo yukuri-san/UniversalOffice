@@ -159,9 +159,10 @@ export const SENT_BANK: BankWord[] = SENT_SRC.map((s) => { const [disp, yomi] = 
 /* ---------- 寿司打モード ---------- */
 type CourseId = 'otegari' | 'osusume' | 'kokyu'
 const COURSES: Record<CourseId, { label: string; target: number; time: number; speed: number; spawn: number; sentRatio: number }> = {
-  otegari: { label: 'お手軽', target: 3000, time: 60, speed: 52, spawn: 2.1, sentRatio: 0.18 },
-  osusume: { label: 'お勧め', target: 5000, time: 90, speed: 72, spawn: 1.8, sentRatio: 0.25 },
-  kokyu: { label: '高級', target: 10000, time: 120, speed: 92, spawn: 1.5, sentRatio: 0.35 },
+  // speed はレーン幅 640px 基準の px/秒。実際の速度はレーン幅に比例させる（スマホでは自動で遅くなる）
+  otegari: { label: 'お手軽', target: 3000, time: 60, speed: 40, spawn: 3.2, sentRatio: 0.18 },
+  osusume: { label: 'お勧め', target: 5000, time: 90, speed: 54, spawn: 2.8, sentRatio: 0.25 },
+  kokyu: { label: '高級', target: 10000, time: 120, speed: 68, spawn: 2.4, sentRatio: 0.35 },
 }
 const BEST_KEY = 'webx-typing-sushi-best'
 interface BestRec { money: number; plates: number; acc: number }
@@ -223,16 +224,23 @@ function SushiMode() {
       const cfg = COURSES[courseRef.current]
       st.elapsed += dt
       const width = laneRef.current?.clientWidth ?? 640
+      const speedPx = cfg.speed * Math.max(0.45, width / 640)
       st.spawnIn -= dt
       if (st.spawnIn <= 0 && st.plates.length < 5) {
-        const p = pickWord(courseRef.current)
-        p.x = width + 10
-        st.plates = [...st.plates, p]
-        st.spawnIn = cfg.spawn * (0.75 + Math.random() * 0.5)
+        // 直前の皿が右端から十分離れるまでは次を出さない（間隔が詰まって打てなくなるのを防ぐ）
+        const lastX = st.plates.length ? Math.max(...st.plates.map((p) => p.x)) : -Infinity
+        if (lastX > width - 240) {
+          st.spawnIn = 0.3
+        } else {
+          const p = pickWord(courseRef.current)
+          p.x = width + 10
+          st.plates = [...st.plates, p]
+          st.spawnIn = cfg.spawn * (0.85 + Math.random() * 0.4)
+        }
       }
       let escapedNow = 0
       st.plates = st.plates
-        .map((p) => ({ ...p, x: p.x - cfg.speed * dt }))
+        .map((p) => ({ ...p, x: p.x - speedPx * dt }))
         .filter((p) => { if (p.x < -280) { escapedNow++; return false } return true })
       if (escapedNow > 0) { st.escaped += escapedNow; st.combo = 0; setCombo(0) }
       setPlates([...st.plates])
