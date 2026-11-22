@@ -151,6 +151,11 @@ export const STORE_APPS: StoreAppDef[] = [
     category: 'game',
   },
   {
+    id: 'bubbleshooter', icon: '🫧', cls: 'bubbleshooter', name: 'バブルシューター',
+    desc: '同じ色のボールを3つ以上つなげて消すパズルボブル風ゲーム。', version: '1.0.0', notes: '新規アプリです。狙ってボールを撃ち、同じ色を3つ以上つなげて消すパズルボブル風ゲーム。消したボールは1個+10、宙に浮いたボールの落下は1個+20、全消しでレベルアップ（段数・色数が増加）します。消せない発射が6発続くと上から1段追加され、ボールが赤いラインを越えるとゲームオーバー。マウス／タッチで狙い、クリック／タップまたはSpaceで発射、←→キーでも狙えます。',
+    category: 'game',
+  },
+  {
     id: 'minesweeper', icon: '💣', cls: 'minesweeper', name: 'マインスイーパ',
     desc: '数字をヒントに地雷を避ける定番パズル。', version: '1.0.1', notes: '旗モードを追加し、タッチでも旗が置けるようになりました。',
     category: 'game',
