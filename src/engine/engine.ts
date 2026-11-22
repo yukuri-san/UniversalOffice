@@ -17,13 +17,16 @@ export class Engine {
   private clock = new THREE.Clock()
   private tickFn: ((dt: number) => void) | null = null
   elapsed = 0
+  sun: THREE.DirectionalLight | null = null
 
   constructor(mount: HTMLElement) {
     this.mount = mount
     this.renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping
-    this.renderer.toneMappingExposure = 1.12
+    this.renderer.toneMappingExposure = 1.15
+    this.renderer.shadowMap.enabled = true
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap
     this.camera = new THREE.PerspectiveCamera(62, 1, 0.1, 2200)
     const el = this.renderer.domElement
     el.style.width = '100%'
@@ -50,6 +53,11 @@ export class Engine {
     return moon
   }
 
+  followSun(x: number, z: number) {
+    if (!this.sun) return
+    this.sun.position.set(x - 60, 120, z - 40)
+    this.sun.target.position.set(x, 0, z)
+  }
   addStarsAndMoon() {
     const n = 900
     const arr = new Float32Array(n * 3)

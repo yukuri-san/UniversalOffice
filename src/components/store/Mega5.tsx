@@ -492,3 +492,85 @@ export function RecipeBook() {
     </div>
   )
 }
+
+/* ---------- 水分記録 ---------- */
+interface WaterRec { id: number; date: string; amount: number }
+const WATER_QUICK = [100, 200, 350, 500]
+const dayLabel = (date: string) => {
+  const d = new Date(date + 'T00:00:00')
+  return `${d.getMonth() + 1}/${d.getDate()}（${'日月火水木金土'[d.getDay()]}）`
+}
+export function WaterLog() {
+  const [items, setItems] = useState<WaterRec[]>(() => load('webx-water', []))
+  const [goal, setGoal] = useState<number>(() => load('webx-water-goal', 2000))
+  const [amount, setAmount] = useState(200)
+  const [date, setDate] = useState(todayStr())
+  const persist = (next: WaterRec[]) => { setItems(next); save('webx-water', next) }
+  const saveGoal = (g: number) => { const v = Math.max(100, Math.round(g) || 2000); setGoal(v); save('webx-water-goal', v) }
+  const add = (ml: number, d: string = todayStr()) => {
+    if (!ml || ml <= 0) return
+    persist([...items, { id: Date.now() + Math.random(), date: d, amount: Math.round(ml) }].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id))
+  }
+  const today = todayStr()
+  const todayTotal = items.filter((r) => r.date === today).reduce((s, r) => s + r.amount, 0)
+  const todayItems = items.filter((r) => r.date === today)
+  const pct = Math.min(100, Math.round((todayTotal / goal) * 100))
+  const remain = Math.max(0, goal - todayTotal)
+  const last7: { date: string; total: number }[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i)
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    last7.push({ date: ds, total: items.filter((r) => r.date === ds).reduce((s, r) => s + r.amount, 0) })
+  }
+  const avg7 = Math.round(last7.reduce((s, d) => s + d.total, 0) / 7)
+  const max7 = Math.max(goal, ...last7.map((d) => d.total), 1)
+  return (
+    <div className="sa-app">
+      <div className="sa-stats">
+        <span>今日の合計 <b>{todayTotal.toLocaleString()} ml</b></span>
+        <span>目標 <b>{goal.toLocaleString()} ml</b></span>
+        <span>達成率 <b>{pct}%</b></span>
+        <span>残り <b>{remain.toLocaleString()} ml</b></span>
+      </div>
+      <div style={{ height: 12, borderRadius: 6, background: 'var(--muted, #e5e7eb)', overflow: 'hidden' }}>
+        <div style={{ width: `${pct}%`, height: '100%', background: 'linear-gradient(90deg,#38bdf8,#0369a1)', transition: 'width .3s' }} />
+      </div>
+      <p className="sa-note">{remain === 0 ? '目標達成です。よく飲めました。' : `目標まであと ${remain.toLocaleString()} ml です。`}</p>
+      <div className="sa-row">
+        {WATER_QUICK.map((ml) => (
+          <button key={ml} className="btn" onClick={() => add(ml)}>+{ml} ml</button>
+        ))}
+      </div>
+      <div className="sa-row">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <label>量 <input type="number" min={1} value={amount} onChange={(e) => setAmount(Number(e.target.value))} style={{ width: 72 }} /> ml</label>
+        <button className="btn accent" onClick={() => add(amount, date)}>追加</button>
+      </div>
+      <div className="sa-row">
+        <label>1日の目標 <input type="number" min={100} step={100} value={goal} onChange={(e) => saveGoal(Number(e.target.value))} style={{ width: 80 }} /> ml</label>
+        <span className="sa-note">7日平均 <b>{avg7.toLocaleString()} ml</b></span>
+      </div>
+      <div className="sa-log">
+        {last7.map((d) => (
+          <div key={d.date} className="sa-cardrow">
+            <span style={{ flex: 1 }}><b>{d.date === today ? '今日' : dayLabel(d.date)}</b>　{d.total.toLocaleString()} ml
+              <span style={{ display: 'block', height: 8, borderRadius: 4, background: 'var(--muted, #e5e7eb)', overflow: 'hidden', marginTop: 4 }}>
+                <span style={{ display: 'block', width: `${Math.min(100, Math.round((d.total / max7) * 100))}%`, height: '100%', background: d.total >= goal ? '#16a34a' : '#38bdf8' }} />
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="sa-log">
+        {todayItems.map((r) => (
+          <div key={r.id} className="sa-cardrow">
+            <span>今日　<b>{r.amount.toLocaleString()} ml</b></span>
+            <button className="btn small" onClick={() => persist(items.filter((x) => x.id !== r.id))}>削除</button>
+          </div>
+        ))}
+        {todayItems.length === 0 && <p className="sa-note">今日はまだ記録がありません。上のボタンで飲んだ量を追加してください。</p>}
+      </div>
+      <p className="sa-note">飲んだ水の量を記録して、1日の目標に対する進み具合を確認できます。記録と目標は端末内に保存されます。</p>
+    </div>
+  )
+}

@@ -44,7 +44,7 @@ import { Tap10, AimTrainer, LightsOut, Mastermind, Trivia, FlagQuiz, NumMemory, 
 import { Kuku, Drill, EngQuiz, PrefQuiz, Elements, HistoryQuiz, KanjiQuiz, Capitals, ScienceQuiz } from './components/store/Mega2'
 import { BaseConv, Percent, TaxCalc, Discount, Loan, Tip, Salary, Pace, Aspect, Gcd, Prime, Combin } from './components/store/Mega3'
 import { TextTools, JsonFmt, Base64Tool, UrlTool, UuidGen, HashTool, PassCheck, Flashlight, Ruler, Mirror, VoiceRec, Amida, Teams, Scoreboard, Tournament } from './components/store/Mega4'
-import { Reading, MovieLog, Plants, Inventory, Expiry, GiftMemo, Savings, Subs, SleepLog, RecipeBook } from './components/store/Mega5'
+import { Reading, MovieLog, Plants, Inventory, Expiry, GiftMemo, Savings, Subs, SleepLog, RecipeBook, WaterLog } from './components/store/Mega5'
 import { MediaConv } from './components/store/MediaConv'
 import SysInfo from './components/SysInfo'
 import TaskManager from './components/TaskManager'
@@ -71,7 +71,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'mediaconv' | 'touge'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'mediaconv' | 'touge'
 
 interface Win {
   id: WindowApp
@@ -223,6 +223,7 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   subs: { icon: '契', cls: 'subs' },
   sleep: { icon: '眠', cls: 'sleep' },
   recipe: { icon: '料', cls: 'recipe' },
+  water: { icon: '水', cls: 'water' },
   mediaconv: { icon: '変', cls: 'mediaconv' },
   touge: { icon: '🏎️', cls: 'touge' },
   sysinfo: { icon: '情', cls: 'sysinfo' },
@@ -1194,6 +1195,7 @@ export default function App() {
       case 'subs': return <Subs />
       case 'sleep': return <SleepLog />
       case 'recipe': return <RecipeBook />
+      case 'water': return <WaterLog />
       case 'mediaconv': return <MediaConv />
       case 'touge': return <TougeDrift />
       case 'sysinfo': return <SysInfo />
