@@ -22,6 +22,7 @@ import AppStore from './components/AppStore'
 import UpdateInfoWindow from './components/UpdateInfoWindow'
 import UnitConverter from './components/UnitConverter'
 import { STORE_APPS } from './lib/storeApps'
+import { EDITION_EVENT, PRO_DEFAULT_APPS, getEdition, getProExtraApps, setProExtraApps, type EditionId } from './lib/edition'
 import { Dice, Janken, NumGuess, Omikuji } from './components/store/Games'
 import { PassGen, TextCount, ColorPicker, Morse } from './components/store/ToolsA'
 import { DayCalc, Bmi, SplitBill, Currency, Wareki } from './components/store/ToolsB'
@@ -45,6 +46,7 @@ import { Kuku, Drill, EngQuiz, PrefQuiz, Elements, HistoryQuiz, KanjiQuiz, Capit
 import { BaseConv, Percent, TaxCalc, Discount, Loan, Tip, Salary, Pace, Aspect, Gcd, Prime, Combin } from './components/store/Mega3'
 import { TextTools, JsonFmt, Base64Tool, UrlTool, UuidGen, HashTool, PassCheck, Flashlight, Ruler, Mirror, VoiceRec, Amida, Teams, Scoreboard, Tournament } from './components/store/Mega4'
 import { Reading, MovieLog, Plants, Inventory, Expiry, GiftMemo, Savings, Subs, SleepLog, RecipeBook, WaterLog, StudyLog } from './components/store/Mega5'
+import MemoPro from './components/store/MemoPro'
 import { MediaConv } from './components/store/MediaConv'
 import SysInfo from './components/SysInfo'
 import TaskManager from './components/TaskManager'
@@ -74,7 +76,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro'
 
 interface Win {
   id: WindowApp
@@ -228,6 +230,7 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   recipe: { icon: '料', cls: 'recipe' },
   water: { icon: '水', cls: 'water' },
   study: { icon: '勉', cls: 'study' },
+  memopro: { icon: 'デ', cls: 'memopro' },
   mediaconv: { icon: '変', cls: 'mediaconv' },
   touge: { icon: '🏎️', cls: 'touge' },
   traingo: { icon: '🚃', cls: 'traingo' },
@@ -517,7 +520,48 @@ export default function App() {
       return {}
     }
   })
-  const visibleApps: WindowApp[] = [...APP_ORDER.filter((a) => a !== 'developer' || localStorage.getItem('webx-dev-enabled') !== 'off'), ...STORE_APPS.filter((a) => installedApps.includes(a.id)).map((a) => a.id as WindowApp), ...customApps.map((c) => c.id as WindowApp)]
+  const [edition, setEditionState] = useState<EditionId>(() => getEdition())
+  const [proExtraApps, setProExtraAppsState] = useState<string[]>(() => getProExtraApps())
+  useEffect(() => {
+    const onEdition = () => {
+      const ed = getEdition()
+      setEditionState(ed)
+      const extra = getProExtraApps()
+      setProExtraAppsState(extra)
+      // 新しいエディションで見えなくなるアプリのウィンドウは閉じる
+      setWindows((prev) => prev.filter((w) => {
+        if (STORE_APPS.some((a) => a.id === w.id)) return ed !== 'lite'
+        if ((APP_ORDER as string[]).includes(w.id)) {
+          if (ed !== 'pro') return true
+          return PRO_DEFAULT_APPS.includes(w.id) || extra.includes(w.id) || w.id === 'settings'
+        }
+        return true
+      }))
+    }
+    window.addEventListener(EDITION_EVENT, onEdition)
+    return () => window.removeEventListener(EDITION_EVENT, onEdition)
+  }, [])
+  const installCoreApp = (id: string) => {
+    setProExtraAppsState((prev) => {
+      const next = prev.includes(id) ? prev : [...prev, id]
+      setProExtraApps(next)
+      return next
+    })
+  }
+  const uninstallCoreApp = (id: string) => {
+    setProExtraAppsState((prev) => {
+      const next = prev.filter((x) => x !== id)
+      setProExtraApps(next)
+      return next
+    })
+    setWindows((prev) => prev.filter((w) => w.id !== id))
+  }
+  const coreVisible = APP_ORDER.filter((a) => {
+    if (a === 'developer' && localStorage.getItem('webx-dev-enabled') === 'off') return false
+    if (edition === 'pro' && !PRO_DEFAULT_APPS.includes(a) && !proExtraApps.includes(a)) return false
+    return true
+  })
+  const visibleApps: WindowApp[] = [...coreVisible, ...(edition === 'lite' ? [] : STORE_APPS.filter((a) => installedApps.includes(a.id)).map((a) => a.id as WindowApp)), ...customApps.map((c) => c.id as WindowApp)]
   // MXUI ではデスクトップアイコンを 3列×4行 = 12 個ごとにページ切り替えする
   const ICONS_PER_PAGE = 12
   const iconPageCount = Math.max(1, Math.ceil(visibleApps.length / ICONS_PER_PAGE))
@@ -847,7 +891,8 @@ export default function App() {
   }, [])
 
   const openApp = useCallback((app: WindowApp) => {
-    if (STORE_APPS.some((a) => a.id === app) && !installedApps.includes(app)) app = 'store'
+    if (STORE_APPS.some((a) => a.id === app) && (edition === 'lite' || !installedApps.includes(app))) app = 'store'
+    else if (edition === 'pro' && (APP_ORDER as string[]).includes(app) && !PRO_DEFAULT_APPS.includes(app) && !proExtraApps.includes(app)) app = 'store'
     setStartOpen(false)
     // そのアプリを開いたら、宛先がそのアプリの通知は消える
     setNotes((prev) => prev.filter((n) => n.app !== app))
@@ -889,7 +934,7 @@ export default function App() {
     zRef.current += 1
     setActiveId(app)
     setWindows((prev) => prev.map((w) => (w.id === app ? { ...w, z: zRef.current, minimized: false } : w)))
-  }, [desktop, wide, installedApps, ws])
+  }, [desktop, wide, installedApps, ws, edition, proExtraApps])
 
   const closeWin = (id: WindowApp) => {
     if (closingIds.includes(id)) return
@@ -1072,6 +1117,10 @@ export default function App() {
           coreApps={APP_ORDER.filter((a) => a !== 'store').map((a) => ({ id: a, name: appName(a), icon: APP_META[a].icon, cls: APP_META[a].cls }))}
           onInstall={installApp}
           onUninstall={uninstallApp}
+          edition={edition}
+          proExtra={proExtraApps}
+          onInstallCore={installCoreApp}
+          onUninstallCore={uninstallCoreApp}
           onUpdateApp={updateStoreApp}
           onShowUpdate={(target) => { setUpdateTarget(target); openApp('updateinfo') }}
           catalog={storeCatalog}
@@ -1204,6 +1253,7 @@ export default function App() {
       case 'recipe': return <RecipeBook />
       case 'water': return <WaterLog />
       case 'study': return <StudyLog />
+      case 'memopro': return <MemoPro />
       case 'mediaconv': return <MediaConv />
       case 'touge': return <TougeDrift />
       case 'traingo': return <TrainGo />

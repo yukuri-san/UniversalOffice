@@ -10,6 +10,7 @@ export const SETTINGS_KEYS = [
   'webx-boot-delay', 'webx-safe-mode', 'webx-boot-target', 'webx-widget-weather',
   'webx-permit-hwinfo', 'webx-setup-version', 'webx-ui-mode', 'webx-android-winmove', 'webx-resize-mode',
   'webx-boot-default', 'webx-fast-boot', 'webx-dev-enabled', 'webx-bios-pin',
+  'webx-edition', 'webx-pro-unlocked', 'webx-pro-apps',
 ]
 
 /** 設定だけを初期化する（ドキュメントや予定などのデータは消えない。PINも消える） */

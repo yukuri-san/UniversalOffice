@@ -317,8 +317,8 @@ export const STORE_APPS: StoreAppDef[] = [
   {
     id: 'ymmdic', icon: '🗣', cls: 'ymmdic', name: 'YMM4辞書CSV',
     desc: 'YMM4用の辞書CSV（立ち絵空間IDとセリフ）を編集。フォルダ管理・CSV入出力・自動保存対応。',
-    version: '1.3.0', category: 'tool',
-    notes: 'v1.3.0：空間IDを全ファイル共通に変更しました。どの辞書を開いても同じID一覧が使え、設定画面での名前変更・削除は全ファイルに反映されます（既存のファイル別IDは自動で統合されます）。v1.2.0：空間IDの設定画面を追加。v1.1.0：UI/UX刷新と仮データ削除。',
+    version: '1.4.0', category: 'tool',
+    notes: 'v1.4.0：セリフ・空間IDの検索を追加。行の複製ボタン（⧉）を追加。空のセリフ・IDなし・重複セリフの件数を表示し、タップで該当行だけに絞り込めるチェック機能を追加しました。v1.3.0：空間IDを全ファイル共通に変更。v1.2.0：空間IDの設定画面を追加。v1.1.0：UI/UX刷新と仮データ削除。',
   },
   {
     id: 'qr', icon: 'QR', cls: 'qr', name: 'QR・バーコード',
@@ -641,6 +641,11 @@ export const STORE_APPS: StoreAppDef[] = [
   {
     id: 'mediaconv', icon: '変', cls: 'mediaconv', name: 'メディア変換',
     desc: '動画を GIF／音声（MP3）／WebM に変換。FFmpeg を端末内で実行し、ファイルは外部送信されません。', version: '1.0.0', notes: '新規アプリです。FFmpeg（WASM）で動画を GIF・MP3・WebM に変換できます。初回のみエンジン読み込みにネット接続が必要です。',
+    category: 'tool',
+  },
+  {
+    id: 'memopro', icon: 'デ', cls: 'memopro', name: 'メモDB-Pro',
+    desc: 'メモDBの上位版。データはメモDBと共通。フォルダ整理・ピン留め・並び替え・統計・全件JSON入出力・複製に対応。', version: '1.0.0', notes: '新規アプリです。メモDBと同じメモを、フォルダ整理・ピン留め・並び替え（新しい順／古い順／タイトル順）・件数や文字数の統計・全件JSON書き出し／取り込み・メモの複製で、より本格的に管理できます。',
     category: 'tool',
   },
   {

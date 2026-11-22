@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { clearAllStoredData, deleteDoc, exportAll, importAll, listDocs, listEvents, ownUsageBytes, saveDoc, storageInfo, trashDoc, type BackupData, type LocalDoc } from '../lib/store'
 import { resetSettingsOnly, SETTINGS_KEYS } from '../lib/reset'
-import { APP_EDITION, APP_VERSION } from '../lib/version'
+import { APP_VERSION } from '../lib/version'
+import { editionLabel } from '../lib/edition'
 import { execCommand, type ShellState } from '../lib/shell'
 import { hashPin } from '../lib/pin'
 
@@ -92,7 +93,7 @@ export function BiosScreen({ onExit }: { onExit: () => void }) {
 
   const nav = navigator as unknown as { hardwareConcurrency?: number; deviceMemory?: number }
   const mainRows: [string, string][] = [
-    ['WebX Version', `${APP_VERSION} (${APP_EDITION})`],
+    ['WebX Version', `${APP_VERSION} (${editionLabel()})`],
     ['System Time', now.toLocaleTimeString('ja-JP', { hour12: false })],
     ['System Date', now.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', weekday: 'short' })],
     ['Language', localStorage.getItem('ykr-lang') ?? 'ja'],
@@ -230,7 +231,7 @@ export function RecoveryScreen({ onExit }: { onExit: () => void }) {
       setInfo(`WebX ${APP_VERSION} ／ 保存方式：${si.backend} ／ 永続化：${si.persisted ? '有効' : '未許可'} ／ ドキュメント ${ds.length} 件 ／ 予定 ${events.length} 件`)
       setDocs(ds.filter((d) => !d.deletedAt))
       setBootLog([
-        `[boot] WebX v${APP_VERSION} (${APP_EDITION})`,
+        `[boot] WebX v${APP_VERSION} (${editionLabel()})`,
         `[boot] boot target: recovery`,
         `[storage] backend: ${si.backend} / persisted: ${si.persisted}`,
         `[storage] usage: ${(si.usage / 1024).toFixed(1)} KB`,

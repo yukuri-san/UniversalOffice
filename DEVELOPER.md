@@ -62,7 +62,8 @@ await WebX.storage.set('count', count + 1)
 
 ```json
 {
-  "appVersion": "1.42.0",
+  "appVersion": "1.50.0",
+  "edition": "Standard Edition",
   "apiVersion": 1,
   "theme": "default",
   "lang": "ja",
@@ -85,6 +86,10 @@ document.body.style.background = theme === 'midnight' ? '#0b1020' : '#ffffff'
 | 関数 | 戻り値 | 説明 |
 |---|---|---|
 | `WebX.clipboard.write(text)` | `true` | テキストをクリップボードへコピーする。ブラウザの許可状況によっては失敗することがある |
+
+## エディションについて
+
+WebX には Lite／Standard／Pro のエディションがあります（設定で切替）。`WebX.system.info()` の戻り値には現在のエディション名が含まれます。Lite Edition ではストアアプリが無効なため、マイApp 以外の追加アプリは動作しません。Pro Edition では初期アプリが限定されますが、マイApp は通常どおり作成・実行できます。
 
 ## バージョン情報
 

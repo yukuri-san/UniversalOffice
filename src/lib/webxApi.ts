@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from 'react'
 import { APP_VERSION } from './version'
+import { editionLabel } from './edition'
 import { notifyOs } from './notify'
 
 /**
@@ -85,6 +86,7 @@ function storageKey(appId: string, key: string): string {
 
 export interface WebxSystemInfo {
   appVersion: string
+  edition: string
   apiVersion: number
   theme: string | null
   lang: string | null
@@ -98,6 +100,7 @@ function systemInfo(): WebxSystemInfo {
   const root = document.querySelector('.os-root')
   return {
     appVersion: APP_VERSION,
+    edition: editionLabel(),
     apiVersion: WEBX_API_VERSION,
     theme: root?.getAttribute('data-theme') ?? localStorage.getItem('ykr-theme'),
     lang: localStorage.getItem('ykr-lang'),

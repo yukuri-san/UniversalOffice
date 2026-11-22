@@ -64,7 +64,7 @@ const ja: Dict = {
   cellBold: '太字', cellItalic: '斜体', cellTextColor: '文字色', cellBg: '背景色',
   cellAlignLeft: '左揃え', cellAlignCenter: '中央揃え', cellAlignRight: '右揃え', cellClearFormat: '書式をクリア', colWidthReset: '列幅をリセット', colWidthResetHint: 'すべての列幅を既定に戻します', colWidthAutoFit: 'ダブルクリックで内容に合わせて幅を自動調整', rowHeightReset: '行の高さをリセット', rowHeightResetHint: 'すべての行の高さを既定に戻します', rowHeightDefault: 'ダブルクリックで既定の高さに戻す', cellNumFmt: '数値書式', fmtGeneral: '標準', fmtNumber: '数値', fmtCurrency: '通貨', fmtPercent: 'パーセント', findNext: '次を検索', replaceOne: '置換', findNotFound: '見つかりませんでした', findMatches: '{n} 件見つかりました', replacedCount: '{n} 件置換しました', condFmt: '条件付き書式', condFmtRange: '範囲', condFmtOp: '条件', condFmtValue: '値', condFmtColor: '色', condFmtNoRules: 'ルールはまだありません', condOpGt: 'より大きい', condOpLt: 'より小さい', condOpEq: '等しい', condOpGte: '以上', condOpLte: '以下', condOpContains: 'を含む', condOpEmpty: '空欄',
   formulaPh: '数式または値（例：=SUM(A1:B2)）', csvDl: 'CSV で保存',
-  newNote: '新規メモ', notePh: 'ここに入力…', chars: '文字', lines: '行', noNotes: 'メモがありません', untitledNote: '無題のメモ',
+  newNote: '新規メモ', notePh: 'ここに入力…', chars: '文字', wordCount: '文字数カウント', charsNoSpace: '文字数（空白なし）', charsWithSpace: '文字数（空白込み）', words: '単語数', paragraphs: '段落数', selectedChars: '選択範囲の文字数', manuscriptPages: '原稿用紙（400字詰め）枚数', lines: '行', noNotes: 'メモがありません', untitledNote: '無題のメモ',
   searchNotes: 'メモを検索', searchNotesPh: 'タイトル・本文で検索…', pinNote: 'ピン留め', unpinNote: 'ピンを外す', sortNotes: '並び替え', sortNewest: '新しい順', sortOldest: '古い順', sortTitle: 'タイトル順', noSearchResults: '見つかりませんでした',
   today: '今日', addEvent: '予定を追加', eventTitle: 'タイトル', eventMemo: 'メモ', eventsOn: 'の予定', noEvents: '予定はありません', monthView: '月表示', weekView: '週表示',
   editEvent: '編集', saveEvent: '保存', eventsThisMonth: '今月の予定 {n} 件', confirmDeleteEvent: '「{title}」を削除しますか？', moreEvents: '他 {n} 件', searchEvents: '予定を検索', searchEventsPh: 'タイトル・メモで検索…', clearSearch: '検索をクリア',
@@ -214,6 +214,7 @@ const ja: Dict = {
   storeStaleTitle: 'ストアに新しいアプリ・更新があります',
   storeStaleDesc: 'この端末のキャッシュが古いため、まだ表示・利用できません。ストアの更新にはキャッシュの更新も必要です。',
   storeStaleBtn: 'キャッシュを更新して再読み込み',
+  editionSection: 'エディション', editionLiteDesc: 'ストアアプリ無効の軽量版（コアアプリのみ）', editionStdDesc: '従来どおりの標準版（コアアプリ＋ストアアプリ）', editionProDesc: '初期アプリを限定した上位版。不足するアプリはストアから追加できます（プロダクトキー必須）', productKey: 'プロダクトキー', productKeyPh: 'プロダクトキーを入力', editionUnlockBtn: '認証して切り替え', editionKeyWrong: 'プロダクトキーが違います', editionSwitched: 'エディションを切り替えました', liteStoreOff: 'Lite Edition ではストアアプリは無効です', liteStoreOffDesc: 'アプリの追加・利用はできません。設定の「エディション」から Standard / Pro に切り替えると使えるようになります。', coreAddBtn: '追加', coreRemoveBtn: '削除', coreDefaultBadge: '標準', proStoreNote: 'Pro Edition では、初期アプリ以外のシステムアプリもここから追加できます。',
 }
 
 const en: Dict = {
@@ -254,7 +255,7 @@ const en: Dict = {
   cellBold: 'Bold', cellItalic: 'Italic', cellTextColor: 'Text color', cellBg: 'Background color',
   cellAlignLeft: 'Align left', cellAlignCenter: 'Center', cellAlignRight: 'Align right', cellClearFormat: 'Clear formatting', colWidthReset: 'Reset column widths', colWidthResetHint: 'Reset all column widths to default', colWidthAutoFit: 'Double-click to auto-fit to content', rowHeightReset: 'Reset row heights', rowHeightResetHint: 'Reset all row heights to default', rowHeightDefault: 'Double-click to reset to default height', cellNumFmt: 'Number format', fmtGeneral: 'General', fmtNumber: 'Number', fmtCurrency: 'Currency', fmtPercent: 'Percent', findNext: 'Find next', replaceOne: 'Replace', findNotFound: 'Not found', findMatches: '{n} matches found', replacedCount: '{n} replaced', condFmt: 'Conditional formatting', condFmtRange: 'Range', condFmtOp: 'Condition', condFmtValue: 'Value', condFmtColor: 'Color', condFmtNoRules: 'No rules yet', condOpGt: 'Greater than', condOpLt: 'Less than', condOpEq: 'Equal to', condOpGte: 'Greater than or equal to', condOpLte: 'Less than or equal to', condOpContains: 'Contains', condOpEmpty: 'Empty',
   formulaPh: 'Formula or value (e.g. =SUM(A1:B2))', csvDl: 'Save as CSV',
-  newNote: 'New note', notePh: 'Type here…', chars: 'chars', lines: 'lines', noNotes: 'No notes', untitledNote: 'Untitled note',
+  newNote: 'New note', notePh: 'Type here…', chars: 'chars', wordCount: 'Word count', charsNoSpace: 'Characters (no spaces)', charsWithSpace: 'Characters (with spaces)', words: 'Words', paragraphs: 'Paragraphs', selectedChars: 'Selected characters', manuscriptPages: 'Manuscript pages (400 chars each)', lines: 'lines', noNotes: 'No notes', untitledNote: 'Untitled note',
   searchNotes: 'Search notes', searchNotesPh: 'Search title or text…', pinNote: 'Pin', unpinNote: 'Unpin', sortNotes: 'Sort', sortNewest: 'Newest first', sortOldest: 'Oldest first', sortTitle: 'By title', noSearchResults: 'No matching notes',
   today: 'Today', addEvent: 'Add event', eventTitle: 'Title', eventMemo: 'Memo', eventsOn: ' events', noEvents: 'No events', monthView: 'Month', weekView: 'Week',
   editEvent: 'Edit', saveEvent: 'Save', eventsThisMonth: '{n} events this month', confirmDeleteEvent: 'Delete "{title}"?', moreEvents: '+{n} more', searchEvents: 'Search events', searchEventsPh: 'Search by title or memo…', clearSearch: 'Clear search',
@@ -404,6 +405,7 @@ const en: Dict = {
   storeStaleTitle: 'New apps & updates are in the store',
   storeStaleDesc: 'This device is running from an old cache, so they are not visible or usable yet. Store updates also need a cache refresh.',
   storeStaleBtn: 'Refresh cache & reload',
+  editionSection: 'Edition', editionLiteDesc: 'Lightweight edition with store apps disabled (core apps only)', editionStdDesc: 'The standard edition (core apps + store apps)', editionProDesc: 'Premium edition with a minimal default app set. Missing apps can be added from the Store (product key required)', productKey: 'Product key', productKeyPh: 'Enter product key', editionUnlockBtn: 'Verify & switch', editionKeyWrong: 'Incorrect product key', editionSwitched: 'Edition switched', liteStoreOff: 'Store apps are disabled in Lite Edition', liteStoreOffDesc: 'Apps cannot be added or used. Switch to Standard / Pro in Settings > Edition to enable them.', coreAddBtn: 'Add', coreRemoveBtn: 'Remove', coreDefaultBadge: 'Default', proStoreNote: 'On Pro Edition, system apps beyond the default set can also be added here.',
 }
 
 const zh: Dict = {
@@ -443,7 +445,7 @@ const zh: Dict = {
   cellBold: '粗体', cellItalic: '斜体', cellTextColor: '文字颜色', cellBg: '背景色',
   cellAlignLeft: '左对齐', cellAlignCenter: '居中对齐', cellAlignRight: '右对齐', cellClearFormat: '清除格式', colWidthReset: '重置列宽', colWidthResetHint: '将所有列宽恢复为默认', colWidthAutoFit: '双击可根据内容自动调整宽度', rowHeightReset: '重置行高', rowHeightResetHint: '将所有行高恢复为默认', rowHeightDefault: '双击恢复为默认高度', cellNumFmt: '数字格式', fmtGeneral: '常规', fmtNumber: '数值', fmtCurrency: '货币', fmtPercent: '百分比', findNext: '查找下一个', replaceOne: '替换', findNotFound: '未找到', findMatches: '找到 {n} 处', replacedCount: '已替换 {n} 处', condFmt: '条件格式', condFmtRange: '范围', condFmtOp: '条件', condFmtValue: '值', condFmtColor: '颜色', condFmtNoRules: '暂无规则', condOpGt: '大于', condOpLt: '小于', condOpEq: '等于', condOpGte: '大于或等于', condOpLte: '小于或等于', condOpContains: '包含', condOpEmpty: '空白',
   formulaPh: '公式或值（例：=SUM(A1:B2)）', csvDl: '保存为 CSV',
-  newNote: '新建笔记', notePh: '在此输入…', chars: '字', lines: '行', noNotes: '暂无笔记', untitledNote: '无标题笔记',
+  newNote: '新建笔记', notePh: '在此输入…', chars: '字', wordCount: '字数统计', charsNoSpace: '字符数（不含空格）', charsWithSpace: '字符数（含空格）', words: '单词数', paragraphs: '段落数', selectedChars: '所选字符数', manuscriptPages: '稿纸换算（每页400字）', lines: '行', noNotes: '暂无笔记', untitledNote: '无标题笔记',
   searchNotes: '搜索笔记', searchNotesPh: '搜索标题或内容…', pinNote: '置顶', unpinNote: '取消置顶', sortNotes: '排序', sortNewest: '最新优先', sortOldest: '最早优先', sortTitle: '按标题', noSearchResults: '没有匹配的笔记',
   today: '今天', addEvent: '添加日程', eventTitle: '标题', eventMemo: '备注', eventsOn: ' 的日程', noEvents: '暂无日程', monthView: '月视图', weekView: '周视图',
   editEvent: '编辑', saveEvent: '保存', eventsThisMonth: '本月日程 {n} 项', confirmDeleteEvent: '删除「{title}」吗？', moreEvents: '另有 {n} 项', searchEvents: '搜索日程', searchEventsPh: '按标题或备注搜索…', clearSearch: '清除搜索',
@@ -593,6 +595,7 @@ const zh: Dict = {
   storeStaleTitle: '商店有新应用和更新',
   storeStaleDesc: '此设备使用的是旧缓存，因此尚不可见或使用。商店更新也需要刷新缓存。',
   storeStaleBtn: '刷新缓存并重新加载',
+  editionSection: '版本', editionLiteDesc: '禁用商店应用的轻量版（仅核心应用）', editionStdDesc: '标准版（核心应用＋商店应用）', editionProDesc: '默认应用精简的高级版。缺少的应用可从商店添加（需要产品密钥）', productKey: '产品密钥', productKeyPh: '输入产品密钥', editionUnlockBtn: '验证并切换', editionKeyWrong: '产品密钥不正确', editionSwitched: '已切换版本', liteStoreOff: 'Lite 版禁用商店应用', liteStoreOffDesc: '无法添加或使用应用。在设置的“版本”中切换到 Standard / Pro 后即可使用。', coreAddBtn: '添加', coreRemoveBtn: '删除', coreDefaultBadge: '默认', proStoreNote: 'Pro 版可以在这里添加默认之外的系统应用。',
 }
 
 const ko: Dict = {
@@ -632,7 +635,7 @@ const ko: Dict = {
   cellBold: '굵게', cellItalic: '기울임꼴', cellTextColor: '글자 색', cellBg: '배경색',
   cellAlignLeft: '왼쪽 정렬', cellAlignCenter: '가운데 정렬', cellAlignRight: '오른쪽 정렬', cellClearFormat: '서식 지우기', colWidthReset: '열 너비 초기화', colWidthResetHint: '모든 열 너비를 기본값으로 되돌립니다', colWidthAutoFit: '두 번 클릭하면 내용에 맞게 너비를 자동 조정합니다', rowHeightReset: '행 높이 초기화', rowHeightResetHint: '모든 행 높이를 기본값으로 되돌립니다', rowHeightDefault: '두 번 클릭하면 기본 높이로 되돌립니다', cellNumFmt: '숫자 서식', fmtGeneral: '일반', fmtNumber: '숫자', fmtCurrency: '통화', fmtPercent: '백분율', findNext: '다음 찾기', replaceOne: '바꾸기', findNotFound: '찾을 수 없음', findMatches: '{n}개 찾음', replacedCount: '{n}개 바꿈', condFmt: '조건부 서식', condFmtRange: '범위', condFmtOp: '조건', condFmtValue: '값', condFmtColor: '색', condFmtNoRules: '아직 규칙이 없습니다', condOpGt: '보다 큼', condOpLt: '보다 작음', condOpEq: '같음', condOpGte: '이상', condOpLte: '이하', condOpContains: '포함', condOpEmpty: '비어 있음',
   formulaPh: '수식 또는 값 (예: =SUM(A1:B2))', csvDl: 'CSV로 저장',
-  newNote: '새 메모', notePh: '여기에 입력…', chars: '자', lines: '줄', noNotes: '메모가 없습니다', untitledNote: '제목 없는 메모',
+  newNote: '새 메모', notePh: '여기에 입력…', chars: '자', wordCount: '글자 수 세기', charsNoSpace: '글자 수(공백 제외)', charsWithSpace: '글자 수(공백 포함)', words: '단어 수', paragraphs: '단락 수', selectedChars: '선택한 글자 수', manuscriptPages: '원고지 환산(400자 기준)', lines: '줄', noNotes: '메모가 없습니다', untitledNote: '제목 없는 메모',
   searchNotes: '메모 검색', searchNotesPh: '제목·내용으로 검색…', pinNote: '고정', unpinNote: '고정 해제', sortNotes: '정렬', sortNewest: '최신순', sortOldest: '오래된순', sortTitle: '제목순', noSearchResults: '일치하는 메모가 없습니다',
   today: '오늘', addEvent: '일정 추가', eventTitle: '제목', eventMemo: '메모', eventsOn: '의 일정', noEvents: '일정이 없습니다', monthView: '월간', weekView: '주간',
   editEvent: '편집', saveEvent: '저장', eventsThisMonth: '이번 달 일정 {n}건', confirmDeleteEvent: '「{title}」을(를) 삭제하시겠습니까?', moreEvents: '+{n}개 더', searchEvents: '일정 검색', searchEventsPh: '제목·메모로 검색…', clearSearch: '검색 지우기',
@@ -782,6 +785,7 @@ const ko: Dict = {
   storeStaleTitle: '스토어에 새 앱과 업데이트가 있습니다',
   storeStaleDesc: '이 기기는 오래된 캐시로 실행 중이라 아직 표시·사용할 수 없습니다. 스토어 업데이트에는 캐시 새로고침도 필요합니다.',
   storeStaleBtn: '캐시를 새로고치고 다시 로드',
+  editionSection: '에디션', editionLiteDesc: '스토어 앱이 비활성화된 경량 버전(코어 앱만)', editionStdDesc: '표준 버전(코어 앱 + 스토어 앱)', editionProDesc: '기본 앱이 제한된 상위 버전. 부족한 앱은 스토어에서 추가할 수 있습니다(제품 키 필요)', productKey: '제품 키', productKeyPh: '제품 키 입력', editionUnlockBtn: '인증하고 전환', editionKeyWrong: '제품 키가 올바르지 않습니다', editionSwitched: '에디션이 전환되었습니다', liteStoreOff: 'Lite Edition에서는 스토어 앱이 비활성화됩니다', liteStoreOffDesc: '앱을 추가하거나 사용할 수 없습니다. 설정의 "에디션"에서 Standard / Pro로 전환하면 사용할 수 있습니다.', coreAddBtn: '추가', coreRemoveBtn: '삭제', coreDefaultBadge: '기본', proStoreNote: 'Pro Edition에서는 기본 앱 외의 시스템 앱도 여기에서 추가할 수 있습니다.',
 }
 
 const th: Dict = {
@@ -821,7 +825,7 @@ const th: Dict = {
   cellBold: 'ตัวหนา', cellItalic: 'ตัวเอียง', cellTextColor: 'สีตัวอักษร', cellBg: 'สีพื้นหลัง',
   cellAlignLeft: 'ชิดซ้าย', cellAlignCenter: 'กึ่งกลาง', cellAlignRight: 'ชิดขวา', cellClearFormat: 'ล้างรูปแบบ', colWidthReset: 'รีเซ็ตความกว้างคอลัมน์', colWidthResetHint: 'คืนความกว้างทุกคอลัมน์เป็นค่าเริ่มต้น', colWidthAutoFit: 'ดับเบิลคลิกเพื่อปรับความกว้างตามเนื้อหาอัตโนมัติ', rowHeightReset: 'รีเซ็ตความสูงแถว', rowHeightResetHint: 'คืนความสูงทุกแถวเป็นค่าเริ่มต้น', rowHeightDefault: 'ดับเบิลคลิกเพื่อคืนความสูงเริ่มต้น', cellNumFmt: 'รูปแบบตัวเลข', fmtGeneral: 'ทั่วไป', fmtNumber: 'ตัวเลข', fmtCurrency: 'สกุลเงิน', fmtPercent: 'เปอร์เซ็นต์', findNext: 'ค้นหาถัดไป', replaceOne: 'แทนที่', findNotFound: 'ไม่พบ', findMatches: 'พบ {n} รายการ', replacedCount: 'แทนที่แล้ว {n} รายการ', condFmt: 'การจัดรูปแบบตามเงื่อนไข', condFmtRange: 'ช่วง', condFmtOp: 'เงื่อนไข', condFmtValue: 'ค่า', condFmtColor: 'สี', condFmtNoRules: 'ยังไม่มีกฎ', condOpGt: 'มากกว่า', condOpLt: 'น้อยกว่า', condOpEq: 'เท่ากับ', condOpGte: 'มากกว่าหรือเท่ากับ', condOpLte: 'น้อยกว่าหรือเท่ากับ', condOpContains: 'มี', condOpEmpty: 'ว่างเปล่า',
   formulaPh: 'สูตรหรือค่า (เช่น =SUM(A1:B2))', csvDl: 'บันทึกเป็น CSV',
-  newNote: 'บันทึกใหม่', notePh: 'พิมพ์ที่นี่…', chars: 'ตัวอักษร', lines: 'บรรทัด', noNotes: 'ยังไม่มีบันทึก', untitledNote: 'บันทึกไม่มีชื่อ',
+  newNote: 'บันทึกใหม่', notePh: 'พิมพ์ที่นี่…', chars: 'ตัวอักษร', wordCount: 'นับจำนวนตัวอักษร', charsNoSpace: 'ตัวอักษร (ไม่รวมช่องว่าง)', charsWithSpace: 'ตัวอักษร (รวมช่องว่าง)', words: 'คำ', paragraphs: 'ย่อหน้า', selectedChars: 'ตัวอักษรที่เลือก', manuscriptPages: 'เทียบเท่ากระดาษต้นฉบับ (400 ตัวอักษรต่อหน้า)', lines: 'บรรทัด', noNotes: 'ยังไม่มีบันทึก', untitledNote: 'บันทึกไม่มีชื่อ',
   searchNotes: 'ค้นหาบันทึก', searchNotesPh: 'ค้นหาชื่อหรือเนื้อหา…', pinNote: 'ปักหมุด', unpinNote: 'ยกเลิกปักหมุด', sortNotes: 'เรียงลำดับ', sortNewest: 'ใหม่สุดก่อน', sortOldest: 'เก่าสุดก่อน', sortTitle: 'ตามชื่อ', noSearchResults: 'ไม่พบบันทึกที่ตรงกัน',
   today: 'วันนี้', addEvent: 'เพิ่มกิจกรรม', eventTitle: 'ชื่อ', eventMemo: 'บันทึกช่วยจำ', eventsOn: ' กิจกรรม', noEvents: 'ไม่มีกิจกรรม', monthView: 'รายเดือน', weekView: 'รายสัปดาห์',
   editEvent: 'แก้ไข', saveEvent: 'บันทึก', eventsThisMonth: 'กิจกรรมเดือนนี้ {n} รายการ', confirmDeleteEvent: 'ลบ "{title}" หรือไม่', moreEvents: 'อีก {n} รายการ', searchEvents: 'ค้นหากิจกรรม', searchEventsPh: 'ค้นหาจากชื่อหรือบันทึก…', clearSearch: 'ล้างการค้นหา',
@@ -971,6 +975,7 @@ const th: Dict = {
   storeStaleTitle: 'มีแอปและอัปเดตใหม่ในสโตร์',
   storeStaleDesc: 'อุปกรณ์นี้ใช้แคชเก่าอยู่ จึงยังมองไม่เห็นหรือใช้งานไม่ได้ การอัปเดตสโตร์ต้องรีเฟรชแคชด้วย',
   storeStaleBtn: 'รีเฟรชแคชและโหลดใหม่',
+  editionSection: 'รุ่น', editionLiteDesc: 'รุ่นเบา ปิดใช้งานแอปจากสโตร์ (เฉพาะแอปหลัก)', editionStdDesc: 'รุ่นมาตรฐาน (แอปหลัก + แอปจากสโตร์)', editionProDesc: 'รุ่นพรีเมียมพร้อมแอปเริ่มต้นจำนวนจำกัด เพิ่มแอปที่ขาดได้จากสโตร์ (ต้องใช้รหัสผลิตภัณฑ์)', productKey: 'รหัสผลิตภัณฑ์', productKeyPh: 'ป้อนรหัสผลิตภัณฑ์', editionUnlockBtn: 'ยืนยันและสลับ', editionKeyWrong: 'รหัสผลิตภัณฑ์ไม่ถูกต้อง', editionSwitched: 'สลับรุ่นแล้ว', liteStoreOff: 'แอปจากสโตร์ถูกปิดใช้งานใน Lite Edition', liteStoreOffDesc: 'ไม่สามารถเพิ่มหรือใช้แอปได้ สลับเป็น Standard / Pro ในการตั้งค่า > รุ่น เพื่อเปิดใช้งาน', coreAddBtn: 'เพิ่ม', coreRemoveBtn: 'ลบ', coreDefaultBadge: 'ค่าเริ่มต้น', proStoreNote: 'ใน Pro Edition สามารถเพิ่มแอประบบนอกเหนือจากชุดเริ่มต้นได้ที่นี่',
 }
 
 const es: Dict = {
@@ -1104,6 +1109,13 @@ const es: Dict = {
   newNote: 'Nota nueva',
   notePh: 'Escribe aquí…',
   chars: 'caracteres',
+  wordCount: 'Recuento de palabras',
+  charsNoSpace: 'Caracteres (sin espacios)',
+  charsWithSpace: 'Caracteres (con espacios)',
+  words: 'Palabras',
+  paragraphs: 'Párrafos',
+  selectedChars: 'Caracteres seleccionados',
+  manuscriptPages: 'Páginas de manuscrito (400 caracteres por página)',
   lines: 'líneas',
   noNotes: 'Sin notas',
   untitledNote: 'Nota sin título',
@@ -1343,6 +1355,7 @@ const es: Dict = {
   storeStaleTitle: 'Hay apps y actualizaciones nuevas en la tienda',
   storeStaleDesc: 'Este dispositivo usa una caché antigua, así que aún no se ven ni se pueden usar. Las actualizaciones de la tienda también necesitan refrescar la caché.',
   storeStaleBtn: 'Refrescar caché y recargar',
+  editionSection: 'Edición', editionLiteDesc: 'Edición ligera sin apps de la tienda (solo apps principales)', editionStdDesc: 'Edición estándar (apps principales + apps de la tienda)', editionProDesc: 'Edición premium con un conjunto mínimo de apps. Las apps que faltan se añaden desde la Tienda (se requiere clave de producto)', productKey: 'Clave de producto', productKeyPh: 'Introduce la clave de producto', editionUnlockBtn: 'Verificar y cambiar', editionKeyWrong: 'Clave de producto incorrecta', editionSwitched: 'Edición cambiada', liteStoreOff: 'Las apps de la tienda están desactivadas en Lite Edition', liteStoreOffDesc: 'No se pueden añadir ni usar apps. Cambia a Standard / Pro en Ajustes > Edición para activarlas.', coreAddBtn: 'Añadir', coreRemoveBtn: 'Quitar', coreDefaultBadge: 'Predeterminada', proStoreNote: 'En Pro Edition, también puedes añadir aquí apps del sistema fuera del conjunto predeterminado.',
 }
 
 const fr: Dict = {
@@ -1476,6 +1489,13 @@ const fr: Dict = {
   newNote: 'Nouvelle note',
   notePh: 'Écrivez ici…',
   chars: 'caractères',
+  wordCount: 'Nombre de mots',
+  charsNoSpace: 'Caractères (sans espaces)',
+  charsWithSpace: 'Caractères (avec espaces)',
+  words: 'Mots',
+  paragraphs: 'Paragraphes',
+  selectedChars: 'Caractères sélectionnés',
+  manuscriptPages: 'Pages de manuscrit (400 caractères par page)',
   lines: 'lignes',
   noNotes: 'Aucune note',
   untitledNote: 'Note sans titre',
@@ -1715,6 +1735,7 @@ const fr: Dict = {
   storeStaleTitle: 'De nouvelles apps et mises à jour sont dans la boutique',
   storeStaleDesc: 'Cet appareil utilise un ancien cache, elles ne sont donc pas encore visibles ni utilisables. Les mises à jour de la boutique exigent aussi un rafraîchissement du cache.',
   storeStaleBtn: 'Rafraîchir le cache et recharger',
+  editionSection: 'Édition', editionLiteDesc: 'Édition légère sans apps du Store (apps principales uniquement)', editionStdDesc: 'Édition standard (apps principales + apps du Store)', editionProDesc: 'Édition premium avec un ensemble d’apps minimal. Les apps manquantes s’ajoutent depuis le Store (clé de produit requise)', productKey: 'Clé de produit', productKeyPh: 'Saisir la clé de produit', editionUnlockBtn: 'Vérifier et basculer', editionKeyWrong: 'Clé de produit incorrecte', editionSwitched: 'Édition changée', liteStoreOff: 'Les apps du Store sont désactivées dans Lite Edition', liteStoreOffDesc: 'Impossible d’ajouter ou d’utiliser des apps. Bascule vers Standard / Pro dans Réglages > Édition pour les activer.', coreAddBtn: 'Ajouter', coreRemoveBtn: 'Retirer', coreDefaultBadge: 'Par défaut', proStoreNote: 'Sur Pro Edition, les apps système hors ensemble par défaut peuvent aussi être ajoutées ici.',
 }
 
 const de: Dict = {
@@ -1848,6 +1869,13 @@ const de: Dict = {
   newNote: 'Neue Notiz',
   notePh: 'Hier schreiben…',
   chars: 'Zeichen',
+  wordCount: 'Wortanzahl',
+  charsNoSpace: 'Zeichen (ohne Leerzeichen)',
+  charsWithSpace: 'Zeichen (mit Leerzeichen)',
+  words: 'Wörter',
+  paragraphs: 'Absätze',
+  selectedChars: 'Ausgewählte Zeichen',
+  manuscriptPages: 'Manuskriptseiten (400 Zeichen pro Seite)',
   lines: 'Zeilen',
   noNotes: 'Keine Notizen',
   untitledNote: 'Notiz ohne Titel',
@@ -2087,6 +2115,7 @@ const de: Dict = {
   storeStaleTitle: 'Neue Apps & Updates sind im Store',
   storeStaleDesc: 'Dieses Gerät läuft mit altem Cache, daher sind sie noch nicht sichtbar oder nutzbar. Store-Updates brauchen auch eine Cache-Aktualisierung.',
   storeStaleBtn: 'Cache aktualisieren & neu laden',
+  editionSection: 'Edition', editionLiteDesc: 'Leichte Edition ohne Store-Apps (nur Kern-Apps)', editionStdDesc: 'Standard-Edition (Kern-Apps + Store-Apps)', editionProDesc: 'Premium-Edition mit minimalem Standard-App-Set. Fehlende Apps lassen sich aus dem Store hinzufügen (Produktschlüssel erforderlich)', productKey: 'Produktschlüssel', productKeyPh: 'Produktschlüssel eingeben', editionUnlockBtn: 'Prüfen & wechseln', editionKeyWrong: 'Falscher Produktschlüssel', editionSwitched: 'Edition gewechselt', liteStoreOff: 'Store-Apps sind in der Lite Edition deaktiviert', liteStoreOffDesc: 'Apps können nicht hinzugefügt oder verwendet werden. Wechsle in Einstellungen > Edition zu Standard / Pro, um sie zu aktivieren.', coreAddBtn: 'Hinzufügen', coreRemoveBtn: 'Entfernen', coreDefaultBadge: 'Standard', proStoreNote: 'In der Pro Edition können hier auch System-Apps außerhalb des Standard-Sets hinzugefügt werden.',
 }
 
 export const DICTS: Record<Lang, Dict> = { ja, en, zh, ko, th, es, fr, de }

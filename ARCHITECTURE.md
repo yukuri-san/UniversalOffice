@@ -44,6 +44,14 @@
 - **ストアアプリ**：`STORE_APPS`（src/lib/storeApps.ts）に登録し、インストール済みのものだけ表示。追加・更新したら `node scripts/gen-store-json.mjs` で `public/store.json` を再生成する。バージョンと更新内容（notes）はアプリ個別管理
 - **マイApp**：ユーザーが開発者アプリで作る HTML アプリ。登録簿は localStorage、ID は `myapp-*`。サンドボックス iframe（allow-scripts）で実行し、本体データには触れない
 
+## エディション（v1.50.0〜）
+
+- 管理は `src/lib/edition.ts`。状態は localStorage の `webx-edition`（`lite`／`standard`／`pro`、既定は standard）に保存し、変更時は `webx-edition-changed` イベントで App シェルへ通知する
+- **Lite**：ストアアプリを表示・起動しない（ストアには無効の案内を表示）。コアアプリのみ
+- **Standard**：従来どおり（コアアプリ＋インストール済みストアアプリ）
+- **Pro**：コアアプリは `PRO_DEFAULT_APPS`（14本）＋ユーザーが追加した分（`webx-pro-apps`）だけ表示。ストアの「標準搭載」欄からコアアプリを追加・削除できる。Pro への切り替えにはプロダクトキー認証が必要で、認証済みフラグは `webx-pro-unlocked` に保存する
+- エディション表示（システム情報など）は `editionLabel()` で現在のエディションを返す。設定のリセット対象キーには `webx-edition` 等も含まれる
+
 ## 起動フロー
 
 1. Service Worker がキャッシュから配信

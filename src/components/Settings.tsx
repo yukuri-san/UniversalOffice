@@ -4,6 +4,7 @@ import { notifyOs } from '../lib/notify'
 import { TIMEZONES } from './SetupWizard'
 import { useEffect, useRef, useState } from 'react'
 import { APP_VERSION } from '../lib/version'
+import { EDITIONS, PRO_PRODUCT_KEY, getEdition, isProUnlocked, setEdition as applyEdition, unlockPro, type EditionId } from '../lib/edition'
 import { clearPin, getPin, setPin } from '../lib/pin'
 import { SETTINGS_KEYS as SETTINGS_KEYS_SHARED } from '../lib/reset'
 
@@ -113,6 +114,28 @@ async function fileToWallpaper(file: File): Promise<string> {
 }
 
 export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onSelectPreset, hasCustom, wpUseCustom, onCustom, onUseCustom, onRemoveCustom, openDocs, openAbout, onOpenStore, uiScale, onUiScale, userName, setUserName, timezone, setTimezone, iconSize, setIconSize, iconClick, setIconClick, onShowSetup, clock24h, setClock24h, clockSec, setClockSec, reduceMotion, setReduceMotion, restoreWin, setRestoreWin, widgetAgenda, setWidgetAgenda, nightLight, setNightLight, muteNotes, setMuteNotes, saverOn, setSaverOn, permitHw, setPermitHw, uiMode, setUiMode, androidWinMove, setAndroidWinMove, resizeMode, setResizeMode }: Props) {
+  const [edition, setEditionState] = useState<EditionId>(() => getEdition())
+  const [proKeyDraft, setProKeyDraft] = useState('')
+  const [showProKey, setShowProKey] = useState(false)
+  const switchEdition = (id: EditionId) => {
+    if (id === 'pro' && !isProUnlocked()) {
+      setShowProKey(true)
+      return
+    }
+    applyEdition(id)
+    setEditionState(id)
+    setShowProKey(false)
+    notifyOs(translate(lang, 'editionSwitched'), 'settings')
+  }
+  const tryUnlockPro = () => {
+    if (proKeyDraft.trim() === PRO_PRODUCT_KEY) {
+      unlockPro()
+      setProKeyDraft('')
+      switchEdition('pro')
+    } else {
+      notifyOs(translate(lang, 'editionKeyWrong'), 'settings')
+    }
+  }
   const [pinDraft, setPinDraft] = useState('')
   const [pinSetNow, setPinSetNow] = useState(() => getPin() !== null)
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
@@ -199,6 +222,34 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
         <div className="settings-options" style={{ marginTop: 10 }}>
           <button className="opt" onClick={onShowSetup}>{translate(lang, 'setupAgain')}</button>
         </div>
+      </section>
+
+      <section className="settings-section">
+        <h3>{translate(lang, 'editionSection')}</h3>
+        <div className="settings-options">
+          {EDITIONS.map((e) => (
+            <button key={e.id} className={edition === e.id ? 'opt on' : 'opt'} onClick={() => switchEdition(e.id)}>
+              {e.label}
+            </button>
+          ))}
+        </div>
+        <p className="settings-note">
+          {edition === 'lite' ? translate(lang, 'editionLiteDesc') : edition === 'pro' ? translate(lang, 'editionProDesc') : translate(lang, 'editionStdDesc')}
+        </p>
+        {showProKey && edition !== 'pro' && (
+          <div className="settings-toggle-row">
+            <span>{translate(lang, 'productKey')}</span>
+            <span className="settings-options">
+              <input
+                type="text" value={proKeyDraft} placeholder={translate(lang, 'productKeyPh')}
+                style={{ width: 170 }}
+                onChange={(e) => setProKeyDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') tryUnlockPro() }}
+              />
+              <button className="opt" disabled={!proKeyDraft.trim()} onClick={tryUnlockPro}>{translate(lang, 'editionUnlockBtn')}</button>
+            </span>
+          </div>
+        )}
       </section>
 
       <section className="settings-section">

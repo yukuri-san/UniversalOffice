@@ -55,11 +55,35 @@ const MARGINS = [
 
 type Tab = 'format' | 'insert' | 'layout' | 'view'
 
+type DocStats = { chars: number; charsWithSpace: number; words: number; lines: number; paragraphs: number; selChars: number }
+
+/** 文書全体と選択範囲の文字数を数える。末尾の改行は数えない */
+function computeStats(ed: NonNullable<ReturnType<typeof useEditor>>): DocStats {
+  const raw = ed.getText()
+  const body = raw.replace(/\n+$/, '')
+  const trimmed = body.trim()
+  const { from, to } = ed.state.selection
+  let selChars = 0
+  if (to > from) {
+    const sel = ed.state.doc.textBetween(from, to, '\n')
+    selChars = sel.replace(/\s/g, '').length
+  }
+  return {
+    chars: body.replace(/\s/g, '').length,
+    charsWithSpace: body.replace(/\n/g, '').length,
+    words: trimmed ? trimmed.split(/\s+/).length : 0,
+    lines: body ? body.split('\n').length : 0,
+    paragraphs: ed.getJSON().content?.length ?? 0,
+    selChars,
+  }
+}
+
 export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => void }) {
   const { t } = useLang()
   const [title, setTitle] = useState(() => localStorage.getItem(TITLE_KEY) || '無題の文書')
   const [zoom, setZoom] = useState(100)
-  const [stats, setStats] = useState({ chars: 0, paragraphs: 0 })
+  const [stats, setStats] = useState<DocStats>({ chars: 0, charsWithSpace: 0, words: 0, lines: 0, paragraphs: 0, selChars: 0 })
+  const [countOpen, setCountOpen] = useState(false)
   const [, setTick] = useState(0)
   const [tab, setTab] = useState<Tab>('format')
   const [homeOpen, setHomeOpen] = useState(false)
@@ -125,20 +149,18 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
     content: localStorage.getItem(STORAGE_KEY) || SAMPLE_HTML,
     onUpdate: ({ editor: ed }) => {
       localStorage.setItem(STORAGE_KEY, ed.getHTML())
-      const text = ed.getText()
-      setStats({
-        chars: text.replace(/\s/g, '').length,
-        paragraphs: ed.getJSON().content?.length ?? 0,
-      })
+      setStats(computeStats(ed))
     },
   })
 
   useEffect(() => {
     if (!editor) return
-    const update = () => setTick((t) => t + 1)
+    const update = () => {
+      setTick((t) => t + 1)
+      setStats(computeStats(editor))
+    }
     editor.on('transaction', update)
-    const text = editor.getText()
-    setStats({ chars: text.replace(/\s/g, '').length, paragraphs: editor.getJSON().content?.length ?? 0 })
+    setStats(computeStats(editor))
     return () => {
       editor.off('transaction', update)
     }
@@ -642,14 +664,31 @@ export default function WordProcessor({ onSwitch }: { onSwitch: (app: AppId) => 
       </div>
 
       <div className="statusbar">
-        <span>{stats.paragraphs} 段落</span>
-        <span>{stats.chars} {t('chars')}</span>
+        <span>{stats.paragraphs} {t('paragraphs')}</span>
+        <button className="stat-btn" onClick={() => setCountOpen(true)} title={t('wordCount')}>{stats.chars.toLocaleString()} {t('chars')}</button>
+        {stats.selChars > 0 && <span>{t('selectedChars')}：{stats.selChars.toLocaleString()}</span>}
         <span>{paper.label}{landscape ? '（横）' : ''} / 余白 {margin.label}</span>
         <span className="zoomctl">
           <input type="range" min={30} max={150} step={5} value={zoom} onChange={(e) => manualZoom(Number(e.target.value))} aria-label="ズーム" />
           {zoom}%
         </span>
       </div>
+
+      {countOpen && (
+        <div className="wordcount-overlay" onClick={() => setCountOpen(false)}>
+          <div className="wordcount-card" role="dialog" aria-label={t('wordCount')} onClick={(e) => e.stopPropagation()}>
+            <h3>{t('wordCount')}</h3>
+            <div className="wordcount-row"><span>{t('charsNoSpace')}</span><b>{stats.chars.toLocaleString()}</b></div>
+            <div className="wordcount-row"><span>{t('charsWithSpace')}</span><b>{stats.charsWithSpace.toLocaleString()}</b></div>
+            <div className="wordcount-row"><span>{t('words')}</span><b>{stats.words.toLocaleString()}</b></div>
+            <div className="wordcount-row"><span>{t('paragraphs')}</span><b>{stats.paragraphs.toLocaleString()}</b></div>
+            <div className="wordcount-row"><span>{t('lines')}</span><b>{stats.lines.toLocaleString()}</b></div>
+            <div className="wordcount-row"><span>{t('selectedChars')}</span><b>{stats.selChars.toLocaleString()}</b></div>
+            <div className="wordcount-row"><span>{t('manuscriptPages')}</span><b>{(stats.chars / 400).toFixed(1)}</b></div>
+            <button className="btn" onClick={() => setCountOpen(false)}>{t('close')}</button>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

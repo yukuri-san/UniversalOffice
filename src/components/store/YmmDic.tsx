@@ -86,6 +86,8 @@ export default function YmmDic() {
   const [loaded, setLoaded] = useState(false)
   const [saveMsg, setSaveMsg] = useState('')
   const [view, setView] = useState<'edit' | 'idsettings'>('edit')
+  const [rowQuery, setRowQuery] = useState('')
+  const [problemFilter, setProblemFilter] = useState<null | 'empty' | 'noid' | 'dup'>(null)
   const [newId, setNewId] = useState('')
   const [focusRowId, setFocusRowId] = useState<string | null>(null)
   const csvRef = useRef<HTMLInputElement>(null)
@@ -223,6 +225,16 @@ export default function YmmDic() {
     ;[rows[i], rows[j]] = [rows[j], rows[i]]
     patchFile(active.id, { rows })
   }
+  const duplicateRow = (rowId: string) => {
+    if (!active) return
+    const rows = [...active.rows]
+    const i = rows.findIndex((r) => r.id === rowId)
+    if (i < 0) return
+    const copy: YRow = { ...rows[i], id: uid() }
+    rows.splice(i + 1, 0, copy)
+    patchFile(active.id, { rows })
+    setActiveRowId(copy.id)
+  }
   const clearRows = () => {
     if (!active) return
     if (!window.confirm('このファイルの行をすべて削除しますか？')) return
@@ -321,6 +333,34 @@ export default function YmmDic() {
       } catch { notifyOs('バックアップファイルを読み込めませんでした', 'ymmdic') }
     })()
   }
+
+  // v1.4.0：行の検索と、空行・IDなし・重複セリフのチェック
+  const rowStats = (() => {
+    if (!active) return { empty: 0, noid: 0, dup: 0, dupTexts: new Set<string>() }
+    const counts = new Map<string, number>()
+    for (const r of active.rows) {
+      const key = r.text.trim()
+      if (key) counts.set(key, (counts.get(key) ?? 0) + 1)
+    }
+    const dupTexts = new Set([...counts.entries()].filter(([, n]) => n >= 2).map(([k]) => k))
+    return {
+      empty: active.rows.filter((r) => !r.text.trim()).length,
+      noid: active.rows.filter((r) => !r.charId).length,
+      dup: active.rows.filter((r) => dupTexts.has(r.text.trim())).length,
+      dupTexts,
+    }
+  })()
+  const displayRows = (() => {
+    if (!active) return []
+    let rows = active.rows
+    if (problemFilter === 'empty') rows = rows.filter((r) => !r.text.trim())
+    else if (problemFilter === 'noid') rows = rows.filter((r) => !r.charId)
+    else if (problemFilter === 'dup') rows = rows.filter((r) => rowStats.dupTexts.has(r.text.trim()))
+    const q = rowQuery.trim().toLowerCase()
+    if (q) rows = rows.filter((r) => r.text.toLowerCase().includes(q) || r.charId.toLowerCase().includes(q))
+    return rows
+  })()
+  const filtering = problemFilter !== null || rowQuery.trim() !== ''
 
   const fileRow = (f: YFile) => (
     <div key={f.id} className={f.id === activeId ? 'ymm-file on' : 'ymm-file'}>
@@ -448,6 +488,24 @@ export default function YmmDic() {
                 ))}
               </div>
 
+              <div className="ymm-searchrow">
+                <input
+                  className="ymm-search"
+                  value={rowQuery}
+                  placeholder="🔍 セリフ・空間IDで検索"
+                  onChange={(e) => setRowQuery(e.target.value)}
+                />
+                <button className={problemFilter === 'empty' ? 'chip on warn' : 'chip'} onClick={() => setProblemFilter(problemFilter === 'empty' ? null : 'empty')}>空のセリフ {rowStats.empty}件</button>
+                <button className={problemFilter === 'noid' ? 'chip on warn' : 'chip'} onClick={() => setProblemFilter(problemFilter === 'noid' ? null : 'noid')}>IDなし {rowStats.noid}件</button>
+                <button className={problemFilter === 'dup' ? 'chip on warn' : 'chip'} onClick={() => setProblemFilter(problemFilter === 'dup' ? null : 'dup')}>重複セリフ {rowStats.dup}件</button>
+                {filtering && (
+                  <>
+                    <span className="hint">{displayRows.length}件を表示中（全{active.rows.length}行）</span>
+                    <button className="chip" onClick={() => { setProblemFilter(null); setRowQuery('') }}>絞り込み解除</button>
+                  </>
+                )}
+              </div>
+
 
               {ctxRows && (
                 <div className="ymm-ctx">
@@ -472,7 +530,7 @@ export default function YmmDic() {
               )}
 
               <div className="ymm-rows">
-                {active.rows.map((r) => (
+                {displayRows.map((r) => (
                   <div key={r.id} className={r.id === activeRowId ? 'ymm-row cur' : 'ymm-row'}>
                     <span className="ymm-row-bar" style={{ background: colorOf(r.charId) }} />
                     <span className="ymm-ava" style={{ background: colorOf(r.charId) }}>{(r.charId || '？').slice(0, 1)}</span>
@@ -492,12 +550,14 @@ export default function YmmDic() {
                     <span className="ymm-rowacts">
                       <button className="ymm-iconbtn" title="上へ" onClick={() => moveRow(r.id, -1)}>↑</button>
                       <button className="ymm-iconbtn" title="下へ" onClick={() => moveRow(r.id, 1)}>↓</button>
+                      <button className="ymm-iconbtn" title="この行を複製" onClick={() => duplicateRow(r.id)}>⧉</button>
                       <button className="ymm-iconbtn" title="この行を削除" onClick={() => deleteRow(r.id)}>✕</button>
                     </span>
                   </div>
                 ))}
               </div>
 
+              {filtering && displayRows.length === 0 && <p className="hint">条件に合う行がありません。</p>}
               <button className="ymm-addrow" onClick={() => insertRowAfter(active.rows[active.rows.length - 1]?.id ?? null)}>＋ 行を追加</button>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
                 <button className="btn" onClick={clearRows}>全行を削除</button>

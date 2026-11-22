@@ -6,6 +6,7 @@ import { notifyOs } from '../lib/notify'
 import { APP_VERSION } from '../lib/version'
 import { compareVersions, fetchLatestVersion } from '../lib/updateCheck'
 import { useLang } from '../lib/i18n'
+import { PRO_DEFAULT_APPS, type EditionId } from '../lib/edition'
 
 interface Props {
   installed: string[]
@@ -18,13 +19,17 @@ interface Props {
   // ストア情報は OS の更新とは別系統（store.json）で扱う
   catalog: StoreCatalog | null
   onRefreshCatalog: () => Promise<StoreCatalog | null>
+  edition: EditionId
+  proExtra: string[]
+  onInstallCore: (id: string) => void
+  onUninstallCore: (id: string) => void
 }
 
 type CheckState = 'idle' | 'checking' | 'done' | 'error'
 
 // アプリの入手・削除・更新はすべてこのストアで処理する。
 // WebX 本体の更新確認（version.json）とストア情報の確認（store.json）は別系統で行う。
-export default function AppStore({ installed, versions, coreApps, onInstall, onUninstall, onUpdateApp, onShowUpdate, catalog, onRefreshCatalog }: Props) {
+export default function AppStore({ installed, versions, coreApps, onInstall, onUninstall, onUpdateApp, onShowUpdate, catalog, onRefreshCatalog, edition, proExtra, onInstallCore, onUninstallCore }: Props) {
   const { t } = useLang()
   const [check, setCheck] = useState<CheckState>('idle')
   const [storeCheck, setStoreCheck] = useState<CheckState>('idle')
@@ -89,6 +94,16 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
       </div>
       {summary && <p className="store-note">{summary}</p>}
 
+      {edition === 'lite' ? (
+        <>
+          <h3 className="store-head">{t('stStoreApps')}</h3>
+          <div className="store-stale">
+            <strong>🔒 {t('liteStoreOff')}</strong>
+            <p>{t('liteStoreOffDesc')}</p>
+          </div>
+        </>
+      ) : (
+      <>
       <h3 className="store-head">{t('stStoreApps')}</h3>
       <p className="store-note">{t('stNoteText')}</p>
       <div style={{ marginBottom: 8 }}>
@@ -177,18 +192,43 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
         })}
         {STORE_APPS.length === 0 && <p className="store-note">{t('stEmpty')}</p>}
       </div>
+      </>
+      )}
 
       <h3 className="store-head">{t('stBuiltIn')}</h3>
+      {edition === 'pro' && <p className="store-note">{t('proStoreNote')}</p>}
       <div className="store-list">
-        {coreApps.map((app) => (
-          <div className="store-row" key={app.id}>
-            <span className={`app-icon ${app.cls}`}>{app.icon}</span>
-            <div className="store-meta">
-              <div className="store-name">{app.name}</div>
-              <div className="store-desc">WebX に標準で含まれます</div>
+        {coreApps.map((app) => {
+          const isDefault = PRO_DEFAULT_APPS.includes(app.id)
+          const isAdded = proExtra.includes(app.id)
+          return (
+            <div className="store-row" key={app.id}>
+              <span className={`app-icon ${app.cls}`}>{app.icon}</span>
+              <div className="store-meta">
+                <div className="store-name">
+                  {app.name}
+                  {edition === 'pro' && isDefault && <span className="store-state">{t('coreDefaultBadge')}</span>}
+                  {edition === 'pro' && isAdded && <span className="store-state">{t('stInstalled')}</span>}
+                </div>
+                <div className="store-desc">WebX に標準で含まれます</div>
+              </div>
+              {edition === 'pro' && !isDefault && (
+                <div className="store-actions">
+                  {!isAdded && (
+                    <button className="btn accent" onClick={() => { onInstallCore(app.id); notifyOs(`「${app.name}」を追加しました`) }}>
+                      {t('coreAddBtn')}
+                    </button>
+                  )}
+                  {isAdded && (
+                    <button className="btn" onClick={() => { if (window.confirm(`${app.name}${t('stUninstallQ')}`)) onUninstallCore(app.id) }}>
+                      {t('coreRemoveBtn')}
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
