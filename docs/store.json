@@ -1,5 +1,5 @@
 {
-  "version": "1.50.0",
+  "version": "1.51.0",
   "apps": [
     {
       "id": "unit",
@@ -587,6 +587,31 @@
       "id": "mediaconv",
       "version": "1.0.0",
       "notes": "新規アプリです。FFmpeg（WASM）で動画を GIF・MP3・WebM に変換できます。初回のみエンジン読み込みにネット接続が必要です。"
+    },
+    {
+      "id": "officepro",
+      "version": "1.0.0",
+      "notes": "新規追加（Pro Edition 限定）：複数文書の管理・自動保存、見出しアウトライン（クリックで移動）、文字数カウント詳細（単語数・段落数・原稿用紙換算）、.docx／.md／.html／.txt 保存に対応。"
+    },
+    {
+      "id": "notepro",
+      "version": "1.0.0",
+      "notes": "新規追加（Pro Edition 限定）：Markdown編集／プレビュー切替、フォルダ整理、ピン留め、並び替え、文字数・行数表示、.md書き出しに対応。"
+    },
+    {
+      "id": "sheetpro",
+      "version": "1.0.0",
+      "notes": "新規追加（Pro Edition 限定）：複数シートの切り替え・追加・名前変更、数式エンジン（四則演算・セル参照・範囲・SUM/AVERAGE/MAX/MIN/ROUND/ABS）、CSV書き出し（計算結果）・取り込み（新規シート）に対応。"
+    },
+    {
+      "id": "calcpro",
+      "version": "1.0.0",
+      "notes": "新規追加（Pro Edition 限定）：三角関数・対数・平方根・累乗・π・e・括弧の計算、DEG/RAD切替、計算履歴（タップで再利用）に対応。"
+    },
+    {
+      "id": "photopro",
+      "version": "1.0.0",
+      "notes": "新規追加（Pro Edition 限定）：明るさ・コントラスト・彩度・グレースケール・セピア・ぼかしの調整、90°回転・左右反転、50%／25%リサイズ、PNG/JPEG保存に対応。処理はすべて端末内。"
     },
     {
       "id": "memopro",

@@ -7,6 +7,9 @@ import { downloadText } from '../lib/files'
 import { notifyOs } from '../lib/notify'
 import type { AppId } from './Backstage'
 import { useLang } from '../lib/i18n'
+import { getEdition, EDITION_EVENT, type EditionId } from '../lib/edition'
+import DriveFiles from './DriveFiles'
+import type { ExtDriveId } from '../lib/drives'
 
 const KIND_LABEL: Record<LocalDoc['kind'], string> = {
   word: 'ワードプロセッサ',
@@ -59,6 +62,14 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId | 'memod
   const [ownBytes, setOwnBytes] = useState(0)
   const [msg, setMsg] = useState('')
   const importRef = useRef<HTMLInputElement>(null)
+  const [edition, setEditionState] = useState<EditionId>(() => getEdition())
+  const [drive, setDrive] = useState<'main' | ExtDriveId>('main')
+
+  useEffect(() => {
+    const onEdition = () => setEditionState(getEdition())
+    window.addEventListener(EDITION_EVENT, onEdition)
+    return () => window.removeEventListener(EDITION_EVENT, onEdition)
+  }, [])
 
   const refresh = useCallback(async () => {
     await purgeOldTrash()
@@ -129,8 +140,19 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId | 'memod
 
   return (
     <div className="files-window">
+      {edition === 'pro' && (
+        <div className="drive-tabs">
+          <button className={`chip ${drive === 'main' ? 'on' : ''}`} onClick={() => setDrive('main')}>💽 Cドライブ（本体）</button>
+          <button className={`chip ${drive === 'idb' ? 'on' : ''}`} onClick={() => setDrive('idb')}>🛢 外部ドライブ：IndexedDB</button>
+          <button className={`chip ${drive === 'ls' ? 'on' : ''}`} onClick={() => setDrive('ls')}>💾 外部ドライブ：LocalStorage</button>
+        </div>
+      )}
+      {edition === 'pro' && drive !== 'main' ? (
+        <DriveFiles drive={drive} />
+      ) : (
+      <>
       <section className="explorer-storage">
-        <h3>{t('storage')}</h3>
+        <h3>{edition === 'pro' ? `💽 Cドライブ（${info?.backend ?? '…'}）` : t('storage')}</h3>
         {info ? (
           <>
             {info.quota > 0 && <div className="storage-bar"><span style={{ width: `${usagePct}%` }} /></div>}
@@ -213,6 +235,8 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId | 'memod
             </li>
           ))}
         </ul>
+      )}
+      </>
       )}
     </div>
   )

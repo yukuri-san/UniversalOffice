@@ -19,6 +19,8 @@ export interface StoreAppDef {
   category: StoreCategory
   /** 最新バージョンの更新内容（更新内容ウィンドウに表示） */
   notes?: string
+  /** Pro Edition でのみインストール・利用できるアプリ */
+  proOnly?: boolean
 }
 
 export const STORE_APPS: StoreAppDef[] = [
@@ -642,6 +644,46 @@ export const STORE_APPS: StoreAppDef[] = [
     id: 'mediaconv', icon: '変', cls: 'mediaconv', name: 'メディア変換',
     desc: '動画を GIF／音声（MP3）／WebM に変換。FFmpeg を端末内で実行し、ファイルは外部送信されません。', version: '1.0.0', notes: '新規アプリです。FFmpeg（WASM）で動画を GIF・MP3・WebM に変換できます。初回のみエンジン読み込みにネット接続が必要です。',
     category: 'tool',
+  },
+  {
+    id: 'officepro', icon: 'W', cls: 'officepro', name: 'OfficePro',
+    desc: '👑 Pro Edition 限定。ワープロの上位版：複数文書の管理、見出しアウトライン、文字数カウント詳細、.docx／.md／.html 保存に対応。',
+    version: '1.0.0',
+    notes: '新規追加（Pro Edition 限定）：複数文書の管理・自動保存、見出しアウトライン（クリックで移動）、文字数カウント詳細（単語数・段落数・原稿用紙換算）、.docx／.md／.html／.txt 保存に対応。',
+    category: 'tool',
+    proOnly: true,
+  },
+  {
+    id: 'notepro', icon: 'メ', cls: 'notepro', name: 'メモ帳Pro',
+    desc: '👑 Pro Edition 限定。メモ帳の上位版：Markdown編集とプレビュー、フォルダ整理、ピン留め、文字数表示、.md書き出しに対応。',
+    version: '1.0.0',
+    notes: '新規追加（Pro Edition 限定）：Markdown編集／プレビュー切替、フォルダ整理、ピン留め、並び替え、文字数・行数表示、.md書き出しに対応。',
+    category: 'tool',
+    proOnly: true,
+  },
+  {
+    id: 'sheetpro', icon: '表', cls: 'sheetpro', name: '表計算Pro',
+    desc: '👑 Pro Edition 限定。表計算の上位版：複数シート、数式（セル参照・範囲・SUM/AVERAGE/MAX/MIN/ROUND/ABS）、CSV入出力に対応。',
+    version: '1.0.0',
+    notes: '新規追加（Pro Edition 限定）：複数シートの切り替え・追加・名前変更、数式エンジン（四則演算・セル参照・範囲・SUM/AVERAGE/MAX/MIN/ROUND/ABS）、CSV書き出し（計算結果）・取り込み（新規シート）に対応。',
+    category: 'calc',
+    proOnly: true,
+  },
+  {
+    id: 'calcpro', icon: '関', cls: 'calcpro', name: '電卓Pro',
+    desc: '👑 Pro Edition 限定。関数電卓：sin/cos/tan・log/ln・√・累乗・π・括弧に対応。DEG/RAD切替と計算履歴つき。',
+    version: '1.0.0',
+    notes: '新規追加（Pro Edition 限定）：三角関数・対数・平方根・累乗・π・e・括弧の計算、DEG/RAD切替、計算履歴（タップで再利用）に対応。',
+    category: 'calc',
+    proOnly: true,
+  },
+  {
+    id: 'photopro', icon: '写', cls: 'photopro', name: 'フォト編集Pro',
+    desc: '👑 Pro Edition 限定。画像の簡易編集：明るさ・コントラスト・彩度などの調整、回転・反転、リサイズ、PNG/JPEG保存。',
+    version: '1.0.0',
+    notes: '新規追加（Pro Edition 限定）：明るさ・コントラスト・彩度・グレースケール・セピア・ぼかしの調整、90°回転・左右反転、50%／25%リサイズ、PNG/JPEG保存に対応。処理はすべて端末内。',
+    category: 'tool',
+    proOnly: true,
   },
   {
     id: 'memopro', icon: 'デ', cls: 'memopro', name: 'メモDB-Pro',

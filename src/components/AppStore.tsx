@@ -152,12 +152,18 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
                 <div className="store-name">
                   {app.name}
                   <span className="store-ver">v{latestVer}</span>
+                  {app.proOnly && <span className="store-state pro">👑 Pro限定</span>}
                   {isIn && <span className="store-state">{outdated ? `${t('stInstalled')} v${cur ?? '?'} (${t('stUpdateBtn')})` : t('stInstalled')}</span>}
                 </div>
                 <div className="store-desc">{app.desc}</div>
               </div>
               <div className="store-actions">
-                {!isIn && (
+                {!isIn && app.proOnly && edition !== 'pro' && (
+                  <button className="btn" onClick={() => notifyOs('このアプリは Pro Edition でのみ利用できます。設定の「エディション」から切り替えてください')}>
+                    👑 Pro限定
+                  </button>
+                )}
+                {!isIn && !(app.proOnly && edition !== 'pro') && (
                   <button
                     className="btn accent"
                     onClick={() => {

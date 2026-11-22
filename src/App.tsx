@@ -8,6 +8,7 @@ import FilesWindow from './components/FilesWindow'
 import Settings, { type ThemeId } from './components/Settings'
 import { LangContext, LOCALES, translate, type Lang } from './lib/i18n'
 import SetupWizard, { SETUP_VERSION } from './components/SetupWizard'
+import EditionPrompt, { shouldShowEditionPrompt } from './components/EditionPrompt'
 import YoutubeApp from './components/YoutubeApp'
 import TrashWindow from './components/TrashWindow'
 import DocsWindow, { type DocKind } from './components/DocsWindow'
@@ -47,6 +48,11 @@ import { BaseConv, Percent, TaxCalc, Discount, Loan, Tip, Salary, Pace, Aspect, 
 import { TextTools, JsonFmt, Base64Tool, UrlTool, UuidGen, HashTool, PassCheck, Flashlight, Ruler, Mirror, VoiceRec, Amida, Teams, Scoreboard, Tournament } from './components/store/Mega4'
 import { Reading, MovieLog, Plants, Inventory, Expiry, GiftMemo, Savings, Subs, SleepLog, RecipeBook, WaterLog, StudyLog } from './components/store/Mega5'
 import MemoPro from './components/store/MemoPro'
+import OfficePro from './components/store/OfficePro'
+import NotePro from './components/store/NotePro'
+import SheetPro from './components/store/SheetPro'
+import CalcPro from './components/store/CalcPro'
+import PhotoPro from './components/store/PhotoPro'
 import { MediaConv } from './components/store/MediaConv'
 import SysInfo from './components/SysInfo'
 import TaskManager from './components/TaskManager'
@@ -76,7 +82,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro'
 
 interface Win {
   id: WindowApp
@@ -231,6 +237,11 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   water: { icon: '水', cls: 'water' },
   study: { icon: '勉', cls: 'study' },
   memopro: { icon: 'デ', cls: 'memopro' },
+  officepro: { icon: 'W', cls: 'officepro' },
+  notepro: { icon: 'メ', cls: 'notepro' },
+  sheetpro: { icon: '表', cls: 'sheetpro' },
+  calcpro: { icon: '関', cls: 'calcpro' },
+  photopro: { icon: '写', cls: 'photopro' },
   mediaconv: { icon: '変', cls: 'mediaconv' },
   touge: { icon: '🏎️', cls: 'touge' },
   traingo: { icon: '🚃', cls: 'traingo' },
@@ -301,6 +312,7 @@ export default function App() {
   const [iconClick, setIconClickState] = useState(() => localStorage.getItem('webx-icon-click') ?? 'double')
   // セットアップ版が上がったら全ユーザーに再実施させる（既存ユーザーは許可確認のみ）
   const [showSetup, setShowSetup] = useState(() => localStorage.getItem('webx-setup-done') !== '1' || localStorage.getItem('webx-setup-version') !== SETUP_VERSION)
+  const [editionPrompt, setEditionPrompt] = useState(() => shouldShowEditionPrompt())
   const [setupMode] = useState<'full' | 'permissions'>(() => (localStorage.getItem('webx-setup-done') === '1' ? 'permissions' : 'full'))
   const [permitHw, setPermitHwState] = useState(() => localStorage.getItem('webx-permit-hwinfo') !== 'off')
   const setPermitHw = (v: boolean) => { setPermitHwState(v); localStorage.setItem('webx-permit-hwinfo', v ? 'on' : 'off') }
@@ -561,7 +573,7 @@ export default function App() {
     if (edition === 'pro' && !PRO_DEFAULT_APPS.includes(a) && !proExtraApps.includes(a)) return false
     return true
   })
-  const visibleApps: WindowApp[] = [...coreVisible, ...(edition === 'lite' ? [] : STORE_APPS.filter((a) => installedApps.includes(a.id)).map((a) => a.id as WindowApp)), ...customApps.map((c) => c.id as WindowApp)]
+  const visibleApps: WindowApp[] = [...coreVisible, ...(edition === 'lite' ? [] : STORE_APPS.filter((a) => installedApps.includes(a.id) && (!a.proOnly || edition === 'pro')).map((a) => a.id as WindowApp)), ...customApps.map((c) => c.id as WindowApp)]
   // MXUI ではデスクトップアイコンを 3列×4行 = 12 個ごとにページ切り替えする
   const ICONS_PER_PAGE = 12
   const iconPageCount = Math.max(1, Math.ceil(visibleApps.length / ICONS_PER_PAGE))
@@ -891,7 +903,7 @@ export default function App() {
   }, [])
 
   const openApp = useCallback((app: WindowApp) => {
-    if (STORE_APPS.some((a) => a.id === app) && (edition === 'lite' || !installedApps.includes(app))) app = 'store'
+    if (STORE_APPS.some((a) => a.id === app) && (edition === 'lite' || !installedApps.includes(app) || (STORE_APPS.find((a) => a.id === app)?.proOnly && edition !== 'pro'))) app = 'store'
     else if (edition === 'pro' && (APP_ORDER as string[]).includes(app) && !PRO_DEFAULT_APPS.includes(app) && !proExtraApps.includes(app)) app = 'store'
     setStartOpen(false)
     // そのアプリを開いたら、宛先がそのアプリの通知は消える
@@ -1254,6 +1266,11 @@ export default function App() {
       case 'water': return <WaterLog />
       case 'study': return <StudyLog />
       case 'memopro': return <MemoPro />
+      case 'officepro': return <OfficePro />
+      case 'notepro': return <NotePro />
+      case 'sheetpro': return <SheetPro />
+      case 'calcpro': return <CalcPro />
+      case 'photopro': return <PhotoPro />
       case 'mediaconv': return <MediaConv />
       case 'touge': return <TougeDrift />
       case 'traingo': return <TrainGo />
@@ -1529,6 +1546,9 @@ export default function App() {
           mode={setupMode}
           onFinish={() => { localStorage.setItem('webx-setup-done', '1'); localStorage.setItem('webx-setup-version', SETUP_VERSION); setShowSetup(false); notifyOs(t('setupDoneMsg'), 'settings') }}
         />
+      )}
+      {editionPrompt && booted && !showSetup && (
+        <EditionPrompt onDone={() => setEditionPrompt(false)} />
       )}
       {shortcutsOpen && (
         <div className="shortcuts-modal" role="dialog" aria-label="キーボードショートカット">

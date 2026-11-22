@@ -1828,3 +1828,104 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 .app-icon.denshaD { background: linear-gradient(135deg, #ffd21f, #c2410c); }
 
 .app-icon.voxel { background: linear-gradient(135deg, #7ddb4f, #2c5a1e); }
+
+/* ---- Pro限定バッジ ---- */
+.store-state.pro { background: linear-gradient(135deg, #f6c453, #e8930c); color: #3a2703; font-weight: 700; }
+
+/* ---- OfficePro ---- */
+.app-icon.officepro { background: linear-gradient(135deg, #7c3aed, #4f46e5); color: #fff; }
+.officepro { display: flex; height: 100%; min-height: 0; }
+.officepro-side { width: 210px; flex: none; border-right: 1px solid var(--border, #ddd); padding: 10px; display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+.officepro-doclist { display: flex; flex-direction: column; gap: 4px; }
+.officepro-doc { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.officepro-doc:hover { background: var(--hover, rgba(127,127,127,.12)); }
+.officepro-doc.on { background: var(--accent-soft, rgba(99,102,241,.18)); font-weight: 700; }
+.officepro-doctitle { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.officepro-outline { border-top: 1px dashed var(--border, #ccc); padding-top: 8px; display: flex; flex-direction: column; gap: 2px; }
+.officepro-outhead { font-size: 12px; font-weight: 700; opacity: .75; margin-bottom: 2px; }
+.officepro-outitem { text-align: left; background: none; border: none; cursor: pointer; font-size: 13px; padding: 3px 4px; border-radius: 6px; color: inherit; }
+.officepro-outitem:hover { background: var(--hover, rgba(127,127,127,.12)); }
+.officepro-main { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.officepro-toolbar { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; padding: 8px; border-bottom: 1px solid var(--border, #ddd); }
+.officepro-title { font-weight: 700; min-width: 140px; }
+.officepro-color { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+.officepro-color input[type="color"] { width: 26px; height: 26px; border: none; background: none; padding: 0; cursor: pointer; }
+.officepro-stats { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 12px; font-size: 13px; background: var(--accent-soft, rgba(99,102,241,.1)); border-bottom: 1px solid var(--border, #ddd); }
+.officepro-page { flex: 1; overflow-y: auto; padding: 18px; background: rgba(127,127,127,.08); }
+.officepro-editor { background: #fff; color: #1a1a1a; max-width: 760px; margin: 0 auto; padding: 40px 48px; min-height: 70%; border-radius: 4px; box-shadow: 0 2px 14px rgba(0,0,0,.18); }
+.officepro-editor .ProseMirror { outline: none; min-height: 300px; line-height: 1.7; }
+.officepro-status { padding: 5px 12px; font-size: 12px; opacity: .75; border-top: 1px solid var(--border, #ddd); }
+
+/* ---- メモ帳Pro ---- */
+.app-icon.notepro { background: linear-gradient(135deg, #b45309, #f59e0b); color: #fff; }
+.notepro-preview { flex: 1; overflow-y: auto; padding: 14px 18px; line-height: 1.75; }
+.notepro-preview h1, .notepro-preview h2, .notepro-preview h3 { margin: .6em 0 .3em; }
+.notepro-preview code { background: rgba(127,127,127,.18); padding: 1px 5px; border-radius: 4px; }
+.notepro-preview pre { background: rgba(127,127,127,.14); padding: 10px; border-radius: 8px; overflow-x: auto; }
+.notepro-body { font-family: ui-monospace, monospace; }
+.notepro-status { padding: 5px 12px; font-size: 12px; opacity: .75; }
+
+/* ---- 表計算Pro ---- */
+.app-icon.sheetpro { background: linear-gradient(135deg, #047857, #10b981); color: #fff; }
+.sheetpro { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.sheetpro-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid var(--border, #ddd); }
+.sheetpro-sel { font-weight: 700; min-width: 34px; text-align: center; }
+.sheetpro-formula { flex: 1; min-width: 180px; }
+.sheetpro-gridwrap { flex: 1; overflow: auto; }
+.sheetpro-grid { border-collapse: collapse; font-size: 13px; }
+.sheetpro-grid th { background: rgba(127,127,127,.14); padding: 3px 8px; font-weight: 600; position: sticky; top: 0; }
+.sheetpro-grid td { border: 1px solid rgba(127,127,127,.25); min-width: 76px; max-width: 130px; padding: 3px 6px; cursor: cell; white-space: nowrap; overflow: hidden; }
+.sheetpro-grid td.sel { outline: 2px solid #10b981; outline-offset: -2px; }
+.sheetpro-grid td .num { display: block; text-align: right; }
+.sheetpro-grid td input { width: 100%; border: none; background: transparent; color: inherit; font: inherit; outline: none; }
+.sheetpro-tabs { display: flex; flex-wrap: wrap; gap: 5px; padding: 7px 8px; border-top: 1px solid var(--border, #ddd); }
+
+/* ---- 電卓Pro ---- */
+.app-icon.calcpro { background: linear-gradient(135deg, #0e7490, #06b6d4); color: #fff; }
+.calcpro { padding: 12px; max-width: 430px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; height: 100%; box-sizing: border-box; }
+.calcpro-display { background: rgba(127,127,127,.12); border-radius: 12px; padding: 12px 14px; text-align: right; }
+.calcpro-expr { font-size: 22px; font-weight: 700; word-break: break-all; min-height: 28px; }
+.calcpro-result { font-size: 15px; opacity: .8; min-height: 20px; }
+.calcpro-modes { display: flex; gap: 6px; flex-wrap: wrap; }
+.calcpro-keys { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.calcpro-key { padding: 11px 4px; font-size: 15px; border-radius: 10px; border: 1px solid var(--border, #ccc); background: var(--hover, rgba(127,127,127,.1)); color: inherit; cursor: pointer; }
+.calcpro-key:hover { filter: brightness(1.15); }
+.calcpro-key.eq { background: linear-gradient(135deg, #0e7490, #06b6d4); color: #fff; font-weight: 700; }
+.calcpro-history { display: flex; flex-direction: column; gap: 4px; }
+.calcpro-hist { text-align: left; background: none; border: none; cursor: pointer; color: inherit; font-size: 13px; padding: 4px 6px; border-radius: 6px; }
+.calcpro-hist:hover { background: var(--hover, rgba(127,127,127,.12)); }
+
+/* ---- フォト編集Pro ---- */
+.app-icon.photopro { background: linear-gradient(135deg, #be185d, #ec4899); color: #fff; }
+.photopro { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.photopro-toolbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid var(--border, #ddd); }
+.photopro-body { flex: 1; display: flex; min-height: 0; }
+.photopro-canvaswrap { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 14px; background: rgba(127,127,127,.08); }
+.photopro-canvas { max-width: 100%; max-height: 100%; box-shadow: 0 2px 14px rgba(0,0,0,.25); }
+.photopro-panel { width: 190px; flex: none; padding: 12px; display: flex; flex-direction: column; gap: 12px; border-left: 1px solid var(--border, #ddd); overflow-y: auto; }
+.photopro-slider { display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+.photopro-slider input[type="range"] { width: 100%; }
+
+/* ---- Pro版ドライブ（エクスプローラー） ---- */
+.drive-tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px 0; }
+.drivefiles { padding: 10px 12px; }
+.drivefiles-body { display: flex; gap: 12px; margin-top: 8px; min-height: 260px; }
+.drivefiles-list { width: 220px; flex: none; display: flex; flex-direction: column; gap: 5px; }
+.drivefiles-edit { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.drivefiles-edit textarea { flex: 1; min-height: 180px; }
+
+/* ---- エディション選択ポップアップ ---- */
+.editionprompt-overlay { position: fixed; inset: 0; z-index: 4000; background: rgba(10, 10, 25, .55); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.editionprompt-card { background: var(--surface, #fff); color: var(--text, #1a1a1a); border-radius: 18px; padding: 22px; max-width: 430px; width: 100%; box-shadow: 0 18px 50px rgba(0,0,0,.35); display: flex; flex-direction: column; gap: 12px; max-height: 88vh; overflow-y: auto; }
+.editionprompt-card h3 { margin: 0; font-size: 19px; }
+.editionprompt-intro { margin: 0; font-size: 13px; opacity: .85; line-height: 1.6; }
+.editionprompt-list { display: flex; flex-direction: column; gap: 8px; }
+.editionprompt-item { text-align: left; border: 2px solid var(--border, #ddd); background: transparent; color: inherit; border-radius: 12px; padding: 11px 13px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; }
+.editionprompt-item.on { border-color: #e8930c; background: rgba(246, 196, 83, .14); }
+.editionprompt-name { font-weight: 700; font-size: 15px; }
+.editionprompt-desc { font-size: 12px; opacity: .8; line-height: 1.5; }
+.editionprompt-key { display: flex; flex-direction: column; gap: 5px; font-size: 13px; }
+.editionprompt-key input { padding: 9px 11px; border-radius: 9px; border: 1px solid var(--border, #ccc); background: transparent; color: inherit; }
+.editionprompt-key input.error { border-color: #d33; }
+.editionprompt-error { color: #d33; font-size: 12px; }
+.editionprompt-actions { display: flex; justify-content: space-between; gap: 8px; }
