@@ -2105,3 +2105,82 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 .yvm-info-card .btn { align-self: flex-end; margin-top: 4px; }
 
 .yvm-root { position: relative; }
+.app-icon.solitaire { background: linear-gradient(135deg, #14532d, #16a34a 60%, #4ade80); }
+.sol-root { display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; height: 100%; box-sizing: border-box; overflow: auto; background: linear-gradient(180deg, #14532d, #166534); color: #f0fdf4; user-select: none; }
+.sol-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sol-toolbar .btn { background: rgba(255,255,255,.14); color: #f0fdf4; border: 1px solid rgba(255,255,255,.25); }
+.sol-toolbar .btn:disabled { opacity: .45; }
+.sol-stats { margin-left: auto; font-size: 12.5px; font-weight: 700; opacity: .9; }
+.sol-win { background: #fde047; color: #422006; font-weight: 800; border-radius: 10px; padding: 8px 12px; font-size: 14px; text-align: center; }
+.sol-msg { margin: 0; color: #fde68a; font-size: 12.5px; }
+.sol-top { display: flex; gap: 10px; align-items: flex-start; }
+.sol-gap { flex: 1; }
+.sol-slot { width: 62px; height: 88px; border-radius: 8px; border: 1.5px dashed rgba(255,255,255,.35); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+.sol-slot-empty { border-style: dashed; }
+.sol-empty-mark { font-size: 22px; color: rgba(255,255,255,.55); font-weight: 700; }
+.sol-tableau { display: flex; gap: 8px; align-items: flex-start; }
+.sol-column { display: flex; flex-direction: column; width: 62px; flex-shrink: 0; }
+.sol-card { width: 62px; height: 88px; border-radius: 8px; background: #fff; color: #1e293b; border: 1px solid #cbd5e1; box-shadow: 0 1px 4px rgba(0,0,0,.35); position: relative; cursor: pointer; flex-shrink: 0; }
+.sol-card.sol-red { color: #dc2626; }
+.sol-corner { position: absolute; top: 3px; left: 5px; font-size: 13px; font-weight: 800; line-height: 1.1; }
+.sol-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 26px; }
+.sol-card-back { background: repeating-linear-gradient(45deg, #1d4ed8 0 6px, #1e40af 6px 12px); border-color: #1e3a8a; display: flex; align-items: center; justify-content: center; cursor: default; }
+.sol-back-mark { color: rgba(255,255,255,.85); font-size: 26px; }
+.sol-stock-n { position: absolute; right: 4px; bottom: 3px; font-size: 11px; font-weight: 800; color: #fff; background: rgba(0,0,0,.45); border-radius: 6px; padding: 0 4px; }
+.sol-selected { outline: 3px solid #facc15; outline-offset: 1px; transform: translateY(-3px); }
+.sol-overlap { margin-top: -64px; }
+.sol-root .game-hint { color: #bbf7d0; }
+  .sol-slot, .sol-card, .sol-column { width: 44px; }
+  .sol-slot, .sol-card { height: 64px; }
+  .sol-overlap { margin-top: -46px; }
+  .sol-tableau { gap: 4px; }
+  .sol-top { gap: 5px; }
+  .sol-center { font-size: 19px; }
+  .sol-corner { font-size: 11px; }
+  .sol-empty-mark { font-size: 17px; }
+
+/* WME (WebMovieEditor) */
+.wme-root { display: flex; flex-direction: column; height: 100%; min-height: 0; gap: 8px; padding: 10px; overflow: hidden; }
+.wme-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wme-logo { font-size: 20px; }
+.wme-name { font-weight: 700; font-size: 14px; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--border, #444); background: transparent; color: inherit; min-width: 120px; }
+.wme-head label { display: flex; align-items: center; gap: 4px; font-size: 12px; }
+.wme-head select { padding: 4px 6px; border-radius: 8px; }
+.wme-res { font-size: 12px; opacity: .75; }
+.wme-main { display: flex; gap: 10px; flex: 1; min-height: 0; }
+.wme-preview { flex: 1.6; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.wme-canvas { width: 100%; max-height: 100%; object-fit: contain; background: #000; border-radius: 10px; align-self: center; }
+.wme-transport { display: flex; align-items: center; gap: 8px; }
+.wme-time { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wme-seek { flex: 1; }
+.wme-props { flex: 1; min-width: 170px; overflow-y: auto; display: flex; flex-direction: column; gap: 7px; font-size: 12.5px; }
+.wme-props label { display: flex; flex-direction: column; gap: 3px; }
+.wme-props input, .wme-props select, .wme-props textarea { padding: 5px 7px; border-radius: 8px; border: 1px solid var(--border, #444); background: transparent; color: inherit; }
+.wme-props-title { display: flex; justify-content: space-between; align-items: center; font-weight: 700; }
+.wme-check { flex-direction: row !important; align-items: center; }
+.wme-toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.wme-zoom { display: flex; align-items: center; gap: 6px; font-size: 12px; margin-left: auto; }
+.wme-timeline { overflow-x: auto; overflow-y: hidden; border: 1px solid var(--border, #444); border-radius: 10px; padding: 4px 0 8px; position: relative; }
+.wme-ruler { position: relative; height: 18px; border-bottom: 1px solid var(--border, #444); }
+.wme-tick { position: absolute; top: 2px; font-size: 10px; opacity: .6; transform: translateX(2px); }
+.wme-track { position: relative; height: 30px; border-bottom: 1px dashed rgba(127,127,127,.25); }
+.wme-track-label { position: sticky; left: 2px; font-size: 10px; opacity: .55; z-index: 3; }
+.wme-item { position: absolute; top: 3px; height: 24px; border-radius: 6px; color: #fff; font-size: 11px; display: flex; align-items: center; padding: 0 6px; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+.wme-item.sel { outline: 2px solid #fff; outline-offset: -1px; }
+.wme-item-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.wme-item-resize { position: absolute; right: 0; top: 0; width: 10px; height: 100%; cursor: ew-resize; }
+.wme-playhead { position: absolute; top: 0; bottom: 0; width: 2px; background: #ff4757; z-index: 4; pointer-events: none; }
+.wme-foot-hint { margin: 0; }
+@media (max-width: 760px) {
+  .wme-main { flex-direction: column; }
+  .wme-props { min-width: 0; }
+  .wme-canvas { max-height: 34vh; }
+}
+.wme-genrow { display: flex; gap: 6px; flex-wrap: wrap; }
+.wme-psd { border: 1px solid var(--border, #444); border-radius: 10px; padding: 6px 8px; }
+.wme-psd summary { cursor: pointer; font-weight: 700; }
+.wme-psd-sec { font-weight: 700; margin: 8px 0 4px; }
+.wme-layerlist { max-height: 180px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.wme-layerrow { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
+.wme-layername { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wme-layerrow label { flex-direction: row !important; align-items: center; gap: 2px !important; }
