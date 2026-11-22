@@ -189,11 +189,19 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .note-body { flex: 1; min-height: 0; display: flex; gap: 10px; }
 .note-list { width: 230px; flex-shrink: 0; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; padding: 10px; overflow: auto; display: flex; flex-direction: column; gap: 6px; }
 .note-new { border: 1px solid #3b6ea5; color: #3b6ea5; background: #fff; border-radius: 8px; padding: 8px; cursor: pointer; font-weight: 600; }
-.note-item { text-align: left; background: transparent; border: 1px solid #eef2f8; border-radius: 8px; padding: 8px 10px; cursor: pointer; }
+.note-item { text-align: left; background: transparent; border: 1px solid #eef2f8; border-radius: 8px; padding: 8px 28px 8px 10px; cursor: pointer; position: relative; }
 .note-item:hover { background: #f3f5f9; }
 .note-item.active { background: #e3ecf7; border-color: #3b6ea5; }
 .note-item strong { display: block; overflow-wrap: anywhere; }
 .note-item small { color: #7a8798; }
+.note-pin { position: absolute; top: 4px; right: 4px; border: 0; background: transparent; font-size: 14px; line-height: 1; padding: 4px; cursor: pointer; opacity: 0.45; }
+.note-pin:hover { opacity: 1; }
+.note-pin.on { opacity: 1; }
+.note-search { display: flex; align-items: center; gap: 2px; }
+.note-search input { flex: 1; min-width: 0; border: 1px solid #c6d0dd; border-radius: 999px; padding: 7px 12px; font-size: 13px; }
+.note-search button { border: 0; background: transparent; font-size: 16px; line-height: 1; padding: 4px 6px; cursor: pointer; color: #526173; }
+.note-sort { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: #526173; }
+.note-sort select { flex: 1; min-width: 0; border: 1px solid #c6d0dd; border-radius: 6px; padding: 5px 6px; font-size: 12.5px; background: #fff; }
 .note-empty { color: #7a8798; font-size: 13px; }
 .note-editor { flex: 1; min-width: 0; display: flex; flex-direction: column; background: #fff; border: 1px solid #dde3ec; border-radius: 10px; overflow: hidden; }
 .note-editor textarea { flex: 1; min-height: 0; border: 0; resize: none; padding: 16px; font-size: 15px; line-height: 1.8; font-family: inherit; outline: none; }
