@@ -1074,6 +1074,7 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .app-icon.g2048 { background: linear-gradient(135deg, #f59e0b, #edc22e 60%, #d97706); }
 .app-icon.snake { background: linear-gradient(135deg, #22c55e, #059669); }
 .app-icon.breakout { background: linear-gradient(135deg, #f97316, #dc2626); }
+.app-icon.pinball { background: linear-gradient(135deg, #f59e0b, #dc2626 60%, #7c2d12); }
 .app-icon.minesweeper { background: linear-gradient(135deg, #6b7280, #111827); }
 .app-icon.sudoku { background: linear-gradient(135deg, #f8fafc, #cbd5e1); color: #1e3a8a; }
 .app-icon.memory { background: linear-gradient(135deg, #6366f1, #a855f7); }
