@@ -24,6 +24,7 @@ import UpdateInfoWindow from './components/UpdateInfoWindow'
 import UnitConverter from './components/UnitConverter'
 import { STORE_APPS } from './lib/storeApps'
 import { EDITION_EVENT, PRO_DEFAULT_APPS, getEdition, getProExtraApps, setProExtraApps, type EditionId } from './lib/edition'
+import { BETA_EVENT, getBetaUnlocked } from './lib/beta'
 import { Dice, Janken, NumGuess, Omikuji } from './components/store/Games'
 import { PassGen, TextCount, ColorPicker, Morse } from './components/store/ToolsA'
 import { DayCalc, Bmi, SplitBill, Currency, Wareki } from './components/store/ToolsB'
@@ -548,6 +549,12 @@ export default function App() {
     }
   })
   const [edition, setEditionState] = useState<EditionId>(() => getEdition())
+  const [betaUnlocked, setBetaUnlocked] = useState<string[]>(() => getBetaUnlocked())
+  useEffect(() => {
+    const onBeta = () => setBetaUnlocked(getBetaUnlocked())
+    window.addEventListener(BETA_EVENT, onBeta)
+    return () => window.removeEventListener(BETA_EVENT, onBeta)
+  }, [])
   const [proExtraApps, setProExtraAppsState] = useState<string[]>(() => getProExtraApps())
   useEffect(() => {
     const onEdition = () => {
@@ -588,7 +595,7 @@ export default function App() {
     if (edition === 'pro' && !PRO_DEFAULT_APPS.includes(a) && !proExtraApps.includes(a)) return false
     return true
   })
-  const visibleApps: WindowApp[] = [...coreVisible, ...(edition === 'lite' ? [] : STORE_APPS.filter((a) => installedApps.includes(a.id) && (!a.proOnly || edition === 'pro')).map((a) => a.id as WindowApp)), ...customApps.map((c) => c.id as WindowApp)]
+  const visibleApps: WindowApp[] = [...coreVisible, ...(edition === 'lite' ? [] : STORE_APPS.filter((a) => installedApps.includes(a.id) && (!a.proOnly || edition === 'pro') && (!a.beta || betaUnlocked.includes(a.id))).map((a) => a.id as WindowApp)), ...customApps.map((c) => c.id as WindowApp)]
   // MXUI ではデスクトップアイコンを 3列×4行 = 12 個ごとにページ切り替えする
   const ICONS_PER_PAGE = 12
   const iconPageCount = Math.max(1, Math.ceil(visibleApps.length / ICONS_PER_PAGE))
@@ -599,6 +606,7 @@ export default function App() {
   const installApp = (id: string) => {
     const def = STORE_APPS.find((a) => a.id === id)
     if (!def) return
+    if (def.beta && !getBetaUnlocked().includes(id)) return
     setInstalledApps((prev) => {
       const next = prev.includes(id) ? prev : [...prev, id]
       localStorage.setItem('webx-installed-apps', JSON.stringify(next))
@@ -919,7 +927,7 @@ export default function App() {
   }, [])
 
   const openApp = useCallback((app: WindowApp) => {
-    if (STORE_APPS.some((a) => a.id === app) && (edition === 'lite' || !installedApps.includes(app) || (STORE_APPS.find((a) => a.id === app)?.proOnly && edition !== 'pro'))) app = 'store'
+    if (STORE_APPS.some((a) => a.id === app) && (edition === 'lite' || !installedApps.includes(app) || (STORE_APPS.find((a) => a.id === app)?.proOnly && edition !== 'pro') || (STORE_APPS.find((a) => a.id === app)?.beta && !getBetaUnlocked().includes(app)))) app = 'store'
     else if (edition === 'pro' && (APP_ORDER as string[]).includes(app) && !PRO_DEFAULT_APPS.includes(app) && !proExtraApps.includes(app)) app = 'store'
     setStartOpen(false)
     // そのアプリを開いたら、宛先がそのアプリの通知は消える

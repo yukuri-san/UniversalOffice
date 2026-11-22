@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { STORE_APPS, STORE_CATEGORIES, type StoreCategory } from '../lib/storeApps'
 import { bundledGaps, catalogEntry, outdatedFromCatalog, type StoreCatalog } from '../lib/storeCheck'
 import { performUpdate } from '../lib/updateCheck'
@@ -7,6 +7,7 @@ import { APP_VERSION } from '../lib/version'
 import { compareVersions, fetchLatestVersion } from '../lib/updateCheck'
 import { useLang } from '../lib/i18n'
 import { PRO_DEFAULT_APPS, type EditionId } from '../lib/edition'
+import { BETA_EVENT, getBetaUnlocked, unlockBetaWithKey, visibleStoreApps } from '../lib/beta'
 
 interface Props {
   installed: string[]
@@ -39,6 +40,15 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
   const [summary, setSummary] = useState('')
   const [storeSummary, setStoreSummary] = useState('')
 
+  const [betaUnlocked, setBetaUnlocked] = useState<string[]>(() => getBetaUnlocked())
+  const [betaKey, setBetaKey] = useState('')
+  const [betaMsg, setBetaMsg] = useState('')
+  useEffect(() => {
+    const onBeta = () => setBetaUnlocked(getBetaUnlocked())
+    window.addEventListener(BETA_EVENT, onBeta)
+    return () => window.removeEventListener(BETA_EVENT, onBeta)
+  }, [])
+  const storeApps = visibleStoreApps(betaUnlocked)
   const outdatedApps = outdatedFromCatalog(catalog, installed, versions)
   const gaps = bundledGaps(catalog)
   const webxOutdated = latest !== '' && compareVersions(latest, APP_VERSION) > 0
@@ -130,14 +140,40 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
         />
         {query && <button className="btn" onClick={() => setQuery('')}>クリア</button>}
       </div>
+      <div className="store-beta">
+        <span className="store-beta-label">🧪 ベータアクセス</span>
+        <input
+          className="store-search"
+          type="text"
+          placeholder="ベータアクセスキーを入力"
+          value={betaKey}
+          onChange={(e) => setBetaKey(e.target.value)}
+        />
+        <button
+          className="btn"
+          onClick={() => {
+            const def = unlockBetaWithKey(betaKey)
+            if (def) {
+              setBetaMsg(`✅ 「${def.name}」のベータアクセスを有効にしました`)
+              setBetaKey('')
+              notifyOs(`「${def.name}」のベータアクセスを有効にしました`)
+            } else {
+              setBetaMsg('❌ キーが違います')
+            }
+          }}
+        >
+          有効化
+        </button>
+      </div>
+      {betaMsg && <p className="store-note">{betaMsg}</p>}
       <div className="store-cats">
-        <button className={category === 'all' ? 'chip on' : 'chip'} onClick={() => setCategory('all')}>すべて（{STORE_APPS.length}）</button>
+        <button className={category === 'all' ? 'chip on' : 'chip'} onClick={() => setCategory('all')}>すべて（{storeApps.length}）</button>
         {outdatedApps.length > 0 && (
           <button className={category === 'updates' ? 'chip on update' : 'chip update'} onClick={() => setCategory('updates')}>🔄 更新あり（{outdatedApps.length}）</button>
         )}
         {STORE_CATEGORIES.map((c) => (
           <button key={c.id} className={category === c.id ? 'chip on' : 'chip'} onClick={() => setCategory(c.id)}>
-            {c.emoji} {t(c.key)}（{STORE_APPS.filter((a) => a.category === c.id).length}）
+            {c.emoji} {t(c.key)}（{storeApps.filter((a) => a.category === c.id).length}）
           </button>
         ))}
       </div>
@@ -151,10 +187,10 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
         <p className="store-note">{t('stAllLatest')}</p>
       )}
       {query.trim() && (
-        <p className="store-note">「{query.trim()}」の検索結果：{STORE_APPS.filter((a) => (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(query.trim().toLowerCase())).length}件</p>
+        <p className="store-note">「{query.trim()}」の検索結果：{storeApps.filter((a) => (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(query.trim().toLowerCase())).length}件</p>
       )}
       <div className="store-list">
-        {STORE_APPS.filter((a) => category === 'all' || (category === 'updates' ? outdatedApps.some((o) => o.id === a.id) : a.category === category)).filter((a) => !query.trim() || (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(query.trim().toLowerCase())).map((app) => {
+        {storeApps.filter((a) => category === 'all' || (category === 'updates' ? outdatedApps.some((o) => o.id === a.id) : a.category === category)).filter((a) => !query.trim() || (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(query.trim().toLowerCase())).map((app) => {
           const isIn = installed.includes(app.id)
           const cur = versions[app.id]
           const latestVer = catalogEntry(catalog, app.id)?.version ?? app.version
@@ -167,6 +203,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
                   {app.name}
                   <span className="store-ver">v{latestVer}</span>
                   {app.proOnly && <span className="store-state pro">👑 Pro限定</span>}
+                  {app.beta && <span className="store-state pro">🧪 ベータ</span>}
                   {isIn && <span className="store-state">{outdated ? `${t('stInstalled')} v${cur ?? '?'} (${t('stUpdateBtn')})` : t('stInstalled')}</span>}
                 </div>
                 <div className="store-desc">{app.desc}</div>

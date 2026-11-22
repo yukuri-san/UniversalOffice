@@ -21,6 +21,8 @@ export interface StoreAppDef {
   notes?: string
   /** Pro Edition でのみインストール・利用できるアプリ */
   proOnly?: boolean
+  /** ベータアプリ：アクセスキー（src/lib/beta.ts）を入力するまで非表示 */
+  beta?: boolean
 }
 
 export const STORE_APPS: StoreAppDef[] = [
@@ -243,7 +245,7 @@ export const STORE_APPS: StoreAppDef[] = [
     category: 'tool',
   },
   {
-    id: 'wme', icon: '🎬', cls: 'wme', name: 'WME WebMovieEditor',
+    id: 'wme', icon: '🎬', cls: 'wme', name: 'WME WebMovieEditor', beta: true,
     desc: 'YMM4再現を目指す動画編集アプリ。タイムライン編集・AquesTalk音声生成・PSD立ち絵・口パク対応予定。まずは茶番劇が作れることを目標に開発中です。', version: '0.1.0', notes: '新規アプリです。初回版から主要機能を搭載：セリフの音声生成（声はAq1同梱声＋純正AquesTalk2の20声、速さ・ピッチ・読みの手動指定ができ、生成するとアイテムの長さが音声の尺に合います）。プロジェクト設定（16:9/9:16、360p〜1080p、20/24/30fps）、Canvasプレビュー、タイムライン編集、アイテム5種の追加と基本編集。立ち絵はPSD読み込み・表情プリセット・口パク（セリフ中0.25秒切替）に対応。BGM読み込みとMP4書き出し（WebCodecs）も搭載し、茶番劇が作れる基本セットが揃いました。',
     category: 'tool',
   },
