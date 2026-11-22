@@ -73,7 +73,7 @@ import { Game2048, Snake, Breakout } from './components/games/Classics'
 import { Minesweeper, Sudoku } from './components/games/Puzzle'
 import { Memory, Reversi, Gomoku } from './components/games/Board'
 import { Match3, Pong, Flappy, WhackMole } from './components/games/Arcade'
-import { Typing, Puzzle15, Hanoi, Blackjack, Slot, Runner } from './components/games/Mini'
+import { Typing, Puzzle15, Hanoi, Blackjack, Slot, Runner, Invader } from './components/games/Mini'
 import { listDocs, listEvents, requestPersist, type CalEvent, type LocalDoc } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import { compareVersions, fetchLatestVersion } from './lib/updateCheck'
@@ -82,7 +82,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'invader' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro'
 
 interface Win {
   id: WindowApp
@@ -155,6 +155,7 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   blackjack: { icon: '♠', cls: 'blackjack' },
   slot: { icon: '🎰', cls: 'slot' },
   runner: { icon: '🦖', cls: 'runner' },
+  invader: { icon: '👾', cls: 'invader' },
   todo: { icon: '✓', cls: 'todo' },
   diary: { icon: '日', cls: 'diary' },
   weather: { icon: '🌤️', cls: 'weather' },
@@ -1184,6 +1185,7 @@ export default function App() {
       case 'blackjack': return <Blackjack />
       case 'slot': return <Slot />
       case 'runner': return <Runner />
+      case 'invader': return <Invader />
       case 'todo': return <TodoList />
       case 'diary': return <Diary />
       case 'weather': return <WeatherApp />

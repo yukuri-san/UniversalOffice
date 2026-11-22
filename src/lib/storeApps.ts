@@ -219,6 +219,11 @@ export const STORE_APPS: StoreAppDef[] = [
     category: 'game',
   },
   {
+    id: 'invader', icon: '👾', cls: 'invader', name: 'インベーダー',
+    desc: '迫り来るインベーダーを撃ち落とすシューティング。ウェーブを進めてハイスコアを目指そう。', version: '1.0.0', notes: '新規アプリです。左右移動・発射・ウェーブ制・残機3・ハイスコア保存に対応しています。',
+    category: 'game',
+  },
+  {
     id: 'todo', icon: '✓', cls: 'todo', name: 'TODOリスト',
     desc: 'やることを追加してチェックで管理。完了・未完了で絞り込みでき、端末内に保存されます。', version: '1.0.0', notes: '新規アプリです。やることの追加・完了チェック・絞り込み・完了の一括削除ができます。',
     category: 'life',

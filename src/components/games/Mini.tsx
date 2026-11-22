@@ -256,3 +256,206 @@ export function Runner() {
     </div>
   )
 }
+
+/* ================= インベーダー ================= */
+const IW = 360, IH = 240
+const INVADER_BEST_KEY = 'webx-invader-best'
+const INVADER_STARS = Array.from({ length: 26 }, (_, i) => ({ x: (i * 53 + 17) % IW, y: (i * 37 + 11) % (IH - 40), r: 1 + (i % 2) * 0.7 }))
+const INVADER_ROW_COLORS = ['#f87171', '#fbbf24', '#4ade80', '#60a5fa', '#c084fc']
+const INVADER_ROW_POINTS = [30, 20, 20, 10, 10]
+type InvEnemy = { col: number; row: number; alive: boolean }
+function invFormation(wave: number): InvEnemy[] {
+  const rows = Math.min(4 + Math.floor((wave - 1) / 3), 5)
+  const list: InvEnemy[] = []
+  for (let r = 0; r < rows; r++) for (let c = 0; c < 8; c++) list.push({ col: c, row: r, alive: true })
+  return list
+}
+export function Invader() {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [score, setScore] = useState(0)
+  const [wave, setWave] = useState(1)
+  const [lives, setLives] = useState(3)
+  const [best, setBest] = useState(() => Number(localStorage.getItem(INVADER_BEST_KEY) ?? 0) || 0)
+  const [phase, setPhase] = useState<'idle' | 'playing' | 'clear' | 'over'>('idle')
+  const [msg, setMsg] = useState('スタートで出撃！')
+  const st = useRef({
+    px: IW / 2, keys: new Set<string>(),
+    bullets: [] as { x: number; y: number }[],
+    ebullets: [] as { x: number; y: number }[],
+    enemies: [] as InvEnemy[],
+    fx: 0, fy: 0, dir: 1, step: 0, frame: 0, cool: 0, invuln: 0,
+    wave: 1, score: 0, lives: 3, total: 0, killed: 0,
+  })
+  const phaseRef = useRef(phase)
+  phaseRef.current = phase
+  const fire = () => {
+    const s = st.current
+    if (phaseRef.current !== 'playing' || s.cool > 0) return
+    s.cool = 14
+    s.bullets.push({ x: s.px, y: IH - 40 })
+  }
+  const beginWave = (w: number) => {
+    const s = st.current
+    s.enemies = invFormation(w); s.total = s.enemies.length; s.killed = 0
+    s.bullets = []; s.ebullets = []; s.fx = 0; s.fy = 0; s.dir = 1; s.step = 0; s.cool = 0; s.invuln = 0
+    s.wave = w
+    setWave(w); setPhase('playing'); setMsg(`ウェーブ ${w}！`)
+  }
+  const start = () => {
+    const s = st.current
+    s.px = IW / 2; s.score = 0; s.lives = 3
+    setScore(0); setLives(3)
+    beginWave(1)
+  }
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.code === 'ArrowLeft' || e.code === 'ArrowRight' || e.code === 'KeyA' || e.code === 'KeyD') {
+        st.current.keys.add(e.code); e.preventDefault()
+      }
+      if (e.code === 'Space') { e.preventDefault(); fire() }
+      if (e.code === 'Enter' && phaseRef.current !== 'playing') start()
+    }
+    const up = (e: KeyboardEvent) => { st.current.keys.delete(e.code) }
+    window.addEventListener('keydown', down)
+    window.addEventListener('keyup', up)
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  useEffect(() => {
+    if (phase !== 'playing') return
+    const cv = canvasRef.current; if (!cv) return
+    const ctx = cv.getContext('2d'); if (!ctx) return
+    let rafId = 0
+    const playerY = IH - 26
+    const enemyPos = (e: InvEnemy, s: typeof st.current) => ({ x: 30 + e.col * 36 + s.fx, y: 22 + e.row * 24 + s.fy })
+    const tick = () => {
+      const s = st.current
+      s.frame++; s.cool = Math.max(0, s.cool - 1); s.invuln = Math.max(0, s.invuln - 1)
+      // 自機の移動
+      if (s.keys.has('ArrowLeft') || s.keys.has('KeyA')) s.px -= 4.5
+      if (s.keys.has('ArrowRight') || s.keys.has('KeyD')) s.px += 4.5
+      s.px = Math.max(18, Math.min(IW - 18, s.px))
+      // 敵の移動（残りが少ないほど速く、ウェーブが進むほど速く）
+      const alive = s.enemies.filter((e) => e.alive)
+      const interval = Math.max(9, 34 - s.killed - (s.wave - 1) * 2)
+      s.step++
+      if (s.step >= interval) {
+        s.step = 0
+        const xs = alive.map((e) => enemyPos(e, s).x)
+        const minX = Math.min(...xs), maxX = Math.max(...xs)
+        if ((s.dir > 0 && maxX + 8 > IW - 16) || (s.dir < 0 && minX - 8 < 8)) { s.dir *= -1; s.fy += 14 } else { s.fx += s.dir * 8 }
+      }
+      // 敵の弾
+      if (s.frame % 52 === 0 && alive.length) {
+        const bottom = alive.filter((e) => !alive.some((o) => o.col === e.col && o.row > e.row))
+        const pick = bottom[Math.floor(Math.random() * bottom.length)]
+        const p = enemyPos(pick, s)
+        s.ebullets.push({ x: p.x, y: p.y + 12 })
+      }
+      // 自弾
+      s.bullets = s.bullets.map((b) => ({ ...b, y: b.y - 7 })).filter((b) => b.y > -10)
+      s.ebullets = s.ebullets.map((b) => ({ ...b, y: b.y + 2.6 + s.wave * 0.2 })).filter((b) => b.y < IH + 10)
+      // 自弾と敵の当たり判定
+      s.bullets = s.bullets.filter((b) => {
+        const hit = s.enemies.find((e) => {
+          if (!e.alive) return false
+          const p = enemyPos(e, s)
+          return Math.abs(b.x - p.x) < 16 && Math.abs(b.y - p.y) < 12
+        })
+        if (hit) {
+          hit.alive = false; s.killed++
+          s.score += INVADER_ROW_POINTS[hit.row] ?? 10
+          setScore(s.score)
+        }
+        return !hit
+      })
+      // 敵弾と自機の当たり判定
+      if (s.invuln === 0) {
+        const hit = s.ebullets.some((b) => Math.abs(b.x - s.px) < 15 && Math.abs(b.y - playerY) < 13)
+        if (hit) {
+          s.ebullets = []
+          s.lives--; setLives(s.lives)
+          s.invuln = 90
+          if (s.lives <= 0) {
+            if (s.score > best) { localStorage.setItem(INVADER_BEST_KEY, String(s.score)); setBest(s.score) }
+            setMsg(`ゲームオーバー… スコア ${s.score}`)
+            setPhase('over')
+            return
+          }
+        }
+      }
+      // 敵が最下段まで到達したらゲームオーバー
+      if (alive.some((e) => enemyPos(e, s).y > IH - 56)) {
+        if (s.score > best) { localStorage.setItem(INVADER_BEST_KEY, String(s.score)); setBest(s.score) }
+        setMsg(`敵に侵攻された… スコア ${s.score}`)
+        setPhase('over')
+        return
+      }
+      // 全滅でウェーブクリア
+      if (s.killed >= s.total) {
+        s.score += 50; setScore(s.score)
+        setMsg(`ウェーブ ${s.wave} クリア！ +50`)
+        setPhase('clear')
+        return
+      }
+      // 描画
+      ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, IW, IH)
+      ctx.fillStyle = '#64748b'
+      INVADER_STARS.forEach((star) => { ctx.fillRect(star.x, star.y, star.r, star.r) })
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+      s.enemies.forEach((e) => {
+        if (!e.alive) return
+        const p = enemyPos(e, s)
+        ctx.font = '20px serif'
+        ctx.fillStyle = INVADER_ROW_COLORS[e.row] ?? '#c084fc'
+        ctx.fillText('👾', p.x, p.y)
+      })
+      ctx.fillStyle = '#fde047'
+      s.bullets.forEach((b) => ctx.fillRect(b.x - 2, b.y - 8, 4, 10))
+      ctx.fillStyle = '#f87171'
+      s.ebullets.forEach((b) => { ctx.beginPath(); ctx.arc(b.x, b.y, 3, 0, Math.PI * 2); ctx.fill() })
+      if (s.invuln === 0 || Math.floor(s.frame / 6) % 2 === 0) {
+        ctx.font = '26px serif'
+        ctx.fillText('🚀', s.px, playerY)
+      }
+      rafId = requestAnimationFrame(tick)
+    }
+    rafId = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(rafId)
+  }, [phase, best])
+  const dragMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (phase !== 'playing') return
+    const rect = canvasRef.current?.getBoundingClientRect(); if (!rect) return
+    st.current.px = Math.max(18, Math.min(IW - 18, ((e.clientX - rect.left) / rect.width) * IW))
+  }
+  const holdKey = (code: string) => ({
+    onPointerDown: (e: React.PointerEvent) => { e.preventDefault(); st.current.keys.add(code) },
+    onPointerUp: () => { st.current.keys.delete(code) },
+    onPointerLeave: () => { st.current.keys.delete(code) },
+  })
+  return (
+    <div className="game-app col">
+      <div className="game-bar">
+        <span className="game-stat inline">スコア<b>{score}</b></span>
+        <span className="game-stat inline">ウェーブ<b>{wave}</b></span>
+        <span className="game-stat inline">残機<b>{'🚀'.repeat(Math.max(0, lives)) || '—'}</b></span>
+        <span className="game-stat inline">ベスト<b>{best}</b></span>
+        {phase === 'idle' && <button className="btn accent" onClick={start}>スタート</button>}
+        {phase === 'clear' && <button className="btn accent" onClick={() => beginWave(wave + 1)}>次のウェーブへ</button>}
+        {(phase === 'over' || phase === 'playing') && <button className="btn accent" onClick={start}>リスタート</button>}
+      </div>
+      <p className="game-msg">{msg}</p>
+      <canvas
+        ref={canvasRef} width={IW} height={IH} className="game-canvas"
+        onPointerDown={(e) => { dragMove(e); fire() }}
+        onPointerMove={(e) => { if (e.buttons > 0) dragMove(e) }}
+      />
+      <div className="game-pad wide">
+        <button className="btn" {...holdKey('ArrowLeft')}>◀</button>
+        <button className="btn accent" onPointerDown={(e) => { e.preventDefault(); fire() }}>🔥 発射</button>
+        <button className="btn" {...holdKey('ArrowRight')}>▶</button>
+      </div>
+      <p className="game-help">←→／A Dで移動、Spaceで発射。敵を全滅させると次のウェーブへ。敵弾に3回当たるか、敵が最下段まで来るとゲームオーバー。</p>
+    </div>
+  )
+}
