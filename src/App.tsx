@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import WordProcessor from './components/WordProcessor'
 import Spreadsheet from './components/Spreadsheet'
 import Notepad from './components/Notepad'
@@ -65,10 +65,11 @@ import { getPin, hashPin } from './lib/pin'
 import { resetSettingsOnly } from './lib/reset'
 import Tetris from './components/games/Tetris'
 import Suika from './components/games/Suika'
-import TougeDrift from './components/games/TougeDrift'
-import TrainGo from './components/games/TrainGo'
-import VoxelWorld from './components/games/VoxelWorld'
-import DenshaD from './components/games/DenshaD'
+// v1.53.0: 3Dゲーム（three.js）は起動時に読み込まず、開いたときだけ遅延読み込みする
+const TougeDrift = lazy(() => import('./components/games/TougeDrift'))
+const TrainGo = lazy(() => import('./components/games/TrainGo'))
+const VoxelWorld = lazy(() => import('./components/games/VoxelWorld'))
+const DenshaD = lazy(() => import('./components/games/DenshaD'))
 import { Game2048, Snake, Breakout } from './components/games/Classics'
 import { Minesweeper, Sudoku } from './components/games/Puzzle'
 import { Memory, Reversi, Gomoku } from './components/games/Board'
@@ -1055,6 +1056,10 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windows, activeId, platform, openApp, focusWin])
 
+  const lazyGame = (node: ReactNode) => (
+    <Suspense fallback={<div className="app-loading"><div className="app-spinner" /><p>{t('loading')}</p></div>}>{node}</Suspense>
+  )
+
   const renderContent = (app: WindowApp) => {
     if (isCustomId(app)) return <CustomAppView id={app} openApp={(target) => openApp(target as WindowApp)} />
     switch (app) {
@@ -1274,10 +1279,10 @@ export default function App() {
       case 'calcpro': return <CalcPro />
       case 'photopro': return <PhotoPro />
       case 'mediaconv': return <MediaConv />
-      case 'touge': return <TougeDrift />
-      case 'traingo': return <TrainGo />
-      case 'denshaD': return <DenshaD />
-      case 'voxel': return <VoxelWorld />
+      case 'touge': return lazyGame(<TougeDrift />)
+      case 'traingo': return lazyGame(<TrainGo />)
+      case 'denshaD': return lazyGame(<DenshaD />)
+      case 'voxel': return lazyGame(<VoxelWorld />)
       case 'sysinfo': return <SysInfo />
       case 'taskman': return (
         <TaskManager
