@@ -1,0 +1,391 @@
+/**
+ * V86Emu - A wrapper around v86's internal CPU that provides
+ * unicorn.js-like API for bare x86-32 emulation.
+ *
+ * Uses v86's JIT (x86 → WebAssembly) for much faster emulation
+ * compared to unicorn.js's interpreter approach.
+ */
+import { V86 } from "../../deps/libv86.mjs";
+// v86 register indices (matching cpu.reg32 Int32Array layout)
+export const REG_EAX = 0;
+export const REG_ECX = 1;
+export const REG_EDX = 2;
+export const REG_EBX = 3;
+export const REG_ESP = 4;
+export const REG_EBP = 5;
+export const REG_ESI = 6;
+export const REG_EDI = 7;
+const HOOK_PORT_BASE = 0xe0;
+const STOP_PORT = 0xdf;
+// `_stopped` is observed by JS only after the current v86 JIT block returns.
+// HLT immediately after OUT prevents a warmed block from running on into the NOP sled.
+const STOP_TRAMPOLINE = new Uint8Array([0xe6, STOP_PORT, 0xf4]);
+const MIN_VGA_MEMORY_SIZE = 256 * 1024;
+const MAX_CACHED_WASM_MODULES = 4;
+// Enough for the relocated PE image, AquesTalk's default 32 MiB heap, and the
+// guest stack when V86Emu and AquesTalk are constructed directly.
+export const DEFAULT_MEMORY_SIZE = 35 * 1024 * 1024;
+const WASM_MODULE_CACHE = new Map();
+async function loadWasmModule(wasmPath) {
+    const cached = WASM_MODULE_CACHE.get(wasmPath);
+    if (cached)
+        return cached;
+    const loading = (async () => {
+        let bytes;
+        if (typeof process !== "undefined" &&
+            process.versions?.node &&
+            (wasmPath.startsWith("file://") || !wasmPath.includes("://"))) {
+            const fs = await import("fs/promises");
+            const { fileURLToPath } = await import("url");
+            bytes = await fs.readFile(wasmPath.startsWith("file://") ? fileURLToPath(wasmPath) : wasmPath);
+        }
+        else {
+            const response = await fetch(wasmPath);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ${wasmPath}: ${response.status}`);
+            }
+            bytes = await response.arrayBuffer();
+        }
+        return WebAssembly.compile(bytes);
+    })();
+    if (WASM_MODULE_CACHE.size >= MAX_CACHED_WASM_MODULES) {
+        WASM_MODULE_CACHE.delete(WASM_MODULE_CACHE.keys().next().value);
+    }
+    WASM_MODULE_CACHE.set(wasmPath, loading);
+    try {
+        return await loading;
+    }
+    catch (error) {
+        WASM_MODULE_CACHE.delete(wasmPath);
+        throw error;
+    }
+}
+export class V86Emu {
+    constructor() {
+        this.hooks = new Map();
+        this._stopped = false;
+        this.stopHandlerRegistered = false;
+        this.stopAddress = null;
+        this.nextHookPort = HOOK_PORT_BASE;
+    }
+    /**
+     * Initialize the V86 emulator.
+     * Creates a V86 instance with multiboot to get flat 32-bit protected mode.
+     */
+    async init(options = {}) {
+        const memorySize = options.memorySize ?? DEFAULT_MEMORY_SIZE;
+        const wasmPath = options.wasmPath;
+        if (!Number.isSafeInteger(memorySize) ||
+            memorySize <= 0 ||
+            memorySize > 4294967295) {
+            throw new RangeError(`invalid memory size: ${memorySize}`);
+        }
+        // Create a minimal multiboot binary: just a HLT loop
+        const MULTIBOOT_MAGIC = 0x1BADB002;
+        const MULTIBOOT_FLAGS = 0x00010000; // bit 16: we specify address info
+        const MULTIBOOT_CHECKSUM = -(MULTIBOOT_MAGIC + MULTIBOOT_FLAGS) | 0;
+        const LOAD_ADDR = 0x100000;
+        const HEADER_ADDR = LOAD_ADDR;
+        const ENTRY_ADDR = LOAD_ADDR + 32;
+        const bin = new ArrayBuffer(64);
+        const view = new DataView(bin);
+        view.setInt32(0, MULTIBOOT_MAGIC, true);
+        view.setInt32(4, MULTIBOOT_FLAGS, true);
+        view.setInt32(8, MULTIBOOT_CHECKSUM, true);
+        view.setUint32(12, HEADER_ADDR, true);
+        view.setUint32(16, LOAD_ADDR, true);
+        view.setUint32(20, 0, true);
+        view.setUint32(24, 0, true);
+        view.setUint32(28, ENTRY_ADDR, true);
+        // Entry point: HLT + JMP loop
+        view.setUint8(32, 0xf4); // HLT
+        view.setUint8(33, 0xeb); // JMP short
+        view.setUint8(34, 0xfc); // -4
+        const v86Options = {
+            memory_size: memorySize,
+            // v86 treats 0 as "use the 8 MiB default". Its actual minimum is 256 KiB.
+            vga_memory_size: MIN_VGA_MEMORY_SIZE,
+            autostart: false,
+            multiboot: { buffer: bin },
+        };
+        if (wasmPath) {
+            v86Options.wasm_fn = async (imports) => {
+                const instantiate = async (path) => {
+                    const module = await loadWasmModule(path);
+                    return WebAssembly.instantiate(module, imports);
+                };
+                try {
+                    return (await instantiate(wasmPath)).exports;
+                }
+                catch (primaryError) {
+                    const fallbackPath = wasmPath.replace("v86.wasm", "v86-fallback.wasm");
+                    if (fallbackPath === wasmPath)
+                        throw primaryError;
+                    try {
+                        return (await instantiate(fallbackPath)).exports;
+                    }
+                    catch {
+                        throw primaryError;
+                    }
+                }
+            };
+        }
+        this.emulator = new V86(v86Options);
+        // Wait for emulator to be ready
+        await new Promise((resolve) => {
+            this.emulator.add_listener("emulator-ready", () => {
+                resolve();
+            });
+        });
+        this.cpu = this.emulator.v86.cpu;
+        // Set up a proper GDT with valid flat segment descriptors
+        // This is needed because multiboot mode's segments don't have GDT entries,
+        // and operations like POP SS trigger #GP without valid descriptors.
+        this._setupGDT();
+    }
+    get memory_size() {
+        return this.cpu.memory_size[0] >>> 0;
+    }
+    assert_memory_range(addr, size) {
+        if (!Number.isSafeInteger(addr) ||
+            !Number.isSafeInteger(size) ||
+            addr < 0 ||
+            size < 0 ||
+            addr + size > this.memory_size) {
+            throw new RangeError(`memory range 0x${addr.toString(16)}..0x${(addr + size).toString(16)} exceeds ${this.memory_size} bytes`);
+        }
+    }
+    /**
+     * Set up a Global Descriptor Table (GDT) with flat code and data segments.
+     * GDT is placed at physical address 0x1000.
+     */
+    _setupGDT() {
+        const GDT_ADDR = 0x1000;
+        // GDT entries: each is 8 bytes
+        // Entry 0: Null descriptor (required)
+        // Entry 1 (selector 0x08): Code segment - base=0, limit=4GB, DPL=3, Execute/Read
+        // Entry 2 (selector 0x10): Data segment - base=0, limit=4GB, DPL=3, Read/Write
+        const gdt = new Uint8Array(8 * 3);
+        const gdtView = new DataView(gdt.buffer);
+        // Entry 0: Null descriptor (all zeros)
+        // Entry 1: Code segment (selector 0x08)
+        // Limit[15:0] = 0xFFFF, Base[15:0] = 0x0000
+        gdtView.setUint16(8, 0xffff, true); // limit low
+        gdtView.setUint16(10, 0x0000, true); // base low
+        // Base[23:16] = 0x00, Access byte: Present=1, DPL=11 (3), S=1, Type=1010 (exec/read) = 0xFA
+        gdtView.setUint8(12, 0x00); // base mid
+        gdtView.setUint8(13, 0xfa); // access: P=1, DPL=3, S=1, E=1, DC=0, RW=1, A=0
+        // Flags: Granularity=1, Size=1 (32-bit), Limit[19:16] = 0xF → 0xCF
+        gdtView.setUint8(14, 0xcf); // flags + limit high
+        gdtView.setUint8(15, 0x00); // base high
+        // Entry 2: Data segment (selector 0x10)
+        // Same as code but Type=0010 (read/write) → Access byte 0xF2
+        gdtView.setUint16(16, 0xffff, true); // limit low
+        gdtView.setUint16(18, 0x0000, true); // base low
+        gdtView.setUint8(20, 0x00); // base mid
+        gdtView.setUint8(21, 0xf2); // access: P=1, DPL=3, S=1, E=0, DC=0, RW=1, A=0
+        gdtView.setUint8(22, 0xcf); // flags + limit high
+        gdtView.setUint8(23, 0x00); // base high
+        // Write GDT to memory
+        this.cpu.write_blob(gdt, GDT_ADDR);
+        // Set GDTR: base = GDT_ADDR, limit = 3*8-1 = 23
+        this.cpu.gdtr_size[0] = 23;
+        this.cpu.gdtr_offset[0] = GDT_ADDR;
+        this._restoreFlatSegments();
+    }
+    _restoreFlatSegments() {
+        // CS = 0x08 (code segment), all data segments = 0x10.
+        const CODE_SEL = 0x08;
+        const DATA_SEL = 0x10;
+        // Set segment selectors
+        this.cpu.sreg[0] = DATA_SEL; // ES
+        this.cpu.sreg[1] = CODE_SEL; // CS
+        this.cpu.sreg[2] = DATA_SEL; // SS
+        this.cpu.sreg[3] = DATA_SEL; // DS
+        this.cpu.sreg[4] = DATA_SEL; // FS
+        this.cpu.sreg[5] = DATA_SEL; // GS
+        // Ensure flat segments - base=0, limit=0xFFFFFFFF for all
+        for (let i = 0; i < 6; i++) {
+            this.cpu.segment_is_null[i] = 0;
+            this.cpu.segment_offsets[i] = 0;
+            this.cpu.segment_limits[i] = 0xffffffff;
+        }
+        this.cpu.update_state_flags();
+    }
+    /**
+     * Write data to physical memory.
+     */
+    mem_write(addr, data) {
+        this.cpu.write_blob(data, addr);
+    }
+    mem_clear(addr, size) {
+        this.mem_fill(addr, size, 0);
+    }
+    mem_fill(addr, size, value) {
+        this.assert_memory_range(addr, size);
+        this.cpu.mem8.fill(value, addr, addr + size);
+    }
+    /**
+     * Read data from physical memory.
+     */
+    mem_read(addr, size) {
+        return new Uint8Array(this.cpu.read_blob(addr, size));
+    }
+    mem_read_uint32(addr) {
+        this.assert_memory_range(addr, 4);
+        const memory = this.cpu.mem8;
+        return (memory[addr] |
+            (memory[addr + 1] << 8) |
+            (memory[addr + 2] << 16) |
+            (memory[addr + 3] << 24)) >>> 0;
+    }
+    mem_write_uint32(addr, value) {
+        this.assert_memory_range(addr, 4);
+        const memory = this.cpu.mem8;
+        memory[addr] = value;
+        memory[addr + 1] = value >>> 8;
+        memory[addr + 2] = value >>> 16;
+        memory[addr + 3] = value >>> 24;
+    }
+    /**
+     * Read a 32-bit register value.
+     */
+    reg_read(reg) {
+        return this.cpu.reg32[reg] >>> 0;
+    }
+    /**
+     * Write a 32-bit register value.
+     */
+    reg_write(reg, value) {
+        this.cpu.reg32[reg] = value | 0;
+    }
+    /**
+     * Read EIP (instruction pointer).
+     */
+    get_eip() {
+        return (this.cpu.instruction_pointer[0] - this.cpu.get_seg_cs()) >>> 0;
+    }
+    /**
+     * Set EIP (instruction pointer).
+     */
+    set_eip(addr) {
+        this.cpu.instruction_pointer[0] = this.cpu.get_seg_cs() + addr;
+    }
+    /**
+     * Install a hook at the given address.
+     * Uses I/O port OUT instruction to trap into JavaScript.
+     *
+     * Writes a simple OUT instruction at the hook address:
+     *   OUT imm8, AL    ; E6 pp    ; trigger I/O port write → JavaScript handler
+     *
+     * Just 2 bytes. The callback is expected to handle the return (e.g., by calling ret()).
+     * Since OUT doesn't modify any registers or the stack, get_arg/push/pop all work correctly.
+     */
+    set_hook(addr, callback, userData = null) {
+        const port = this.nextHookPort++;
+        if (port > 0xFF) {
+            throw new Error("too many emulator hooks");
+        }
+        // Save the original byte at the hook address
+        const originalBytes = new Uint8Array(this.cpu.read_blob(addr, 2));
+        // Write the 2-byte trampoline: OUT imm8, AL
+        const trampoline = new Uint8Array([0xe6, port & 0xFF]);
+        this.cpu.write_blob(trampoline, addr);
+        const entry = { callback, originalBytes, userData };
+        this.hooks.set(addr, entry);
+        // Register the I/O port handler
+        this.cpu.io.register_write(port, this, (_value) => {
+            entry.callback(this, entry.userData);
+        });
+        return port;
+    }
+    /**
+     * Remove a hook from the given address, restoring the original byte.
+     */
+    remove_hook(addr) {
+        const hook = this.hooks.get(addr);
+        if (hook) {
+            this.cpu.write_blob(hook.originalBytes, addr);
+            this.hooks.delete(addr);
+        }
+    }
+    /**
+     * Start emulation from `start` address until reaching `until` address.
+     *
+     * The stop trampoline is installed once and never toggled back to NOPs. v86
+     * may retain translated JIT blocks across calls; mutating executable bytes at
+     * the stop address without invalidating those blocks eventually mixes code
+     * compiled from the two byte patterns. A stable trampoline keeps guest memory
+     * and every warmed JIT block in agreement.
+     */
+    emu_start(start, until) {
+        this.set_eip(start);
+        this._stopped = false;
+        if (this.stopAddress === null) {
+            this.assert_memory_range(until, STOP_TRAMPOLINE.byteLength);
+            this.cpu.write_blob(STOP_TRAMPOLINE, until);
+            this.stopAddress = until;
+        }
+        else if (this.stopAddress !== until) {
+            throw new Error(`V86Emu stop address changed from 0x${this.stopAddress.toString(16)} to 0x${until.toString(16)}`);
+        }
+        if (!this.stopHandlerRegistered) {
+            this.cpu.io.register_write(STOP_PORT, this, (_value) => {
+                this._stopped = true;
+            });
+            this.stopHandlerRegistered = true;
+        }
+        // Run the CPU in a tight loop until stopped. The return area after the OUT
+        // instruction remains a NOP sled because a compiled v86 block can continue
+        // for a bounded distance after the port callback flips `_stopped`.
+        this.cpu.in_hlt[0] = 0;
+        try {
+            while (!this._stopped) {
+                this.cpu.main_loop();
+            }
+        }
+        catch (e) {
+            if (e === "HALT" || (typeof e === "string" && e.includes("HALT"))) {
+                // Expected for HLT instruction
+            }
+            else {
+                throw e;
+            }
+        }
+    }
+    /**
+     * Stop emulation.
+     */
+    emu_stop() {
+        this._stopped = true;
+    }
+    /**
+     * Reset CPU registers and flags to a clean state.
+     */
+    reset_cpu() {
+        // Reset general purpose registers to 0
+        for (let i = 0; i < 8; i++) {
+            this.cpu.reg32[i] = 0;
+        }
+        // Reset flags: Bit 1 is always 1 in EFLAGS.
+        this.cpu.flags[0] = 0x2;
+        // Clear HLT state
+        this.cpu.in_hlt[0] = 0;
+        // Restore segment state without rebuilding and rewriting the unchanged GDT.
+        this._restoreFlatSegments();
+    }
+    /**
+     * Destroy the emulator and release resources.
+     */
+    async destroy() {
+        const emulator = this.emulator;
+        this._stopped = true;
+        this.hooks.clear();
+        this.cpu = null;
+        this.emulator = null;
+        this.stopHandlerRegistered = false;
+        this.stopAddress = null;
+        if (emulator)
+            await emulator.destroy();
+    }
+}

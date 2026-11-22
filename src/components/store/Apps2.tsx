@@ -308,7 +308,6 @@ export function Counter() {
   )
 }
 
-/* ---------- ルーレット ---------- */
 export function Roulette() {
   const [input, setInput] = useState('A\nB\nC')
   const [result, setResult] = useState('')
@@ -434,3 +433,4 @@ export function AgeCalc() {
     </div>
   )
 }
+

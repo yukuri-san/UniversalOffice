@@ -440,6 +440,16 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   const [findText, setFindText] = useState('')
   const [replaceText, setReplaceText] = useState('')
   const [findStatus, setFindStatus] = useState('')
+  /** コピー＆ペーストの結果表示（3秒で消える） */
+  const [clipStatus, setClipStatus] = useState('')
+  /** コピーした範囲のTSV。クリップボードAPIが使えない環境での貼り付け用フォールバック */
+  const clipRef = useRef('')
+  const clipTimerRef = useRef<number | null>(null)
+  const showClipStatus = (msg: string) => {
+    setClipStatus(msg)
+    if (clipTimerRef.current) window.clearTimeout(clipTimerRef.current)
+    clipTimerRef.current = window.setTimeout(() => setClipStatus(''), 3000)
+  }
   const fileRef = useRef<HTMLInputElement>(null)
   const cellRefs = useRef(new Map<string, HTMLInputElement>())
   const [pendingFocus, setPendingFocus] = useState<{ r: number; c: number } | null>(null)
@@ -819,7 +829,13 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
   }
 
   const onCellKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); commitEdit(); if (e.shiftKey) redo(); else undo() }
+    // 入力欄の文字を選択中はブラウザの文字コピー＆ペーストを優先し、それ以外は範囲コピー＆ペーストにする
+    const input = e.currentTarget
+    const selectingText = input.selectionStart !== null && input.selectionStart !== input.selectionEnd
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'c' || e.key === 'C') && !selectingText) { e.preventDefault(); copyRange(false) }
+    else if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'x' || e.key === 'X') && !selectingText) { e.preventDefault(); copyRange(true) }
+    else if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'v' || e.key === 'V') && !selectingText) { e.preventDefault(); void pasteCells() }
+    else if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'z' || e.key === 'Z')) { e.preventDefault(); commitEdit(); if (e.shiftKey) redo(); else undo() }
     else if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'y' || e.key === 'Y')) { e.preventDefault(); commitEdit(); redo() }
     else if (e.key === 'Enter') { e.preventDefault(); commitEdit(); moveSelection(e.shiftKey ? -1 : 1, 0) }
     else if (e.key === 'Tab') { e.preventDefault(); commitEdit(); moveSelection(0, e.shiftKey ? -1 : 1) }
@@ -952,6 +968,54 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
     setRange(null)
   }
 
+  /** 選択中の範囲（なければ選択セル）をTSV化してコピーする。切り取り時はセルを空にする */
+  const copyRange = (cut: boolean) => {
+    const rect = rangeRect ?? { r1: selected.r, r2: selected.r, c1: selected.c, c2: selected.c }
+    const rows: string[] = []
+    for (let r = rect.r1; r <= rect.r2; r++) {
+      rows.push(Array.from({ length: rect.c2 - rect.c1 + 1 }, (_, i) => grid[r]?.[rect.c1 + i] ?? '').join('\t'))
+    }
+    const text = rows.join('\n')
+    clipRef.current = text
+    if (navigator.clipboard?.writeText) void navigator.clipboard.writeText(text).catch(() => { /* 端末内フォールバックで貼り付け可能 */ })
+    const n = (rect.r2 - rect.r1 + 1) * (rect.c2 - rect.c1 + 1)
+    if (cut) {
+      commitEdit()
+      pushHistory(grid, styles)
+      setGrid((prev) => prev.map((row, r) => (r < rect.r1 || r > rect.r2 ? row : row.map((cell, c) => (c >= rect.c1 && c <= rect.c2 ? '' : cell)))))
+      showClipStatus(t('cutCount').replace('{n}', String(n)))
+    } else {
+      showClipStatus(t('copiedCount').replace('{n}', String(n)))
+    }
+  }
+
+  /** クリップボード（または端末内のコピー内容）のTSVを選択セルを左上にして貼り付ける。足りない行・列は自動追加する */
+  const pasteCells = async () => {
+    let text = ''
+    try {
+      if (navigator.clipboard?.readText) text = await navigator.clipboard.readText()
+    } catch { /* 権限なし等は端末内のコピー内容へ */ }
+    if (!text) text = clipRef.current
+    if (!text) { showClipStatus(t('pasteEmpty')); return }
+    const rows = text.replace(/\r\n?/g, '\n').split('\n')
+    while (rows.length > 1 && rows[rows.length - 1] === '') rows.pop()
+    const data = rows.map((row) => row.split('\t'))
+    commitEdit()
+    pushHistory(grid, styles)
+    const needRows = selected.r + data.length
+    const needCols = selected.c + Math.max(...data.map((r) => r.length))
+    setGrid((prev) => {
+      const next = prev.map((row) => [...row])
+      while (next.length < needRows) next.push(Array(next[0]?.length ?? needCols).fill(''))
+      for (const row of next) while (row.length < needCols) row.push('')
+      data.forEach((row, ri) => row.forEach((v, ci) => { next[selected.r + ri][selected.c + ci] = v }))
+      return next
+    })
+    const n = data.reduce((sum, row) => sum + row.length, 0)
+    setRange({ r1: selected.r, c1: selected.c, r2: selected.r + data.length - 1, c2: selected.c + Math.max(...data.map((r) => r.length)) - 1 })
+    showClipStatus(t('pastedCount').replace('{n}', String(n)))
+  }
+
   const openCsv = async (file: File) => {
     const text = await file.text()
     const result = Papa.parse<string[]>(text, { skipEmptyLines: false })
@@ -1068,6 +1132,9 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         <button onClick={printSheet}>{t('printPdf')}</button>
         <button onClick={undo} disabled={pastRef.current.length === 0} title={t('undo')}>↩ {t('undo')}</button>
         <button onClick={redo} disabled={futureRef.current.length === 0} title={t('redo')}>↪ {t('redo')}</button>
+        <button onClick={() => copyRange(false)} title="Ctrl+C">⧉ {t('copyCells')}</button>
+        <button onClick={() => copyRange(true)} title="Ctrl+X">✂ {t('cutCells')}</button>
+        <button onClick={() => void pasteCells()} title="Ctrl+V">📋 {t('pasteCells')}</button>
         <button onClick={() => setFindOpen((v) => !v)}>{t('findReplace')}</button>
         <button onClick={addRow}>{t('addRow')}</button>
         <button onClick={addCol}>{t('addCol')}</button>
@@ -1099,6 +1166,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
         </span>
         <label className="check-inline"><input type="checkbox" checked={freeze} onChange={(e) => setFreeze(e.target.checked)} /> {t('freeze')}</label>
         <span className="meta">{grid.length} 行 × {grid[0]?.length ?? 0} 列</span>
+        {clipStatus && <span className="meta">{clipStatus}</span>}
         <button onClick={() => setChartOpen((v) => !v)}>📊 グラフ</button>
         <button onClick={() => { if (!condFmtOpen) setCfRange(selectionRangeText()); setCondFmtOpen((v) => !v) }}>{t('condFmt')}</button>
       </div>
@@ -1250,7 +1318,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </tbody>
         </table>
       </div>
-      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）、IF（例：=IF(A1&gt;=60,1,0)）、ROUND / ROUNDUP / ROUNDDOWN（例：=ROUND(B2*1.1,0)）、ABS / INT / SQRT / POWER / MOD。比較は = &lt;&gt; &lt; &gt; &lt;= &gt;= が使え、関数の引数には四則演算や入れ子の関数も書けます。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。行の高さ：行見出し（1・2・3…）の下端をドラッグすると行の高さを変えられます。下端をダブルクリックすると既定の高さに戻ります。高さは端末内に保存され、行の挿入／削除・ソートに追従し、印刷にも反映されます。「行の高さをリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。セルの結合：セルをクリックしてから Shift+クリックで範囲を選び、ツールバーの「セルを結合」で1つのセルにまとめられます。表示されるのは左上のセルの値で、結合したセルは行・列の挿入／削除に追従し、印刷にも反映されます。「結合を解除」で元のセルに戻ります（隠れていたセルの値は残ります）。条件付き書式：ツールバーの「条件付き書式」から、範囲・条件（より大きい／より小さい／等しい／以上／以下／を含む／空欄）・値・色を指定すると、条件に合うセルの背景色が変わります。数式の計算結果にも対応し、複数のルールがあるときは先に登録したものが優先されます。ルールは端末内に保存され、行・列の挿入／削除・ソートに追従し、印刷にも反映されます。</p>
+      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）、IF（例：=IF(A1&gt;=60,1,0)）、ROUND / ROUNDUP / ROUNDDOWN（例：=ROUND(B2*1.1,0)）、ABS / INT / SQRT / POWER / MOD。比較は = &lt;&gt; &lt; &gt; &lt;= &gt;= が使え、関数の引数には四則演算や入れ子の関数も書けます。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。行の高さ：行見出し（1・2・3…）の下端をドラッグすると行の高さを変えられます。下端をダブルクリックすると既定の高さに戻ります。高さは端末内に保存され、行の挿入／削除・ソートに追従し、印刷にも反映されます。「行の高さをリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。セルの結合：セルをクリックしてから Shift+クリックで範囲を選び、ツールバーの「セルを結合」で1つのセルにまとめられます。表示されるのは左上のセルの値で、結合したセルは行・列の挿入／削除に追従し、印刷にも反映されます。「結合を解除」で元のセルに戻ります（隠れていたセルの値は残ります）。条件付き書式：ツールバーの「条件付き書式」から、範囲・条件（より大きい／より小さい／等しい／以上／以下／を含む／空欄）・値・色を指定すると、条件に合うセルの背景色が変わります。数式の計算結果にも対応し、複数のルールがあるときは先に登録したものが優先されます。ルールは端末内に保存され、行・列の挿入／削除・ソートに追従し、印刷にも反映されます。コピー＆ペースト：範囲を選んで Ctrl+C／Ctrl+X／Ctrl+V（Mac は Cmd+C／Cmd+X／Cmd+V）で、選択範囲をコピー・切り取り・貼り付けできます。ツールバーの「コピー」「切り取り」「貼り付け」ボタンからも使え、他の表計算アプリやテキストからコピーした表（タブ区切り）も貼り付けられます。足りない行・列は自動で追加され、貼り付けた範囲が選択状態になります。元に戻す（Ctrl+Z）にも対応します。入力欄の文字を選択しているときは、その文字のコピー＆ペーストが優先されます。</p>
     </section>
   )
 }

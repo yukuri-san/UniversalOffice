@@ -677,3 +677,13 @@ export function StudyLog() {
     </div>
   )
 }
+
+/* ---------- 連絡先 ---------- */
+type ContactGroup = 'family' | 'friend' | 'work' | 'other'
+const CONTACT_GROUPS: { id: ContactGroup; label: string }[] = [
+  { id: 'family', label: '家族' },
+  { id: 'friend', label: '友だち' },
+  { id: 'work', label: '仕事' },
+  { id: 'other', label: 'その他' },
+]
+interface Contact { id: number; name: string; kana: string; phone: string; email: string; address: string; group: ContactGroup; memo: string }
