@@ -12,7 +12,7 @@ const W = 1200
 const H = 800
 const PALETTE = ['#111827', '#e11d48', '#f59e0b', '#facc15', '#10b981', '#2563eb', '#7c3aed', '#ec4899', '#ffffff']
 
-type Tool = 'brush' | 'eraser' | 'line' | 'rect' | 'ellipse' | 'fill' | 'picker' | 'text'
+type Tool = 'brush' | 'eraser' | 'line' | 'rect' | 'ellipse' | 'fill' | 'picker' | 'text' | 'select'
 
 interface Layer {
   id: number
@@ -20,6 +20,13 @@ interface Layer {
   visible: boolean
   opacity: number
   canvas: HTMLCanvasElement
+}
+
+interface Selection {
+  x: number
+  y: number
+  w: number
+  h: number
 }
 
 let layerSeq = 1
@@ -90,6 +97,8 @@ export default function Paint() {
   }
   const doSave = async () => {
     if (!layersRef.current.length) return
+    // 選択中のフローティング画像がある間は保存を保留する（確定後に保存される。閉じた場合は切り取り前の絵が残る）
+    if (selectionRef.current) return
     setSaveState('saving')
     try {
       const rec: SavedPaint = {
@@ -152,6 +161,12 @@ export default function Paint() {
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const drawState = useRef<{ drawing: boolean; start: { x: number; y: number } | null; last: { x: number; y: number } | null }>({ drawing: false, start: null, last: null })
+  // 矩形選択ツール：切り出した範囲はフローティング画像として保持し、確定時にレイヤーへ貼り付ける
+  const selectionRef = useRef<{ rect: Selection; floating: HTMLCanvasElement; needsUndo: boolean } | null>(null)
+  const [sel, setSel] = useState<Selection | null>(null)
+  const clipboardRef = useRef<HTMLCanvasElement | null>(null)
+  const [hasClip, setHasClip] = useState(false)
+  const selectDragRef = useRef<{ mode: 'new' | 'move'; start: { x: number; y: number }; grab: { x: number; y: number } } | null>(null)
   const importRef = useRef<HTMLInputElement>(null)
 
   if (loaded && layersRef.current.length === 0) {
@@ -178,6 +193,7 @@ export default function Paint() {
   }
 
   const undo = () => {
+    commitSelection()
     if (!active) return
     const stack = undoRef.current.get(active.id) ?? []
     const prev = stack.pop()
@@ -197,6 +213,7 @@ export default function Paint() {
   }
 
   const redo = () => {
+    commitSelection()
     if (!active) return
     const stack = redoRef.current.get(active.id) ?? []
     const next = stack.pop()
@@ -218,13 +235,123 @@ export default function Paint() {
   // 選択中のレイヤーをクリア（元に戻すで復旧できる）
   const clearLayer = () => {
     if (!active) return
+    commitSelection()
     pushUndo(active)
     active.canvas.getContext('2d')!.clearRect(0, 0, W, H)
     rerender()
   }
 
+  // ---- 矩形選択ツール ----
+  const normalizeRect = (a: { x: number; y: number }, b: { x: number; y: number }): Selection => ({
+    x: Math.min(a.x, b.x),
+    y: Math.min(a.y, b.y),
+    w: Math.abs(b.x - a.x),
+    h: Math.abs(b.y - a.y),
+  })
+
+  // 選択範囲の破線枠とフローティング画像をオーバーレイに描く
+  const drawSelectionOverlay = (preview?: Selection | null) => {
+    const overlay = overlayRef.current
+    if (!overlay) return
+    const ctx = overlay.getContext('2d')!
+    ctx.clearRect(0, 0, W, H)
+    const cur = selectionRef.current
+    if (cur) {
+      ctx.drawImage(cur.floating, cur.rect.x, cur.rect.y)
+    }
+    const rect = preview ?? (cur ? cur.rect : null)
+    if (rect) {
+      ctx.save()
+      ctx.setLineDash([8, 6])
+      ctx.lineWidth = 2
+      ctx.strokeStyle = '#ffffff'
+      ctx.strokeRect(rect.x, rect.y, rect.w, rect.h)
+      ctx.strokeStyle = '#2563eb'
+      ctx.lineWidth = 1
+      ctx.strokeRect(rect.x, rect.y, rect.w, rect.h)
+      ctx.restore()
+    }
+  }
+
+  // フローティング中の選択範囲をレイヤーへ貼り付けて選択を終える
+  const commitSelection = (withRerender = true) => {
+    const cur = selectionRef.current
+    if (!cur || !active) return
+    if (cur.needsUndo) pushUndo(active)
+    active.canvas.getContext('2d')!.drawImage(cur.floating, cur.rect.x, cur.rect.y)
+    selectionRef.current = null
+    setSel(null)
+    drawSelectionOverlay()
+    if (withRerender) rerender()
+  }
+
+  // フローティング画像を破棄する（範囲は既にレイヤーから切り取られている）
+  const discardSelection = () => {
+    if (!selectionRef.current) return
+    selectionRef.current = null
+    setSel(null)
+    drawSelectionOverlay()
+    rerender()
+  }
+
+  const cloneCanvas = (src: HTMLCanvasElement): HTMLCanvasElement => {
+    const c = document.createElement('canvas')
+    c.width = src.width
+    c.height = src.height
+    c.getContext('2d')!.drawImage(src, 0, 0)
+    return c
+  }
+
+  const copySelection = () => {
+    const cur = selectionRef.current
+    if (!cur) return
+    clipboardRef.current = cloneCanvas(cur.floating)
+    setHasClip(true)
+  }
+
+  const cutSelection = () => {
+    if (!selectionRef.current) return
+    copySelection()
+    discardSelection()
+  }
+
+  const pasteSelection = () => {
+    const clip = clipboardRef.current
+    if (!clip || !active) return
+    commitSelection()
+    const rect: Selection = { x: Math.round((W - clip.width) / 2), y: Math.round((H - clip.height) / 2), w: clip.width, h: clip.height }
+    selectionRef.current = { rect, floating: cloneCanvas(clip), needsUndo: true }
+    setSel({ ...rect })
+    setTool('select')
+    drawSelectionOverlay()
+  }
+
+  const deleteSelection = () => {
+    discardSelection()
+  }
+
+  const selectAll = () => {
+    if (!active) return
+    commitSelection()
+    pushUndo(active)
+    const floating = cloneCanvas(active.canvas)
+    active.canvas.getContext('2d')!.clearRect(0, 0, W, H)
+    const rect: Selection = { x: 0, y: 0, w: W, h: H }
+    selectionRef.current = { rect, floating, needsUndo: false }
+    setSel({ ...rect })
+    setTool('select')
+    drawSelectionOverlay()
+    rerender()
+  }
+
+  const switchTool = (id: Tool) => {
+    if (id !== 'select') commitSelection()
+    setTool(id)
+  }
+
   // 白紙から描き直す（保存済みの絵も破棄する）
   const newCanvas = async () => {
+    commitSelection()
     if (!window.confirm(t('paintConfirmNew'))) return
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     try { await del('current', paintStore) } catch { /* ignore */ }
@@ -243,17 +370,41 @@ export default function Paint() {
   }
 
   // Ctrl+Z / Cmd+Z で元に戻す、Ctrl+Y / Cmd+Y・Ctrl+Shift+Z でやり直す（テキスト入力中は入力欄の操作を優先）
+  // 選択ツールでは Ctrl+C／X／V／A（コピー／切り取り／貼り付け／すべて選択）、Delete／Esc（削除／確定して解除）も使える
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!(e.ctrlKey || e.metaKey)) return
     const ae = document.activeElement as HTMLElement | null
-    if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return
-    const key = e.key.toLowerCase()
-    if (key === 'y' || (key === 'z' && e.shiftKey)) {
+    const inField = !!ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)
+    if (e.ctrlKey || e.metaKey) {
+      if (inField) return
+      const key = e.key.toLowerCase()
+      if (key === 'y' || (key === 'z' && e.shiftKey)) {
+        e.preventDefault()
+        redo()
+      } else if (key === 'z') {
+        e.preventDefault()
+        undo()
+      } else if (tool === 'select' && key === 'c') {
+        e.preventDefault()
+        copySelection()
+      } else if (tool === 'select' && key === 'x') {
+        e.preventDefault()
+        cutSelection()
+      } else if (tool === 'select' && key === 'v') {
+        e.preventDefault()
+        pasteSelection()
+      } else if (tool === 'select' && key === 'a') {
+        e.preventDefault()
+        selectAll()
+      }
+      return
+    }
+    if (tool !== 'select' || inField) return
+    if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault()
-      redo()
-    } else if (key === 'z') {
+      deleteSelection()
+    } else if (e.key === 'Escape') {
       e.preventDefault()
-      undo()
+      commitSelection()
     }
   }
 
@@ -331,6 +482,19 @@ export default function Paint() {
       setTextValue('')
       return
     }
+    if (tool === 'select') {
+      ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+      const cur = selectionRef.current
+      if (cur && p.x >= cur.rect.x && p.x <= cur.rect.x + cur.rect.w && p.y >= cur.rect.y && p.y <= cur.rect.y + cur.rect.h) {
+        // 選択範囲の内側をつかんだら移動モード
+        selectDragRef.current = { mode: 'move', start: p, grab: { x: p.x - cur.rect.x, y: p.y - cur.rect.y } }
+      } else {
+        // 外側なら今の選択を確定してから新しい範囲の選択を始める
+        commitSelection()
+        selectDragRef.current = { mode: 'new', start: p, grab: { x: 0, y: 0 } }
+      }
+      return
+    }
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
 
     if (tool === 'picker') {
@@ -368,6 +532,21 @@ export default function Paint() {
   }
 
   const onMove = (e: React.PointerEvent) => {
+    if (tool === 'select' && selectDragRef.current) {
+      const p = pos(e)
+      const d = selectDragRef.current
+      if (d.mode === 'new') {
+        drawSelectionOverlay(normalizeRect(d.start, p))
+      } else {
+        const cur = selectionRef.current
+        if (!cur) return
+        cur.rect.x = p.x - d.grab.x
+        cur.rect.y = p.y - d.grab.y
+        setSel({ ...cur.rect })
+        drawSelectionOverlay()
+      }
+      return
+    }
     const st = drawState.current
     if (!st.drawing || !active) return
     const p = pos(e)
@@ -397,6 +576,31 @@ export default function Paint() {
   }
 
   const onUp = (e: React.PointerEvent) => {
+    if (tool === 'select' && selectDragRef.current) {
+      const d = selectDragRef.current
+      selectDragRef.current = null
+      if (d.mode === 'new') {
+        if (!active) return
+        const rect = normalizeRect(d.start, pos(e))
+        if (rect.w < 4 || rect.h < 4) {
+          drawSelectionOverlay()
+          return
+        }
+        pushUndo(active)
+        const floating = document.createElement('canvas')
+        floating.width = Math.max(1, Math.round(rect.w))
+        floating.height = Math.max(1, Math.round(rect.h))
+        floating.getContext('2d')!.drawImage(active.canvas, rect.x, rect.y, rect.w, rect.h, 0, 0, floating.width, floating.height)
+        active.canvas.getContext('2d')!.clearRect(rect.x, rect.y, rect.w, rect.h)
+        selectionRef.current = { rect, floating, needsUndo: false }
+        setSel({ ...rect })
+        drawSelectionOverlay()
+        rerender()
+      } else {
+        drawSelectionOverlay()
+      }
+      return
+    }
     const st = drawState.current
     if (!st.drawing || !active) return
     if ((tool === 'line' || tool === 'rect' || tool === 'ellipse') && st.start) {
@@ -409,6 +613,7 @@ export default function Paint() {
   }
 
   const addLayer = () => {
+    commitSelection()
     const layer: Layer = { id: layerSeq++, name: `レイヤー ${layerSeq}`, visible: true, opacity: 1, canvas: makeCanvas() }
     layersRef.current = [...layersRef.current, layer]
     setActiveId(layer.id)
@@ -417,6 +622,7 @@ export default function Paint() {
 
   const deleteLayer = () => {
     if (layers.length <= 1 || !active) return
+    commitSelection()
     layersRef.current = layers.filter((l) => l.id !== active.id)
     setActiveId(layersRef.current[layersRef.current.length - 1].id)
     rerender()
@@ -424,6 +630,7 @@ export default function Paint() {
 
   const duplicateLayer = () => {
     if (!active) return
+    commitSelection()
     const copy = makeCanvas()
     copy.getContext('2d')!.drawImage(active.canvas, 0, 0)
     const layer: Layer = { id: layerSeq++, name: `${active.name} のコピー`, visible: true, opacity: active.opacity, canvas: copy }
@@ -437,6 +644,7 @@ export default function Paint() {
 
   const mergeDown = () => {
     if (!active) return
+    commitSelection()
     const idx = layers.findIndex((l) => l.id === active.id)
     if (idx <= 0) return
     const below = layers[idx - 1]
@@ -454,6 +662,7 @@ export default function Paint() {
   // 選択中のレイヤーを左右・上下に反転する（元に戻すで復旧できる）
   const flipLayer = (horizontal: boolean) => {
     if (!active) return
+    commitSelection()
     pushUndo(active)
     const temp = makeCanvas()
     temp.getContext('2d')!.drawImage(active.canvas, 0, 0)
@@ -469,6 +678,7 @@ export default function Paint() {
   // 選択中のレイヤーを90°回転する（キャンバス内に収まるよう縮小して中央配置）
   const rotateLayer = (dir: 1 | -1) => {
     if (!active) return
+    commitSelection()
     pushUndo(active)
     const temp = makeCanvas()
     temp.getContext('2d')!.drawImage(active.canvas, 0, 0)
@@ -486,6 +696,7 @@ export default function Paint() {
 
   const moveLayer = (dir: 1 | -1) => {
     if (!active) return
+    commitSelection()
     const idx = layers.findIndex((l) => l.id === active.id)
     const target = idx + dir
     if (target < 0 || target >= layers.length) return
@@ -497,6 +708,7 @@ export default function Paint() {
   }
 
   const importImage = (file: File) => {
+    commitSelection()
     const url = URL.createObjectURL(file)
     const img = new Image()
     img.onload = () => {
@@ -538,6 +750,7 @@ export default function Paint() {
     { id: 'fill', label: t('toolFill') },
     { id: 'picker', label: t('toolPicker') },
     { id: 'text', label: t('toolText') },
+    { id: 'select', label: t('toolSelect') },
   ]
 
   if (!loaded) {
@@ -549,7 +762,7 @@ export default function Paint() {
       <div className="paint-tools wrap">
         <div className="paint-toolgroup">
           {tools.map((toolItem) => (
-            <button key={toolItem.id} className={tool === toolItem.id ? 'on' : ''} onClick={() => setTool(toolItem.id)}>{toolItem.label}</button>
+            <button key={toolItem.id} className={tool === toolItem.id ? 'on' : ''} onClick={() => switchTool(toolItem.id)}>{toolItem.label}</button>
           ))}
         </div>
         <div className="paint-colors">
@@ -562,6 +775,16 @@ export default function Paint() {
         <label className="paint-size">{t('brushOpacity')}<input type="range" min={10} max={100} value={Math.round(brushOpacity * 100)} onChange={(e) => setBrushOpacity(Number(e.target.value) / 100)} /></label>
         {(tool === 'rect' || tool === 'ellipse') && (
           <button className={shapeFill ? 'on' : ''} onClick={() => setShapeFill((v) => !v)}>{t('shapeFill')}</button>
+        )}
+        {tool === 'select' && (
+          <div className="paint-toolgroup">
+            <button onClick={copySelection} disabled={!sel}>{t('selectCopy')}</button>
+            <button onClick={cutSelection} disabled={!sel}>{t('selectCut')}</button>
+            <button onClick={pasteSelection} disabled={!hasClip}>{t('selectPaste')}</button>
+            <button onClick={deleteSelection} disabled={!sel}>{t('selectDelete')}</button>
+            <button onClick={selectAll}>{t('selectAll')}</button>
+            <button onClick={() => commitSelection()} disabled={!sel}>{t('selectCancel')}</button>
+          </div>
         )}
         <div className="paint-zoom">
           <button onClick={() => setZoom((z) => ZOOM_STEPS[Math.max(0, ZOOM_STEPS.indexOf(z) - 1)])} aria-label={t('zoomOut')}>−</button>
@@ -625,7 +848,7 @@ export default function Paint() {
             {[...layers].reverse().map((layer) => (
               <li key={layer.id} className={layer.id === active?.id ? 'on' : ''}>
                 <button className="layer-eye" onClick={() => { layer.visible = !layer.visible; rerender() }}>{layer.visible ? '👁' : '—'}</button>
-                <button className="layer-name" onClick={() => setActiveId(layer.id)}>{layer.name}</button>
+                <button className="layer-name" onClick={() => { commitSelection(); setActiveId(layer.id) }}>{layer.name}</button>
                 <input
                   type="range" min={10} max={100}
                   value={Math.round(layer.opacity * 100)}
