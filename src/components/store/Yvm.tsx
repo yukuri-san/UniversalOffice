@@ -361,6 +361,7 @@ export default function Yvm() {
   const [dict, setDict] = useState<YDict[]>([])
   const [customVoices, setCustomVoices] = useState<{ id: string; name: string; engine?: string }[]>([])
   const [view, setView] = useState<'lines' | 'chars' | 'dict'>('lines')
+  const [showInfo, setShowInfo] = useState(false)
   const [engine, setEngine] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [engineMsg, setEngineMsg] = useState('')
   const [busyLine, setBusyLine] = useState<string | null>(null)
@@ -658,7 +659,7 @@ export default function Yvm() {
   }
 
   // ---------- CSV / JSON ----------
-  /** [キャラ名, セリフ] のペア列を行に展開して追加する（CSV・YMM4辞書アプリ共通） */
+  /** [キャラ名, セリフ] のペア列を行に展開し、既存の行をリセットして置き換える（CSV・WebX内読込共通） */
   const importPairs = (pairs: [string, string][], label: string) => {
     const newChars: YChar[] = []
     const findOrCreateChar = (name: string): string => {
@@ -677,8 +678,8 @@ export default function Yvm() {
       .map(([name, text]) => ({ id: uid(), charId: findOrCreateChar(name.trim() || 'キャラ1'), text, koeEdit: null }))
     if (newLines.length === 0) { notifyOs('取り込める行がありませんでした', 'yvm'); return }
     if (newChars.length > 0) setChars((p) => [...p, ...newChars])
-    setLines((p) => [...p, ...newLines])
-    notifyOs(`${label}を取り込みました（${newLines.length}行）`, 'yvm')
+    setLines(newLines)
+    notifyOs(`${label}を取り込みました（${newLines.length}行・既存の行はリセット）`, 'yvm')
   }
 
   const importText = (text: string, isCsv: boolean, label: string) => {
@@ -766,6 +767,7 @@ export default function Yvm() {
         <span className="yvm-engine">
           {engine === 'ready' ? '🟢 エンジン準備完了' : engine === 'loading' ? '🟡 読み込み中…' : engine === 'error' ? '🔴 読み込み失敗' : '⚪ エンジン未読込'}
         </span>
+        <button className="yvm-iconbtn" title="説明・クレジット" onClick={() => setShowInfo(true)}>ⓘ</button>
       </div>
 
       <div className="yvm-tabs">
@@ -862,7 +864,7 @@ export default function Yvm() {
           </div>
           <button className="yvm-addrow" onClick={() => addLine()}>＋ 行を追加</button>
           <p className="hint" style={{ margin: '0 10px 10px' }}>
-            YMM4辞書CSV（1列目=キャラ名、2列目=セリフ）を取り込むと行に展開されます。ZIP出力は「001_キャラ名.wav」のような分割ファイル＋セリフ一覧.txtです。
+            YMM4辞書CSV（1列目=キャラ名、2列目=セリフ）を取り込むと行に展開されます（今の行はリセットされ、読み込んだ内容だけになります）。ZIP出力は「001_キャラ名.wav」のような分割ファイル＋セリフ一覧.txtです。
           </p>
         </>
       )}
@@ -949,10 +951,18 @@ export default function Yvm() {
         </div>
       )}
 
-      <div className="yvm-foot">
-        Aquestalkのプログラムを使用しています。音声合成エンジン: AquesTalk（© 株式会社アクエスト）／ ライブラリ: aquestalk.js・kanji2koe-openjtalk（y52en氏、MIT License）、Unicorn Engine（GPLv2）。
-        エンジンのファイルは自前CDN（yukuri-san.github.io/UniversalOffice/cdn）から読み込みます（初回のみ約23MB、新エンジンは声ごとに約1.3MB）。
-      </div>
+      {showInfo && (
+        <div className="yvm-info-overlay" onClick={() => setShowInfo(false)}>
+          <div className="yvm-info-card" onClick={(e) => e.stopPropagation()}>
+            <div className="yvm-info-title">説明・クレジット</div>
+            <p>Aquestalkのプログラムを使用しています。</p>
+            <p>音声合成エンジン: AquesTalk（© 株式会社アクエスト）／ ライブラリ: aquestalk.js・kanji2koe-openjtalk（y52en氏、MIT License）、Unicorn Engine（GPLv2）。</p>
+            <p>エンジンのファイルは自前CDN（yukuri-san.github.io/UniversalOffice/cdn）から読み込みます（初回のみ約23MB、新エンジンは声ごとに約1.3MB）。</p>
+            <p>声の表記: 「女声1(aq1-f1)」は Aq1（AquesTalk1系・同梱）の声、「ゆっくり(aq2-aq_yukkuri)」は Aq2（純正AquesTalk2）の声です。カスタム声zipは Aq1形式・Aq2形式の両方に対応します。</p>
+            <button className="btn accent" onClick={() => setShowInfo(false)}>閉じる</button>
+          </div>
+        </div>
+      )}
 
       <input ref={voiceRef} type="file" accept=".zip,application/zip" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onVoiceZipPicked(f) }} />
       <input ref={csvRef} type="file" accept=".csv,.txt,text/csv,text/plain" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onCsvPicked(f) }} />
