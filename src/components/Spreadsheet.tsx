@@ -194,6 +194,8 @@ const SAMPLE: string[][] = [
   ['りんご', '3', '150', '=B2*C2'],
   ['みかん', '5', '100', '=B3*C3'],
   ['合計', '', '', '=SUM(D2:D3)'],
+  ['値引き後（10%引き）', '', '', '=ROUND(D4*0.9,0)'],
+  ['合計が1000以上？', '', '', '=IF(D4>=1000,1,0)'],
 ]
 
 function colName(index: number): string {
@@ -215,7 +217,7 @@ function refToPos(ref: string): { r: number; c: number } | null {
   return { c: c - 1, r: Number(m[2]) - 1 }
 }
 
-/** 数式を評価する。対応：四則演算・括弧・セル参照・範囲・SUM/AVERAGE/MIN/MAX/COUNT */
+/** 数式を評価する。対応：四則演算・括弧・セル参照・範囲・比較（= <> < > <= >=）・SUM/AVERAGE/MIN/MAX/COUNT・IF・ROUND/ROUNDUP/ROUNDDOWN・ABS/INT/SQRT/POWER/MOD */
 export function evaluateGrid(grid: string[][]): string[][] {
   const cache = new Map<string, number | string>()
 
@@ -256,13 +258,33 @@ export function evaluateGrid(grid: string[][]): string[][] {
   }
 
   const evalFormula = (src: string, visiting: Set<string>): number | string => {
-    const tokens = src.toUpperCase().match(/[A-Z]+\d+(?::[A-Z]+\d+)?|[A-Z]+|\d+(?:\.\d+)?|[+\-*/(),]/g)
+    const tokens = src.toUpperCase().match(/[A-Z]+\d+(?::[A-Z]+\d+)?|[A-Z]+|\d+(?:\.\d+)?|<=|>=|<>|[+\-*/(),=<>]/g)
     if (!tokens) return '#エラー'
     let pos = 0
     const peek = () => tokens[pos]
     const next = () => tokens[pos++]
 
-    const parseExpr = (): number | string => {
+    /** 比較（= <> < > <= >=）。真は 1、偽は 0 を返す */
+    const parseComparison = (): number | string => {
+      let v = parseAddSub()
+      const op = peek()
+      if (op === '=' || op === '<>' || op === '<' || op === '>' || op === '<=' || op === '>=') {
+        next()
+        const rhs = parseAddSub()
+        if (typeof v !== 'number') return v
+        if (typeof rhs !== 'number') return rhs
+        switch (op) {
+          case '=': return v === rhs ? 1 : 0
+          case '<>': return v !== rhs ? 1 : 0
+          case '<': return v < rhs ? 1 : 0
+          case '>': return v > rhs ? 1 : 0
+          case '<=': return v <= rhs ? 1 : 0
+          case '>=': return v >= rhs ? 1 : 0
+        }
+      }
+      return v
+    }
+    const parseAddSub = (): number | string => {
       let v = parseTerm()
       while (typeof v === 'number' && (peek() === '+' || peek() === '-')) {
         const op = next()
@@ -290,7 +312,7 @@ export function evaluateGrid(grid: string[][]): string[][] {
         return typeof v === 'number' ? -v : v
       }
       if (t === '(') {
-        const v = parseExpr()
+        const v = parseComparison()
         if (next() !== ')') return '#エラー'
         return v
       }
@@ -298,24 +320,36 @@ export function evaluateGrid(grid: string[][]): string[][] {
       if (/^[A-Z]+$/.test(t)) {
         // 関数
         if (next() !== '(') return '#エラー'
+        // IF は条件式＋分岐の専用パース（=IF(A1>=60,1,0)）
+        if (t === 'IF') {
+          const cond = parseComparison()
+          if (typeof cond !== 'number') return cond
+          if (next() !== ',') return '#エラー'
+          const tv = parseAddSub()
+          if (typeof tv !== 'number') return tv
+          if (next() !== ',') return '#エラー'
+          const fv = parseAddSub()
+          if (typeof fv !== 'number') return fv
+          if (next() !== ')') return '#エラー'
+          return cond !== 0 ? tv : fv
+        }
         const args: number[] = []
         for (;;) {
-          const a = next()
+          const a = peek()
           if (a === undefined) return '#エラー'
-          if (a.includes(':')) {
+          if (a === ')') {
+            next()
+            break
+          }
+          if (/^[A-Z]+\d+:[A-Z]+\d+$/.test(a)) {
+            next()
             const [from, to] = a.split(':')
             args.push(...rangeValues(from, to, visiting))
-          } else if (/^[A-Z]+\d+$/.test(a)) {
-            const p = refToPos(a)!
-            const v = cellNumber(p.r, p.c, visiting)
+          } else {
+            // 数値・セル参照・四則演算・入れ子の関数も引数にできる
+            const v = parseAddSub()
             if (typeof v !== 'number') return v
             args.push(v)
-          } else if (/^\d/.test(a)) {
-            args.push(Number(a))
-          } else if (a === ')') {
-            break
-          } else {
-            return '#エラー'
           }
           const sep = next()
           if (sep === ')') break
@@ -327,6 +361,24 @@ export function evaluateGrid(grid: string[][]): string[][] {
           case 'MIN': return args.length ? Math.min(...args) : 0
           case 'MAX': return args.length ? Math.max(...args) : 0
           case 'COUNT': return args.length
+          case 'ROUND': {
+            if (args.length < 1 || args.length > 2) return '#引数!'
+            const p = Math.pow(10, args[1] ?? 0)
+            return Math.round(args[0] * p) / p
+          }
+          case 'ROUNDUP': {
+            if (args.length < 1 || args.length > 2) return '#引数!'
+            return Math.ceil(args[0] * Math.pow(10, args[1] ?? 0)) / Math.pow(10, args[1] ?? 0)
+          }
+          case 'ROUNDDOWN': {
+            if (args.length < 1 || args.length > 2) return '#引数!'
+            return Math.floor(args[0] * Math.pow(10, args[1] ?? 0)) / Math.pow(10, args[1] ?? 0)
+          }
+          case 'ABS': if (args.length !== 1) return '#引数!'; return Math.abs(args[0])
+          case 'INT': if (args.length !== 1) return '#引数!'; return Math.floor(args[0])
+          case 'SQRT': if (args.length !== 1) return '#引数!'; return args[0] < 0 ? '#値!' : Math.sqrt(args[0])
+          case 'POWER': if (args.length !== 2) return '#引数!'; return Math.pow(args[0], args[1])
+          case 'MOD': if (args.length !== 2) return '#引数!'; return args[1] === 0 ? '#0除算!' : args[0] - args[1] * Math.floor(args[0] / args[1])
           default: return '#関数?'
         }
       }
@@ -337,7 +389,7 @@ export function evaluateGrid(grid: string[][]): string[][] {
       return '#エラー'
     }
 
-    const v = parseExpr()
+    const v = parseComparison()
     if (pos !== tokens.length) return '#エラー'
     return v
   }
@@ -1198,7 +1250,7 @@ export default function Spreadsheet({ onSwitch }: { onSwitch: (app: AppId) => vo
           </tbody>
         </table>
       </div>
-      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。行の高さ：行見出し（1・2・3…）の下端をドラッグすると行の高さを変えられます。下端をダブルクリックすると既定の高さに戻ります。高さは端末内に保存され、行の挿入／削除・ソートに追従し、印刷にも反映されます。「行の高さをリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。セルの結合：セルをクリックしてから Shift+クリックで範囲を選び、ツールバーの「セルを結合」で1つのセルにまとめられます。表示されるのは左上のセルの値で、結合したセルは行・列の挿入／削除に追従し、印刷にも反映されます。「結合を解除」で元のセルに戻ります（隠れていたセルの値は残ります）。条件付き書式：ツールバーの「条件付き書式」から、範囲・条件（より大きい／より小さい／等しい／以上／以下／を含む／空欄）・値・色を指定すると、条件に合うセルの背景色が変わります。数式の計算結果にも対応し、複数のルールがあるときは先に登録したものが優先されます。ルールは端末内に保存され、行・列の挿入／削除・ソートに追従し、印刷にも反映されます。</p>
+      <p className="hint">数式対応：=B2*C2 のような四則演算と、SUM / AVERAGE / MIN / MAX / COUNT（範囲は A1:B5）、IF（例：=IF(A1&gt;=60,1,0)）、ROUND / ROUNDUP / ROUNDDOWN（例：=ROUND(B2*1.1,0)）、ABS / INT / SQRT / POWER / MOD。比較は = &lt;&gt; &lt; &gt; &lt;= &gt;= が使え、関数の引数には四則演算や入れ子の関数も書けます。キーボード：Enter・↑↓で上下のセルへ、Tab・Shift+Tabで左右のセルへ（端を超えると行・列を自動追加）。元に戻す・やり直し：ツールバーのボタン、または Ctrl+Z／Ctrl+Y（Mac は Cmd+Z／Cmd+Shift+Z）。検索・置換：ツールバーの「検索・置換」から文字を探して置き換えられます（1件ずつ／すべて置換）。セル書式：選択中のセルに太字・斜体・文字色・背景色・配置を設定できます（行・列の挿入／削除・ソートに追従し、印刷にも反映されます）。数値書式：同じくツールバーの「数値書式」から、数値の表示を標準・数値（3桁区切り）・通貨（¥）・パーセントから選べます。入力した値や数式そのものは変わらず、表示だけが変わります（CSV保存は元の値で書き出します）。列幅：列見出しの右端をドラッグすると列の幅を変えられます。右端をダブルクリックすると内容に合った幅に自動調整します。幅は端末内に保存され、列の挿入／削除に追従し、印刷にも反映されます。「列幅をリセット」で元に戻せます。行の高さ：行見出し（1・2・3…）の下端をドラッグすると行の高さを変えられます。下端をダブルクリックすると既定の高さに戻ります。高さは端末内に保存され、行の挿入／削除・ソートに追従し、印刷にも反映されます。「行の高さをリセット」で元に戻せます。CSV保存は計算結果の値で書き出します。シートは自動で端末内に保存されます。セルの結合：セルをクリックしてから Shift+クリックで範囲を選び、ツールバーの「セルを結合」で1つのセルにまとめられます。表示されるのは左上のセルの値で、結合したセルは行・列の挿入／削除に追従し、印刷にも反映されます。「結合を解除」で元のセルに戻ります（隠れていたセルの値は残ります）。条件付き書式：ツールバーの「条件付き書式」から、範囲・条件（より大きい／より小さい／等しい／以上／以下／を含む／空欄）・値・色を指定すると、条件に合うセルの背景色が変わります。数式の計算結果にも対応し、複数のルールがあるときは先に登録したものが優先されます。ルールは端末内に保存され、行・列の挿入／削除・ソートに追従し、印刷にも反映されます。</p>
     </section>
   )
 }

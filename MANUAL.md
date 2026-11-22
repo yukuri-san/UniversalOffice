@@ -152,7 +152,7 @@ Word 風のリッチテキスト編集です。
 
 CSV 形式の表計算です。
 
-- セル編集、数式バー、数式対応（四則演算、SUM／AVERAGE／MIN／MAX／COUNT、A1:B2 の範囲）
+- セル編集、数式バー、数式対応（四則演算、SUM／AVERAGE／MIN／MAX／COUNT、A1:B2 の範囲、IF、ROUND／ROUNDUP／ROUNDDOWN、ABS／INT／SQRT／POWER／MOD、比較 = <> < > <= >=。関数の引数には四則演算や入れ子の関数も可）
 - 元に戻す・やり直し（Ctrl+Z／Ctrl+Y）、検索・置換
 - 列見出しでソート、先頭行の固定
 - セルの結合（Shift+クリックで範囲選択）と解除。結合は行・列の挿入／削除に追従し、印刷にも反映される
