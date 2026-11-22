@@ -33,6 +33,7 @@ import { Diary } from './components/store/Diary'
 import { CompassApp, LevelApp, NoiseApp, SpeedTestApp } from './components/store/Sensors'
 import YmmDic from './components/store/YmmDic'
 import Feedback from './components/Feedback'
+import DiscordSupport from './components/DiscordSupport'
 import DeveloperApp from './components/DeveloperApp'
 import CustomAppView from './components/CustomAppView'
 import { CUSTOM_APPS_EVENT, isCustomId, loadCustomApps, type CustomApp } from './lib/customApps'
@@ -83,7 +84,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'invader' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'invader' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'discord' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro'
 
 interface Win {
   id: WindowApp
@@ -255,8 +256,9 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   widgets: { icon: '🧩', cls: 'widgets' },
   developer: { icon: '🛠', cls: 'developer' },
   feedback: { icon: '📮', cls: 'feedback' },
+  discord: { icon: '💬', cls: 'discord' },
 }
-const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'clipboard', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'sysinfo', 'taskman', 'widgets', 'developer', 'feedback', 'settings']
+const APP_ORDER: WindowApp[] = ['word', 'sheet', 'note', 'memodb', 'calendar', 'browser', 'youtube', 'files', 'trash', 'clipboard', 'calculator', 'clock', 'paint', 'terminal', 'manual', 'store', 'sysinfo', 'taskman', 'widgets', 'developer', 'feedback', 'discord', 'settings']
 
 export default function App() {
   const [windows, setWindows] = useState<Win[]>(() => {
@@ -315,6 +317,7 @@ export default function App() {
   // セットアップ版が上がったら全ユーザーに再実施させる（既存ユーザーは許可確認のみ）
   const [showSetup, setShowSetup] = useState(() => localStorage.getItem('webx-setup-done') !== '1' || localStorage.getItem('webx-setup-version') !== SETUP_VERSION)
   const [editionPrompt, setEditionPrompt] = useState(() => shouldShowEditionPrompt())
+  const [updatePopup, setUpdatePopup] = useState<{ version: string; notes: string } | null>(null)
   const [setupMode] = useState<'full' | 'permissions'>(() => (localStorage.getItem('webx-setup-done') === '1' ? 'permissions' : 'full'))
   const [permitHw, setPermitHwState] = useState(() => localStorage.getItem('webx-permit-hwinfo') !== 'off')
   const setPermitHw = (v: boolean) => { setPermitHwState(v); localStorage.setItem('webx-permit-hwinfo', v ? 'on' : 'off') }
@@ -743,7 +746,8 @@ export default function App() {
           if (res.ok) {
             const data = (await res.json()) as { version?: string; notes?: string }
             if (data.version === APP_VERSION && data.notes) {
-              notifyOs(`WebX v${APP_VERSION} にアップデートしました：${data.notes}`, 'store')
+              // v1.54.0: 通知ではなくポップアップで知らせる
+              setUpdatePopup({ version: APP_VERSION, notes: data.notes })
             }
           }
         }
@@ -1115,6 +1119,7 @@ export default function App() {
       case 'widgets': return <WidgetsApp config={widgetConfig} onChange={setWidgetConfig} appsInfo={allAppsInfo} />
       case 'developer': return <DeveloperApp openApp={(id) => openApp(id as WindowApp)} />
       case 'feedback': return <Feedback />
+      case 'discord': return <DiscordSupport />
       case 'calculator': return <Calculator />
       case 'clock': return <ClockApp />
       case 'paint': return <Paint />
@@ -1556,6 +1561,16 @@ export default function App() {
       )}
       {editionPrompt && booted && !showSetup && (
         <EditionPrompt onDone={() => setEditionPrompt(false)} />
+      )}
+      {updatePopup && booted && !showSetup && !editionPrompt && (
+        <div className="updatepopup-overlay" role="dialog" aria-label="アップデートのお知らせ">
+          <div className="updatepopup-card">
+            <div className="updatepopup-badge">🎉</div>
+            <h3>WebX v{updatePopup.version} にアップデートしました</h3>
+            <p className="updatepopup-notes">{updatePopup.notes}</p>
+            <button className="btn accent" onClick={() => setUpdatePopup(null)}>閉じる</button>
+          </div>
+        </div>
       )}
       {shortcutsOpen && (
         <div className="shortcuts-modal" role="dialog" aria-label="キーボードショートカット">

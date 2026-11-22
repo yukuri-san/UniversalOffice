@@ -6,7 +6,7 @@ import { notifyOs} from '../lib/notify'
 
 // 報告・要望：不具合報告・アプリ改善・追加要望を「報告画像（PNG）」として書き出す。
 // 画像にはシステム情報・ユーザー情報・ストレージ使用状況・バージョン情報を添付する。
-// 送信は自動では行わない（利用者が Discord の作者DMへ画像を送る）。
+// 送信は自動では行わない（利用者が Discord サポートサーバーへ画像を送る）。
 
 type Kind = 'bug' | 'improve' | 'request'
 const KINDS: { id: Kind; label: string; emoji: string}[] = [
@@ -158,7 +158,7 @@ y += 8
 y += 26
 ctx.fillStyle = '#6b7280'
 ctx.font = '20px sans-serif'
-ctx.fillText('この画像は WebX「報告・要望」アプリで作成されました。作者のDMにて送信願います。', PAD, y)
+ctx.fillText('この画像は WebX「報告・要望」アプリで作成されました。Discordサポートサーバーにて送信願います。', PAD, y)
 
 canvas.toBlob((blob) => {
 if (!blob) return
@@ -223,7 +223,7 @@ return (
 )}
 
 <p className="hint" style={{ lineHeight: 1.7}}>
-送信は自動では行われません。作成した画像を保存して、<strong>Discord の作者のDMにて送信願います</strong>。
+送信は自動では行われません。作成した画像を保存して、<strong>Discordサポートサーバーにて送信願います</strong>（「Discordサポート」アプリから開けます）。
 画像に写っている情報だけが伝わります（この画面の「添付される情報」で事前に確認できます）。
 </p>
 </div>
