@@ -3,6 +3,7 @@ import { APP_VERSION} from '../lib/version'
 import { STORE_APPS} from '../lib/storeApps'
 import { ownUsageBytes, storageInfo} from '../lib/store'
 import { notifyOs} from '../lib/notify'
+import { editionLabel } from '../lib/edition'
 
 // 報告・要望：不具合報告・アプリ改善・追加要望を「報告画像（PNG）」として書き出す。
 // 画像にはシステム情報・ユーザー情報・ストレージ使用状況・バージョン情報を添付する。
@@ -36,6 +37,7 @@ const sys = [
 const user = [
 `ユーザー名: ${ls('webx-user-name') || '（未設定）'}`,
 `WebXの言語: ${ls('ykr-lang') || 'ja'}`,
+`エディション: ${editionLabel()}`,
 `テーマ: ${ls('ykr-theme') || '既定'}`,
 `UIシステム: ${ls('webx-ui-mode') || 'auto'}`,
 `UI拡大率: ${ls('webx-ui-scale') || 'auto'}`,
@@ -60,7 +62,7 @@ installed = ids
 .map((a) => `${a.name} v${vers[a.id]?? a.version}`)
 } catch { /* ignore */}
 const versions = [
-`WebX本体: v${APP_VERSION}`,
+`WebX本体: v${APP_VERSION}（${editionLabel()}）`,
 `インストール済みストアアプリ: ${installed.length}本`,
 ...installed.map((x) => `・${x}`),
 ]

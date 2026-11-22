@@ -101,7 +101,8 @@ export default function SysInfo() {
     {
       title: 'WebX とストレージ',
       rows: [
-        ['OS', `WebX ${APP_VERSION}（${editionLabel()}）`],
+        ['OS', `WebX ${APP_VERSION}`],
+        ['エディション', editionLabel()],
         ['保存方式', info ? info.backend : '読み込み中…'],
         ['WebX の使用量', info ? mb(info.own) : '…'],
         ['ブラウザの上限', info ? (info.quota ? mb(info.quota) : '取得できません') : '…'],

@@ -1,5 +1,6 @@
 import { addFolder, deleteDoc, listDocs, listEvents, listFolders, saveDoc, storageInfo, trashDoc, type LocalDoc } from './store'
 import { APP_VERSION } from './version'
+import { editionLabel } from './edition'
 import { resetSettingsOnly } from './reset'
 
 /* WebX コマンドライン基盤（ターミナル／回復コンソール共用）
@@ -109,7 +110,7 @@ export async function execCommand(raw: string, state: ShellState, ctx: ShellCont
       }
       return done(['WebX コマンド一覧:', ...HELP.map(([c, d]) => `  ${c.padEnd(26)} ${d}`)])
     }
-    case 'ver': return done([`WebX [Version ${APP_VERSION}]`, '(c) yukuri-san'])
+    case 'ver': return done([`WebX [Version ${APP_VERSION}]`, `エディション: ${editionLabel()}`, '(c) yukuri-san'])
     case 'cls': ctx.clear(); return done([])
     case 'exit': ctx.exit?.(); return done(['終了します'])
     case 'date': return done([new Date().toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })])
@@ -223,6 +224,7 @@ export async function execCommand(raw: string, state: ShellState, ctx: ShellCont
       const nav = navigator as unknown as { hardwareConcurrency?: number; deviceMemory?: number; userAgent: string }
       return done([
         `WebX v${APP_VERSION}`,
+        `エディション: ${editionLabel()}`,
         `CPUコア: ${nav.hardwareConcurrency ?? '不明'} / メモリ目安: ${nav.deviceMemory ? `${nav.deviceMemory} GB` : '不明'}`,
         `画面: ${window.innerWidth}×${window.innerHeight}`,
         `UA: ${nav.userAgent}`,
