@@ -1,4 +1,4 @@
-const CACHE = 'universal-office-v114'
+const CACHE = 'universal-office-v115'
 self.addEventListener('install', (event) => {
   // ページ本体（HTML）はプリキャッシュしない。デプロイ途中の空応答などを
   // 取り込むと、空のドキュメントが固定されて開けなくなる事故が起きるため。

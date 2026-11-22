@@ -57,7 +57,7 @@ export function setEdition(e: EditionId): void {
 // Pro Edition の初期インストールアプリ（これ以外のコアアプリはストアから追加する）
 export const PRO_DEFAULT_APPS: string[] = [
   'browser', 'files', 'trash', 'note', 'calculator', 'terminal', 'manual',
-  'store', 'sysinfo', 'taskman', 'widgets', 'developer', 'feedback', 'settings',
+  'store', 'sysinfo', 'taskman', 'widgets', 'developer', 'feedback', 'settings', 'discord',
 ]
 
 // Pro でユーザーが追加したコアアプリ

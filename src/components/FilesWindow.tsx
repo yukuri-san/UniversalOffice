@@ -72,13 +72,18 @@ export default function FilesWindow({ openApp }: { openApp: (app: AppId | 'memod
   }, [])
 
   const refresh = useCallback(async () => {
-    await purgeOldTrash()
-    const [d, f, e, i, own] = await Promise.all([listDocs(), listFolders(), listEvents(), storageInfo(), ownUsageBytes()])
-    setDocs(d)
-    setFolders(f)
-    setEventCount(e.length)
-    setInfo(i)
-    setOwnBytes(own)
+    try {
+      await purgeOldTrash()
+      const [d, f, e, i, own] = await Promise.all([listDocs(), listFolders(), listEvents(), storageInfo(), ownUsageBytes()])
+      setDocs(d)
+      setFolders(f)
+      setEventCount(e.length)
+      setInfo(i)
+      setOwnBytes(own)
+    } catch {
+      // 保存まわりが応答しない場合も「読み込み中」のまま固まらせない
+      setInfo((prev) => prev ?? { usage: 0, quota: 0, persisted: false, backend: '応答なし' })
+    }
   }, [])
 
   useEffect(() => {

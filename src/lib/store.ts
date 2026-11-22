@@ -55,7 +55,7 @@ let backendPromise: Promise<Backend> | null = null
 let resolvedBackend: Backend | null = null
 
 export function storageBackendName(): string {
-  if (resolvedBackend === 'worker') return 'OPFS（Worker経由）'
+  if (resolvedBackend === 'worker') return workerDead ? 'OPFS' : 'OPFS（Worker経由）'
   if (resolvedBackend === 'main') return 'OPFS'
   if (resolvedBackend === 'idb') return 'IndexedDB'
   return HAS_OPFS ? 'OPFS' : 'IndexedDB'
@@ -149,6 +149,18 @@ let worker: Worker | null = null
 let workerSeq = 0
 const workerPending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
 
+// Worker が応答しない環境（OPFS の同期ハンドル待ち等）で保存処理全体が固まらないよう、
+// 応答がなければ Worker を終了してメインスレッド実装へ切り替える。
+let workerDead = false
+
+function killWorker(reason: string): void {
+  workerDead = true
+  try { worker?.terminate() } catch { /* ignore */ }
+  worker = null
+  for (const pending of workerPending.values()) pending.reject(new Error(reason))
+  workerPending.clear()
+}
+
 function getWorker(): Worker {
   if (!worker) {
     worker = new (OpfsWorkerCtor as new () => Worker)()
@@ -159,19 +171,32 @@ function getWorker(): Worker {
       if (e.data.ok) pending.resolve(e.data.result ?? null)
       else pending.reject(new Error(e.data.error ?? 'worker error'))
     }
-    worker.onerror = () => {
-      for (const pending of workerPending.values()) pending.reject(new Error('worker crashed'))
-      workerPending.clear()
-    }
+    worker.onerror = () => killWorker('worker crashed')
   }
   return worker
 }
 
 function workerCall(op: string, dir: string, name?: string, text?: string): Promise<unknown> {
+  if (workerDead) return Promise.reject(new Error('worker dead'))
   const id = ++workerSeq
+  const timeoutMs = op === 'readAll' ? 20000 : 5000
   return new Promise((resolve, reject) => {
-    workerPending.set(id, { resolve, reject })
-    getWorker().postMessage({ id, op, dir, name, text })
+    const timer = window.setTimeout(() => {
+      workerPending.delete(id)
+      killWorker('worker timeout')
+      reject(new Error('worker timeout'))
+    }, timeoutMs)
+    workerPending.set(id, {
+      resolve: (v) => { window.clearTimeout(timer); resolve(v) },
+      reject: (e) => { window.clearTimeout(timer); reject(e) },
+    })
+    try {
+      getWorker().postMessage({ id, op, dir, name, text })
+    } catch (err) {
+      window.clearTimeout(timer)
+      workerPending.delete(id)
+      reject(err instanceof Error ? err : new Error(String(err)))
+    }
   })
 }
 
@@ -210,38 +235,46 @@ async function useOpfs(): Promise<boolean> {
 
 /* ---------- OPFS ディスパッチ ---------- */
 async function opfsWriteJson(dirName: string, fileName: string, obj: unknown): Promise<void> {
-  if (resolvedBackend === 'worker') {
-    await workerCall('write', dirName, fileName, JSON.stringify(obj))
-    return
+  if (resolvedBackend === 'worker' && !workerDead) {
+    try {
+      await workerCall('write', dirName, fileName, JSON.stringify(obj))
+      return
+    } catch { /* Worker が使えない場合はメインスレッドで書き直す */ }
   }
   await opfsMainWriteJson(dirName, fileName, obj)
 }
 
 async function opfsReadJson(dirName: string, fileName: string): Promise<unknown | null> {
-  if (resolvedBackend === 'worker') {
-    const text = (await workerCall('read', dirName, fileName)) as string | null
-    return text ? JSON.parse(text) : null
+  if (resolvedBackend === 'worker' && !workerDead) {
+    try {
+      const text = (await workerCall('read', dirName, fileName)) as string | null
+      return text ? JSON.parse(text) : null
+    } catch { /* メインスレッドで読み直す */ }
   }
   return opfsMainReadJson(dirName, fileName)
 }
 
 async function opfsReadAll(dirName: string): Promise<unknown[]> {
-  if (resolvedBackend === 'worker') {
-    const texts = (await workerCall('readAll', dirName)) as string[]
-    const out: unknown[] = []
-    for (const t of texts) {
-      // 書き込み途中など壊れたファイルが1つあっても全体を落とさない
-      try { out.push(JSON.parse(t)) } catch { /* skip */ }
-    }
-    return out
+  if (resolvedBackend === 'worker' && !workerDead) {
+    try {
+      const texts = (await workerCall('readAll', dirName)) as string[]
+      const out: unknown[] = []
+      for (const t of texts) {
+        // 書き込み途中など壊れたファイルが1つあっても全体を落とさない
+        try { out.push(JSON.parse(t)) } catch { /* skip */ }
+      }
+      return out
+    } catch { /* メインスレッドで読み直す */ }
   }
   return opfsMainReadAll(dirName)
 }
 
 async function opfsDelete(dirName: string, fileName: string): Promise<void> {
-  if (resolvedBackend === 'worker') {
-    await workerCall('delete', dirName, fileName)
-    return
+  if (resolvedBackend === 'worker' && !workerDead) {
+    try {
+      await workerCall('delete', dirName, fileName)
+      return
+    } catch { /* メインスレッドで削除し直す */ }
   }
   await opfsMainDelete(dirName, fileName)
 }
