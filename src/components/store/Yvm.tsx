@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createStore, get as idbGet, set as idbSet, del as idbDel } from 'idb-keyval'
 import { notifyOs } from '../../lib/notify'
+import { listDocs, type LocalDoc } from '../../lib/store'
 
 // YVM（YukkuriVoiceMaker）
 // ゆっくりボイス（AquesTalk）をブラウザで生成するメーカー。
@@ -114,20 +116,79 @@ function buildWav(info: WavInfo, pcm: Uint8Array): Uint8Array {
   return out
 }
 
-/** ピッチ変更（リサンプリング。factor>1で高く・短く、<1で低く・長くなる） */
-function applyPitch(bytes: Uint8Array, factor: number): Uint8Array {
-  if (factor === 1) return bytes
-  const info = parseWav(bytes)
-  if (!info || info.bits !== 16) return bytes
-  const src = new Int16Array(bytes.buffer, bytes.byteOffset + info.dataOff, info.dataLen / 2)
+/** リサンプル（factor>1 で短く・高く、<1 で長く・低くなる） */
+function resamplePcm(src: Float32Array, factor: number): Float32Array {
   const outLen = Math.max(1, Math.floor(src.length / factor))
-  const out = new Int16Array(outLen)
+  const out = new Float32Array(outLen)
   for (let i = 0; i < outLen; i++) {
     const pos = i * factor
     const i0 = Math.floor(pos)
     const i1 = Math.min(src.length - 1, i0 + 1)
     const frac = pos - i0
-    out[i] = Math.round(src[i0] * (1 - frac) + src[i1] * frac)
+    out[i] = src[i0] * (1 - frac) + src[i1] * frac
+  }
+  return out
+}
+
+/** WSOLA タイムストレッチ（音程を変えずに長さを ratio 倍にする） */
+function timeStretchPcm(src: Float32Array, ratio: number): Float32Array {
+  if (ratio === 1 || src.length < 512) return src
+  const WIN = 256
+  const HOP_S = 64 // 合成ホップ
+  const HOP_A = HOP_S / ratio // 解析ホップ
+  const SEARCH = 128
+  const targetLen = Math.round(src.length * ratio)
+  const out = new Float32Array(targetLen + WIN)
+  const norm = new Float32Array(targetLen + WIN)
+  const win = new Float32Array(WIN)
+  for (let i = 0; i < WIN; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (WIN - 1))
+  let outPos = 0
+  let inPos = 0
+  while (outPos + WIN <= out.length && inPos + WIN <= src.length + SEARCH) {
+    let bestOff = 0
+    if (outPos > 0) {
+      // 直前の合成末尾と最も似た位置を探す（波形類似度）
+      let best = -Infinity
+      const base = Math.round(inPos)
+      for (let off = -SEARCH; off <= SEARCH; off++) {
+        const p = base + off
+        if (p < 0 || p + HOP_S + WIN > src.length) continue
+        let corr = 0
+        for (let i = 0; i < WIN - HOP_S; i += 4) corr += out[outPos + HOP_S + i] * src[p + HOP_S + i]
+        if (corr > best) { best = corr; bestOff = off }
+      }
+    }
+    const p = Math.min(src.length - WIN, Math.max(0, Math.round(inPos) + bestOff))
+    if (p < 0) break
+    for (let i = 0; i < WIN; i++) {
+      out[outPos + i] += src[p + i] * win[i]
+      norm[outPos + i] += win[i]
+    }
+    outPos += HOP_S
+    inPos += HOP_A
+  }
+  const res = new Float32Array(targetLen)
+  for (let i = 0; i < targetLen; i++) res[i] = norm[i] > 0.2 ? out[i] / norm[i] : out[i]
+  return res
+}
+
+/**
+ * ピッチ変更（長さを変えずに音程だけを変える。YMM4 の音程に近い方式）
+ * リサンプルで音程を変えたあと、WSOLA で元の長さに戻す。
+ */
+function applyPitch(bytes: Uint8Array, factor: number): Uint8Array {
+  if (factor === 1) return bytes
+  const info = parseWav(bytes)
+  if (!info || info.bits !== 16) return bytes
+  const raw = new Int16Array(bytes.buffer, bytes.byteOffset + info.dataOff, info.dataLen / 2)
+  const src = new Float32Array(raw.length)
+  for (let i = 0; i < raw.length; i++) src[i] = raw[i] / 32768
+  const shifted = resamplePcm(src, factor)
+  const restored = timeStretchPcm(shifted, factor)
+  const out = new Int16Array(restored.length)
+  for (let i = 0; i < restored.length; i++) {
+    const v = Math.max(-1, Math.min(1, restored[i]))
+    out[i] = Math.round(v * 32767)
   }
   return buildWav(info, new Uint8Array(out.buffer))
 }
@@ -199,10 +260,32 @@ function loadConverter(): Promise<AnyMod> {
   return convPromise as Promise<AnyMod>
 }
 
+const voiceStore = createStore('webx-yvm-voices', 'kv')
+
+async function findDllPath(buf: ArrayBuffer): Promise<string | null> {
+  const JSZipMod = await import(/* @vite-ignore */ `${CDN}deps/jszip.js`)
+  const JSZip = JSZipMod.default ?? JSZipMod
+  const zip = await new JSZip().loadAsync(buf)
+  return Object.keys(zip.files).find((n) => /(^|\/)AquesTalk\.dll$/i.test(n)) ?? null
+}
+
 function loadVoice(voice: string): Promise<AnyMod> {
   let p = aqCache.get(voice)
   if (!p) {
-    p = import(/* @vite-ignore */ `${CDN}aquestalk/dist/index.js`).then((m: AnyMod) => m.load(voice))
+    if (voice.startsWith('cv_')) {
+      // カスタム声：端末内（IndexedDB）に保存した声zipを blob URL 経由で読み込む
+      p = (async () => {
+        const buf = await idbGet(voice, voiceStore) as ArrayBuffer | undefined
+        if (!buf) throw new Error('カスタム声のデータが端末内にありません')
+        const dllPath = await findDllPath(buf)
+        if (!dllPath) throw new Error('zip内に AquesTalk.dll が見つかりません')
+        const url = URL.createObjectURL(new Blob([buf], { type: 'application/zip' }))
+        const m = await import(/* @vite-ignore */ `${CDN}aquestalk/dist/index.js`) as AnyMod
+        return m.loadAquesTalk(url, dllPath, { wasmPath: `${CDN}aquestalk/voices/v86.wasm` })
+      })()
+    } else {
+      p = import(/* @vite-ignore */ `${CDN}aquestalk/dist/index.js`).then((m: AnyMod) => m.load(voice))
+    }
     aqCache.set(voice, p)
   }
   return p
@@ -219,6 +302,7 @@ export default function Yvm() {
     { id: uid(), charId: 'reimu', text: 'ゆっくりしていってね！', koeEdit: null },
   ])
   const [dict, setDict] = useState<YDict[]>([])
+  const [customVoices, setCustomVoices] = useState<{ id: string; name: string }[]>([])
   const [view, setView] = useState<'lines' | 'chars' | 'dict'>('lines')
   const [engine, setEngine] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [engineMsg, setEngineMsg] = useState('')
@@ -232,6 +316,7 @@ export default function Yvm() {
   const [loaded, setLoaded] = useState(false)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const stopAllRef = useRef(false)
+  const voiceRef = useRef<HTMLInputElement>(null)
   const csvRef = useRef<HTMLInputElement>(null)
   const jsonRef = useRef<HTMLInputElement>(null)
   const saveTimer = useRef<number | null>(null)
@@ -241,10 +326,11 @@ export default function Yvm() {
     try {
       const raw = localStorage.getItem(LS_KEY)
       if (raw) {
-        const d = JSON.parse(raw) as { chars?: YChar[]; lines?: YLine[]; dict?: YDict[] }
+        const d = JSON.parse(raw) as { chars?: YChar[]; lines?: YLine[]; dict?: YDict[]; customVoices?: { id: string; name: string }[] }
         if (Array.isArray(d.chars) && d.chars.length > 0) setChars(d.chars)
         if (Array.isArray(d.lines)) setLines(d.lines)
         if (Array.isArray(d.dict)) setDict(d.dict)
+        if (Array.isArray(d.customVoices)) setCustomVoices(d.customVoices)
       }
     } catch { /* ignore */ }
     setLoaded(true)
@@ -255,9 +341,9 @@ export default function Yvm() {
     if (!loaded) return
     if (saveTimer.current) window.clearTimeout(saveTimer.current)
     saveTimer.current = window.setTimeout(() => {
-      try { localStorage.setItem(LS_KEY, JSON.stringify({ chars, lines, dict })) } catch { /* ignore */ }
+      try { localStorage.setItem(LS_KEY, JSON.stringify({ chars, lines, dict, customVoices })) } catch { /* ignore */ }
     }, 400)
-  }, [chars, lines, dict, loaded])
+  }, [chars, lines, dict, customVoices, loaded])
 
   const charOf = (id: string): YChar => chars.find((c) => c.id === id) ?? chars[0] ?? DEFAULT_CHARS[0]
 
@@ -462,6 +548,30 @@ export default function Yvm() {
     setChars((p) => [...p, c])
   }
   const patchChar = (id: string, patch: Partial<YChar>) => setChars((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
+
+  // ---------- カスタム声zip ----------
+  const onVoiceZipPicked = (file: File) => {
+    void (async () => {
+      try {
+        const buf = await file.arrayBuffer()
+        const dllPath = await findDllPath(buf)
+        if (!dllPath) { notifyOs('zip内に AquesTalk.dll が見つかりませんでした。通常の声zipと同じ構成のものを選んでください', 'yvm'); return }
+        const id = `cv_${uid()}`
+        await idbSet(id, buf, voiceStore)
+        const name = file.name.replace(/\.zip$/i, '') || 'カスタム声'
+        setCustomVoices((p) => [...p, { id, name }])
+        notifyOs(`声「${name}」を追加しました。キャラ設定の声から選べます`, 'yvm')
+      } catch { notifyOs('声zipを読み込めませんでした', 'yvm') }
+    })()
+  }
+  const deleteCustomVoice = (id: string) => {
+    const v = customVoices.find((x) => x.id === id)
+    if (!window.confirm(`カスタム声「${v?.name ?? id}」を削除しますか？（使っているキャラは f1 に戻ります）`)) return
+    void idbDel(id, voiceStore)
+    aqCache.delete(id)
+    setChars((prev) => prev.map((c) => (c.voice === id ? { ...c, voice: 'f1' } : c)))
+    setCustomVoices((prev) => prev.filter((x) => x.id !== id))
+  }
   const deleteChar = (id: string) => {
     if (chars.length <= 1) { notifyOs('キャラは最低1つ必要です', 'yvm'); return }
     if (!window.confirm('このキャラ設定を削除しますか？（このキャラの行は先頭のキャラに切り替わります）')) return
@@ -471,39 +581,76 @@ export default function Yvm() {
   }
 
   // ---------- CSV / JSON ----------
+  /** [キャラ名, セリフ] のペア列を行に展開して追加する（CSV・YMM4辞書アプリ共通） */
+  const importPairs = (pairs: [string, string][], label: string) => {
+    const newChars: YChar[] = []
+    const findOrCreateChar = (name: string): string => {
+      const found = [...chars, ...newChars].find((c) => c.name === name)
+      if (found) return found.id
+      const c: YChar = {
+        id: uid(), name,
+        voice: YVM_VOICES[(chars.length + newChars.length) % YVM_VOICES.length],
+        speed: 100, pitch: 100,
+      }
+      newChars.push(c)
+      return c.id
+    }
+    const newLines: YLine[] = pairs
+      .filter(([, text]) => text && text.trim())
+      .map(([name, text]) => ({ id: uid(), charId: findOrCreateChar(name.trim() || 'キャラ1'), text, koeEdit: null }))
+    if (newLines.length === 0) { notifyOs('取り込める行がありませんでした', 'yvm'); return }
+    if (newChars.length > 0) setChars((p) => [...p, ...newChars])
+    setLines((p) => [...p, ...newLines])
+    notifyOs(`${label}を取り込みました（${newLines.length}行）`, 'yvm')
+  }
+
+  const importText = (text: string, isCsv: boolean, label: string) => {
+    if (isCsv) {
+      const pairs: [string, string][] = []
+      for (const cols of parseCSV(text)) {
+        if (cols.every((c) => !c.trim())) continue
+        if (cols.length >= 2) pairs.push([cols[0], cols[1]])
+        else if (cols[0].trim()) pairs.push([chars[0]?.name ?? 'キャラ1', cols[0]])
+      }
+      importPairs(pairs, label)
+    } else {
+      const pairs: [string, string][] = text.split(/\r?\n/).filter((l) => l.trim()).map((l) => [chars[0]?.name ?? 'キャラ1', l] as [string, string])
+      importPairs(pairs, label)
+    }
+  }
+
   const onCsvPicked = (file: File) => {
     void (async () => {
       const text = await file.text()
-      const isCsv = /\.csv$/i.test(file.name) || text.includes(',')
-      const newChars: YChar[] = []
-      const findOrCreateChar = (name: string): string => {
-        const found = [...chars, ...newChars].find((c) => c.name === name)
-        if (found) return found.id
-        const c: YChar = {
-          id: uid(), name,
-          voice: YVM_VOICES[(chars.length + newChars.length) % YVM_VOICES.length],
-          speed: 100, pitch: 100,
-        }
-        newChars.push(c)
-        return c.id
-      }
-      const newLines: YLine[] = []
-      if (isCsv) {
-        for (const cols of parseCSV(text)) {
-          if (cols.every((c) => !c.trim())) continue
-          if (cols.length >= 2) newLines.push({ id: uid(), charId: findOrCreateChar(cols[0].trim() || 'キャラ1'), text: cols[1], koeEdit: null })
-          else if (cols[0].trim()) newLines.push({ id: uid(), charId: chars[0]?.id ?? '', text: cols[0], koeEdit: null })
-        }
-      } else {
-        for (const line of text.split(/\r?\n/)) {
-          if (line.trim()) newLines.push({ id: uid(), charId: chars[0]?.id ?? '', text: line, koeEdit: null })
-        }
-      }
-      if (newLines.length === 0) { notifyOs('取り込める行がありませんでした', 'yvm'); return }
-      if (newChars.length > 0) setChars((p) => [...p, ...newChars])
-      setLines((p) => [...p, ...newLines])
-      notifyOs(`CSVを取り込みました（${newLines.length}行）`, 'yvm')
+      importText(text, /\.csv$/i.test(file.name) || text.includes(','), 'CSV')
     })()
+  }
+
+  // ---------- WebX 内データからの読み込み（YMM4辞書CSVアプリ連携・OPFSドキュメント） ----------
+  interface YmmFileLite { id: string; name: string; rows: { charId: string; text: string }[]; updatedAt: number }
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [ymmFiles, setYmmFiles] = useState<YmmFileLite[]>([])
+  const [webDocs, setWebDocs] = useState<LocalDoc[]>([])
+  const openPicker = () => {
+    setPickerOpen(true)
+    void (async () => {
+      try {
+        const files = await idbGet('files', createStore('webx-ymm-db', 'kv')) as YmmFileLite[] | undefined
+        setYmmFiles(Array.isArray(files) ? files : [])
+      } catch { setYmmFiles([]) }
+      try {
+        const docs = await listDocs()
+        setWebDocs(docs.filter((d) => /\.(csv|txt)$/i.test(d.name)))
+      } catch { setWebDocs([]) }
+    })()
+  }
+  const importYmmFile = (f: YmmFileLite) => {
+    importPairs(f.rows.map((r) => [r.charId, r.text] as [string, string]), `YMM4辞書「${f.name}」`)
+    setPickerOpen(false)
+  }
+  const importWebDoc = (d: LocalDoc) => {
+    importText(d.content, /\.csv$/i.test(d.name) || d.content.includes(','), `ドキュメント「${d.name}」`)
+    setPickerOpen(false)
   }
 
   const exportCSV = () => {
@@ -562,9 +709,34 @@ export default function Yvm() {
             <button className="btn" onClick={() => void playAll()}>{playingId === '__all__' ? '⏹ 停止' : '▶ 全行再生'}</button>
             <button className="btn accent" disabled={busyAll} onClick={() => void downloadZip()}>⬇ ZIPで一括出力</button>
             <button className="btn" onClick={() => csvRef.current?.click()}>CSV取込</button>
+            <button className="btn" onClick={openPicker}>WebX内から読込</button>
             <button className="btn" onClick={exportCSV}>CSV出力</button>
             <span className="hint">生成済み {generatedCount}/{lines.length}行 ・ データは端末内に自動保存</span>
           </div>
+          {pickerOpen && (
+            <div className="yvm-picker">
+              <div className="yvm-picker-head">
+                <strong>WebX 内のデータから読み込む</strong>
+                <button className="yvm-iconbtn" onClick={() => setPickerOpen(false)}>✕ 閉じる</button>
+              </div>
+              <div className="yvm-picker-sec">🗣 YMM4辞書CSVアプリのファイル</div>
+              {ymmFiles.length === 0 && <p className="hint" style={{ margin: 0 }}>YMM4辞書CSVアプリに保存されたファイルはありません。</p>}
+              {ymmFiles.map((f) => (
+                <button key={f.id} className="yvm-picker-item" onClick={() => importYmmFile(f)}>
+                  <span>{f.name || '（無題）'}</span>
+                  <span className="hint">{f.rows.length}行 ・ {new Date(f.updatedAt).toLocaleDateString()}</span>
+                </button>
+              ))}
+              <div className="yvm-picker-sec">📁 ドキュメント（OPFS / 本体保存の .csv / .txt）</div>
+              {webDocs.length === 0 && <p className="hint" style={{ margin: 0 }}>拡張子が .csv / .txt のドキュメントはありません。</p>}
+              {webDocs.map((d) => (
+                <button key={d.id} className="yvm-picker-item" onClick={() => importWebDoc(d)}>
+                  <span>{d.name}</span>
+                  <span className="hint">{new Date(d.updatedAt).toLocaleDateString()}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="yvm-rows">
             {lines.map((l, i) => {
               const c = charOf(l.charId)
@@ -620,7 +792,7 @@ export default function Yvm() {
 
       {view === 'chars' && (
         <div className="yvm-pane">
-          <p className="hint" style={{ margin: 0 }}>キャラごとに声の種類・速さ・ピッチを保存できます。ピッチは生成した音声を加工して変えるため、上げると少し短く、下げると少し長くなります。</p>
+          <p className="hint" style={{ margin: 0 }}>キャラごとに声の種類・速さ・ピッチを保存できます。ピッチは長さを変えずに音程だけを変える方式（YMM4の音程に近い処理）です。</p>
           {chars.map((c) => (
             <div key={c.id} className="yvm-char">
               <span className="yvm-ava" style={{ background: colorOf(c.name) }}>{c.name.slice(0, 1)}</span>
@@ -628,13 +800,20 @@ export default function Yvm() {
               <label className="yvm-lab">声
                 <select value={c.voice} onChange={(e) => patchChar(c.id, { voice: e.target.value })}>
                   {YVM_VOICES.map((v) => <option key={v} value={v}>{VOICE_LABEL[v]}</option>)}
+                  {customVoices.map((v) => <option key={v.id} value={v.id}>{v.name}（カスタム）</option>)}
                 </select>
               </label>
-              <label className="yvm-lab">速さ {c.speed}
-                <input type="range" min={50} max={300} step={5} value={c.speed} onChange={(e) => patchChar(c.id, { speed: Number(e.target.value) })} />
+              <label className="yvm-lab">速さ
+                <span className="yvm-slider-row">
+                  <input type="range" min={50} max={300} step={5} value={c.speed} onChange={(e) => patchChar(c.id, { speed: Number(e.target.value) })} />
+                  <input className="yvm-num" type="number" min={50} max={300} step={1} value={c.speed} onChange={(e) => { const v = Number(e.target.value); if (!Number.isNaN(v)) patchChar(c.id, { speed: Math.min(300, Math.max(50, Math.round(v))) }) }} />
+                </span>
               </label>
-              <label className="yvm-lab">ピッチ {c.pitch}%
-                <input type="range" min={50} max={200} step={5} value={c.pitch} onChange={(e) => patchChar(c.id, { pitch: Number(e.target.value) })} />
+              <label className="yvm-lab">ピッチ
+                <span className="yvm-slider-row">
+                  <input type="range" min={50} max={200} step={5} value={c.pitch} onChange={(e) => patchChar(c.id, { pitch: Number(e.target.value) })} />
+                  <span className="yvm-num-wrap"><input className="yvm-num" type="number" min={50} max={200} step={1} value={c.pitch} onChange={(e) => { const v = Number(e.target.value); if (!Number.isNaN(v)) patchChar(c.id, { pitch: Math.min(200, Math.max(50, Math.round(v))) }) }} />%</span>
+                </span>
               </label>
               <button className="yvm-iconbtn" title="試し聞き" onClick={() => {
                 const sample: YLine = { id: '__sample__', charId: c.id, text: 'ゆっくりしていってね', koeEdit: null }
@@ -644,6 +823,16 @@ export default function Yvm() {
             </div>
           ))}
           <button className="yvm-addrow" onClick={addChar}>＋ キャラを追加</button>
+          <div className="yvm-picker-sec" style={{ marginTop: 14 }}>カスタム声（AquesTalkの声zip）</div>
+          <p className="hint" style={{ margin: 0 }}>中身が通常の声zipと同じ構成（フォルダ内に AquesTalk.dll を含むzip）を追加すると、その声をキャラに割り当てられます。zipは端末内に保存されます。</p>
+          {customVoices.map((v) => (
+            <div key={v.id} className="yvm-char">
+              <span className="yvm-ava" style={{ background: colorOf(v.name) }}>{v.name.slice(0, 1)}</span>
+              <span style={{ flex: 1 }}>{v.name}</span>
+              <button className="yvm-iconbtn" title="削除" onClick={() => deleteCustomVoice(v.id)}>✕</button>
+            </div>
+          ))}
+          <button className="yvm-addrow" onClick={() => voiceRef.current?.click()}>＋ 声zipを追加</button>
         </div>
       )}
 
@@ -679,6 +868,7 @@ export default function Yvm() {
         エンジンのファイルは自前CDN（yukuri-san.github.io/UniversalOffice/cdn）から読み込みます（初回のみ約23MB、声ごとに約0.1〜2MB）。
       </div>
 
+      <input ref={voiceRef} type="file" accept=".zip,application/zip" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onVoiceZipPicked(f) }} />
       <input ref={csvRef} type="file" accept=".csv,.txt,text/csv,text/plain" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onCsvPicked(f) }} />
       <input ref={jsonRef} type="file" accept=".json,application/json" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onJsonPicked(f) }} />
     </div>

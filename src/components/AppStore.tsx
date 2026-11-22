@@ -34,6 +34,7 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
   const [check, setCheck] = useState<CheckState>('idle')
   const [storeCheck, setStoreCheck] = useState<CheckState>('idle')
   const [category, setCategory] = useState<StoreCategory | 'all' | 'updates'>('all')
+  const [query, setQuery] = useState('')
   const [latest, setLatest] = useState('')
   const [summary, setSummary] = useState('')
   const [storeSummary, setStoreSummary] = useState('')
@@ -119,6 +120,16 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
           <button className="btn accent" onClick={() => void performUpdate()}>{t('storeStaleBtn')}</button>
         </div>
       )}
+      <div className="store-search-row">
+        <input
+          className="store-search"
+          type="search"
+          placeholder="🔍 アプリ名で検索"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {query && <button className="btn" onClick={() => setQuery('')}>クリア</button>}
+      </div>
       <div className="store-cats">
         <button className={category === 'all' ? 'chip on' : 'chip'} onClick={() => setCategory('all')}>すべて（{STORE_APPS.length}）</button>
         {outdatedApps.length > 0 && (
@@ -139,8 +150,11 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
       {category === 'updates' && outdatedApps.length === 0 && (
         <p className="store-note">{t('stAllLatest')}</p>
       )}
+      {query.trim() && (
+        <p className="store-note">「{query.trim()}」の検索結果：{STORE_APPS.filter((a) => (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(query.trim().toLowerCase())).length}件</p>
+      )}
       <div className="store-list">
-        {STORE_APPS.filter((a) => category === 'all' || (category === 'updates' ? outdatedApps.some((o) => o.id === a.id) : a.category === category)).map((app) => {
+        {STORE_APPS.filter((a) => category === 'all' || (category === 'updates' ? outdatedApps.some((o) => o.id === a.id) : a.category === category)).filter((a) => !query.trim() || (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(query.trim().toLowerCase())).map((app) => {
           const isIn = installed.includes(app.id)
           const cur = versions[app.id]
           const latestVer = catalogEntry(catalog, app.id)?.version ?? app.version
@@ -197,6 +211,9 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
           )
         })}
         {STORE_APPS.length === 0 && <p className="store-note">{t('stEmpty')}</p>}
+        {query.trim() && STORE_APPS.filter((a) => (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(query.trim().toLowerCase())).length === 0 && (
+          <p className="store-note">「{query.trim()}」に一致するアプリはありませんでした。</p>
+        )}
       </div>
       </>
       )}
