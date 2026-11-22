@@ -1035,6 +1035,7 @@ button.start-version:hover { opacity: 1; text-decoration: underline; }
 .app-icon.blackjack { background: linear-gradient(135deg, #065f46, #022c22); }
 .app-icon.slot { background: linear-gradient(135deg, #f59e0b, #dc2626 70%); }
 .app-icon.runner { background: linear-gradient(135deg, #fde68a, #f59e0b); }
+.app-icon.touge { background: linear-gradient(135deg, #1e293b, #7f1d2d 65%, #e11d2e); }
 
 /* ===== v1.15.0: store updates tab ===== */
 .chip.update { border-color: #f59e0b; color: #b45309; background: #fffbeb; }

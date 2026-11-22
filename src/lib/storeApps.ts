@@ -621,5 +621,10 @@ export const STORE_APPS: StoreAppDef[] = [
     desc: '動画を GIF／音声（MP3）／WebM に変換。FFmpeg を端末内で実行し、ファイルは外部送信されません。', version: '1.0.0', notes: '新規アプリです。FFmpeg（WASM）で動画を GIF・MP3・WebM に変換できます。初回のみエンジン読み込みにネット接続が必要です。',
     category: 'tool',
   },
+  {
+    id: 'touge', icon: '🏎️', cls: 'touge', name: '峠ドリフト3D',
+    desc: '夜の峠を駆け抜ける3Dドリフトレース。ライバルを抜いて1周勝負。ユーロビート風BGMつき。', version: '1.0.0', notes: '新規アプリです。Three.jsによる3D峠ドリフトレースです。タッチ操作とキーボードの両方に対応しています。',
+    category: 'game',
+  },
 ]
 
