@@ -2184,3 +2184,6 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 .wme-layerrow { display: flex; align-items: center; gap: 8px; font-size: 11.5px; }
 .wme-layername { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wme-layerrow label { flex-direction: row !important; align-items: center; gap: 2px !important; }
+.store-beta { display: flex; align-items: center; gap: 8px; margin: 4px 0 8px; flex-wrap: wrap; }
+.store-beta-label { font-size: 12.5px; font-weight: 700; }
+.store-beta .store-search { flex: 1; min-width: 160px; }
