@@ -82,6 +82,10 @@ import { DotEater } from './components/games/DotEater'
 import { Solitaire } from './components/games/Solitaire'
 import { Pinball } from './components/games/Pinball'
 import BubbleShooter from './components/games/BubbleShooter'
+import MiniGolf from './components/games/MiniGolf'
+import Bowling from './components/games/Bowling'
+import AirHockey from './components/games/AirHockey'
+import { MindMap } from './components/store/MindMap'
 import Yvm from './components/store/Yvm'
 import Wme from './components/store/Wme'
 import { listDocs, listEvents, requestPersist, type CalEvent, type LocalDoc } from './lib/store'
@@ -92,7 +96,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'pinball' | 'bubbleshooter' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'invader' | 'sokoban' | 'doteater' | 'solitaire' | 'yvm' | 'wme' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'discord' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'pinball' | 'bubbleshooter' | 'minigolf' | 'bowling' | 'airhockey' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'invader' | 'sokoban' | 'doteater' | 'solitaire' | 'yvm' | 'wme' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'discord' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro' | 'mindmap'
 
 interface Win {
   id: WindowApp
@@ -152,6 +156,10 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   breakout: { icon: '🧱', cls: 'breakout' },
   pinball: { icon: '🕹️', cls: 'pinball' },
   bubbleshooter: { icon: '🫧', cls: 'bubbleshooter' },
+  minigolf: { icon: '⛳', cls: 'minigolf' },
+  bowling: { icon: '🎳', cls: 'bowling' },
+  airhockey: { icon: '🏒', cls: 'airhockey' },
+  mindmap: { icon: '🧠', cls: 'mindmap' },
   minesweeper: { icon: '💣', cls: 'minesweeper' },
   sudoku: { icon: '数', cls: 'sudoku' },
   memory: { icon: '🃏', cls: 'memory' },
@@ -1204,6 +1212,10 @@ export default function App() {
       case 'breakout': return <Breakout />
       case 'pinball': return <Pinball />
       case 'bubbleshooter': return <BubbleShooter />
+      case 'minigolf': return <MiniGolf />
+      case 'bowling': return <Bowling />
+      case 'airhockey': return <AirHockey />
+      case 'mindmap': return <MindMap />
       case 'minesweeper': return <Minesweeper />
       case 'sudoku': return <Sudoku />
       case 'memory': return <Memory />
