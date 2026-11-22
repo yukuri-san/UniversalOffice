@@ -1771,6 +1771,7 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 /* 追加分（タイピング寿司打／メディア変換） */
 .app-icon.recipe { background: linear-gradient(135deg, #fda4af, #be123c); }
 .app-icon.water { background: linear-gradient(135deg, #38bdf8, #0369a1); }
+.app-icon.study { background: linear-gradient(135deg, #a78bfa, #6d28d9); }
 .app-icon.mediaconv { background: linear-gradient(135deg, #f59e0b, #dc2626); }
 .sa-col { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
 .sa-app input[type="url"] { border: 1px solid #c6d0dd; border-radius: 8px; padding: 8px; font-size: 14px; background: #fff; }

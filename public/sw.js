@@ -1,4 +1,4 @@
-const CACHE = 'universal-office-v96'
+const CACHE = 'universal-office-v98'
 self.addEventListener('install', (event) => {
   // ページ本体（HTML）はプリキャッシュしない。デプロイ途中の空応答などを
   // 取り込むと、空のドキュメントが固定されて開けなくなる事故が起きるため。
@@ -27,51 +27,29 @@ async function purgePoisonedHtml() {
 }
 // SW 自身が返す復旧ページ（ネットワークもキャッシュも使えない場合の最終手段）
 function recoveryResponse() {
+  const steps = '<details style="text-align:left;margin-top:18px;background:#131c2e;border-radius:10px;padding:12px 16px">'
+    + '<summary style="cursor:pointer;font-weight:700;font-size:14px">手動復旧の手順（ドキュメント）</summary>'
+    + '<div style="font-size:13px;line-height:1.8;margin-top:8px">'
+    + '<p>更新直後などにページが真っ白（空）になるのは、ブラウザの Service Worker のキャッシュに壊れたページ本体が残った状態です。文書・設定などのデータは消えていません。</p>'
+    + '<ol style="padding-left:20px;margin:8px 0">'
+    + '<li>まずは下のボタン「キャッシュだけ消して再読み込み」を試してください。</li>'
+    + '<li>直らない場合（PCの Chrome）：F12 → Application タブ → Service Workers で <b>Unregister</b>、Cache Storage の各キャッシュを <b>Delete</b> してから再読み込み。</li>'
+    + '<li>Android の場合は、PC と USB でつないで Chrome のリモートデバイス機能から同じ操作ができます。</li>'
+    + '<li>WebX が起動できる状態なら、ターミナルの <b>recover</b> コマンドでも同じ復旧ができます。</li>'
+    + '</ol>'
+    + '<p><b>注意：</b>「サイトデータを消去（Clear site data）」は押さないでください。WebX の文書・設定ごと消えてしまいます。消すのは Service Worker の登録と Cache Storage だけです。</p>'
+    + '</div></details>'
   const html = '<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WebX 復旧</title></head>'
     + '<body style="font-family:sans-serif;background:#0b1220;color:#eef3f7;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:20px;box-sizing:border-box">'
-    + '<div style="max-width:420px;text-align:center"><h1 style="font-size:20px">WebX を読み込めませんでした</h1>'
+    + '<div style="max-width:460px;text-align:center"><h1 style="font-size:20px">WebX を読み込めませんでした</h1>'
     + '<p style="font-size:14px;line-height:1.7">キャッシュが壊れている可能性があります。下のボタンでキャッシュだけを消して再読み込みしてください。<br><b>アプリのデータ（文書・設定）は消えません。</b></p>'
-    + '<button id="b" style="padding:12px 22px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-weight:700;font-size:15px">キャッシュだけ消して再読み込み</button></div>'
+    + '<button id="b" style="padding:12px 22px;border-radius:10px;border:none;background:#2563eb;color:#fff;font-weight:700;font-size:15px">キャッシュだけ消して再読み込み</button>'
+    + steps
+    + '</div>'
     + '<script>document.getElementById("b").onclick=async()=>{try{const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)));const rs=await navigator.serviceWorker.getRegistrations();await Promise.all(rs.map(r=>r.unregister()));}catch(e){}location.reload();};<\/script>'
     + '</body></html>'
   return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } })
 }
-self.addEventListener('fetch', (event) => {
-  // 自サイト宛ての GET だけを扱う。他サイト宛て（天気・速度テスト等の測定通信）や
-  // POST は素通しする（以前は全リクエストを横取りして cache.put していたため、
-  // 速度テストのアップロード測定などが失敗する原因になっていた）
-  if (event.request.method !== 'GET') return
-  let url
-  try { url = new URL(event.request.url) } catch { return }
-  if (url.origin !== self.location.origin) return
-  if (event.request.mode === 'navigate') {
-    // ページ本体は常にネットワーク優先で、キャッシュには入れない。
-    // ネットワーク失敗時は、検証済みキャッシュ→復旧ページの順にフォールバックする
-    // （空のドキュメントを返して真っ白になる状態を作らない）。
-    event.respondWith(
-      fetch(event.request).catch(async () => {
-        const cached = await caches.match('./index.html')
-        if (cached) {
-          const text = await cached.clone().text()
-          if (text.length >= 200) return cached
-        }
-        return recoveryResponse()
-      })
-    )
-    return
-  }
-  event.respondWith(
-    fetch(event.request)
-      .then((res) => {
-        if (res.ok && res.headers.get('content-length') !== '0') {
-          const copy = res.clone()
-          caches.open(CACHE).then((cache) => cache.put(event.request, copy)).catch(() => { /* ignore */ })
-        }
-        return res
-      })
-      .catch(() => caches.match(event.request))
-  )
-})
 
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting()

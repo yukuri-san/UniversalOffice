@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -571,6 +571,109 @@ export function WaterLog() {
         {todayItems.length === 0 && <p className="sa-note">今日はまだ記録がありません。上のボタンで飲んだ量を追加してください。</p>}
       </div>
       <p className="sa-note">飲んだ水の量を記録して、1日の目標に対する進み具合を確認できます。記録と目標は端末内に保存されます。</p>
+    </div>
+  )
+}
+
+/* ---------- 勉強記録 ---------- */
+interface StudyRec { id: number; date: string; subject: string; content: string; minutes: number }
+const STUDY_SUBJECTS = ['国語', '数学', '英語', '理科', '社会', 'プログラミング', 'その他']
+const fmtMin = (m: number) => m >= 60 ? `${Math.floor(m / 60)}時間${m % 60 > 0 ? `${m % 60}分` : ''}` : `${m}分`
+const fmtSec = (s: number) => `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
+export function StudyLog() {
+  const [items, setItems] = useState<StudyRec[]>(() => load('webx-study', []))
+  const [date, setDate] = useState(todayStr())
+  const [subject, setSubject] = useState('数学')
+  const [content, setContent] = useState('')
+  const [minutes, setMinutes] = useState(30)
+  const [elapsed, setElapsed] = useState(0)
+  const [running, setRunning] = useState(false)
+  const startedAt = useRef(0)
+  const baseSec = useRef(0)
+  useEffect(() => {
+    if (!running) return
+    const id = setInterval(() => setElapsed(baseSec.current + Math.floor((Date.now() - startedAt.current) / 1000)), 500)
+    return () => clearInterval(id)
+  }, [running])
+  const persist = (next: StudyRec[]) => { setItems(next); save('webx-study', next) }
+  const add = (mins: number, d: string = todayStr(), subj: string = subject, cont: string = content) => {
+    if (!mins || mins <= 0) return
+    persist([{ id: Date.now() + Math.random(), date: d, subject: subj.trim() || 'その他', content: cont.trim(), minutes: Math.round(mins) }, ...items].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id))
+  }
+  const addManual = () => { if (!minutes || minutes <= 0) return; add(minutes); setContent('') }
+  const startTimer = () => { startedAt.current = Date.now(); baseSec.current = elapsed; setRunning(true) }
+  const stopTimer = () => { baseSec.current = elapsed; setRunning(false) }
+  const resetTimer = () => { setRunning(false); setElapsed(0); baseSec.current = 0 }
+  const addTimer = () => { const m = Math.floor(elapsed / 60); if (m < 1) return; add(m); resetTimer() }
+  const today = todayStr()
+  const todayTotal = items.filter((r) => r.date === today).reduce((s, r) => s + r.minutes, 0)
+  const last7: { date: string; total: number }[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(); d.setDate(d.getDate() - i)
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    last7.push({ date: ds, total: items.filter((r) => r.date === ds).reduce((s, r) => s + r.minutes, 0) })
+  }
+  const total7 = last7.reduce((s, d) => s + d.total, 0)
+  const avg7 = Math.round(total7 / 7)
+  const max7 = Math.max(...last7.map((d) => d.total), 1)
+  const bySubject = new Map<string, number>()
+  items.forEach((r) => bySubject.set(r.subject, (bySubject.get(r.subject) ?? 0) + r.minutes))
+  const subjectRows = [...bySubject.entries()].sort((a, b) => b[1] - a[1])
+  const recent = items.slice(0, 20)
+  return (
+    <div className="sa-app">
+      <div className="sa-stats">
+        <span>今日 <b>{fmtMin(todayTotal)}</b></span>
+        <span>直近7日 <b>{fmtMin(total7)}</b></span>
+        <span>7日平均 <b>{fmtMin(avg7)}</b></span>
+        <span>合計 <b>{fmtMin(items.reduce((s, r) => s + r.minutes, 0))}</b></span>
+      </div>
+      <div className="sa-row" style={{ alignItems: 'center', gap: 12 }}>
+        <span style={{ fontSize: 28, fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{fmtSec(elapsed)}</span>
+        {!running
+          ? <button className="btn accent" onClick={startTimer}>タイマー開始</button>
+          : <button className="btn accent" onClick={stopTimer}>停止</button>}
+        <button className="btn" onClick={resetTimer}>リセット</button>
+        <button className="btn" onClick={addTimer} disabled={elapsed < 60}>タイマーの時間を記録</button>
+      </div>
+      <p className="sa-note">タイマーを動かして勉強し、止めてから「タイマーの時間を記録」を押すと、その科目・内容で記録されます（1分以上から）。</p>
+      <div className="sa-row">
+        <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} list="study-subjects" placeholder="科目" style={{ width: 110 }} />
+        <datalist id="study-subjects">{STUDY_SUBJECTS.map((s) => <option key={s} value={s} />)}</datalist>
+        <input type="text" value={content} onChange={(e) => setContent(e.target.value)} placeholder="内容（例：第3章の問題集）" style={{ flex: 1 }} />
+        <label>時間 <input type="number" min={1} value={minutes} onChange={(e) => setMinutes(Number(e.target.value))} style={{ width: 64 }} /> 分</label>
+        <button className="btn accent" onClick={addManual}>追加</button>
+      </div>
+      <div className="sa-log">
+        {last7.map((d) => (
+          <div key={d.date} className="sa-cardrow">
+            <span style={{ flex: 1 }}><b>{d.date === today ? '今日' : dayLabel(d.date)}</b>　{fmtMin(d.total)}
+              <span style={{ display: 'block', height: 8, borderRadius: 4, background: 'var(--muted, #e5e7eb)', overflow: 'hidden', marginTop: 4 }}>
+                <span style={{ display: 'block', width: `${Math.min(100, Math.round((d.total / max7) * 100))}%`, height: '100%', background: '#8b5cf6' }} />
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+      {subjectRows.length > 0 && (
+        <div className="sa-log">
+          <p className="sa-note" style={{ margin: 0 }}>科目別の合計</p>
+          {subjectRows.map(([s, m]) => (
+            <div key={s} className="sa-cardrow"><span><b>{s}</b></span><span>{fmtMin(m)}</span></div>
+          ))}
+        </div>
+      )}
+      <div className="sa-log">
+        {recent.map((r) => (
+          <div key={r.id} className="sa-cardrow">
+            <span><b>{r.subject}</b>{r.content && <span className="sa-note">／{r.content}</span>}<br /><span className="sa-note">{r.date === today ? '今日' : dayLabel(r.date)}　{fmtMin(r.minutes)}</span></span>
+            <button className="btn small" onClick={() => persist(items.filter((x) => x.id !== r.id))}>削除</button>
+          </div>
+        ))}
+        {recent.length === 0 && <p className="sa-note">まだ記録がありません。上のタイマーか入力欄から勉強時間を記録してください。</p>}
+      </div>
+      <p className="sa-note">勉強した科目・内容・時間を記録して、今日と7日間の合計、科目別の集計を確認できます。記録は端末内に保存されます。</p>
     </div>
   )
 }

@@ -30,6 +30,10 @@
           '<p style="font-size:14px;line-height:1.7;color:#aeb9c9;margin:0 0 18px;">アプリのキャッシュが古いまま残っていると、こうなることがあります。下の「キャッシュだけ消して再読み込み」は、文書や設定などのデータには触れずに復旧を試みます。</p>' +
           '<button id="webx-boot-reload" style="display:block;width:100%;padding:12px;margin-bottom:10px;border:0;border-radius:10px;background:#2b3750;color:#e8edf5;font-size:15px;cursor:pointer;">再読み込み</button>' +
           '<button id="webx-boot-recover" style="display:block;width:100%;padding:12px;border:0;border-radius:10px;background:#2563eb;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">キャッシュだけ消して再読み込み（データは消えません）</button>' +
+          '<details style="text-align:left;margin-top:16px;background:#131c2e;border-radius:10px;padding:10px 14px;">' +
+          '<summary style="cursor:pointer;font-weight:700;font-size:13px;">手動復旧の手順（ドキュメント）</summary>' +
+          '<div style="font-size:12.5px;line-height:1.8;margin-top:6px;color:#c4cfdf;">直らない場合は PC の Chrome で：F12 → Application → Service Workers で Unregister、Cache Storage の各キャッシュを Delete してから再読み込みしてください。Android は PC と USB 接続し Chrome のリモートデバイス機能から同じ操作ができます。起動できる状態ならターミナルの recover コマンドでも復旧できます。<b>「サイトデータを消去」は押さないでください（データが消えます）。</b></div>' +
+          '</details>' +
           '<p id="webx-boot-status" style="font-size:12px;color:#8fa0b8;margin:14px 0 0;min-height:16px;"></p>' +
           '</div>'
         document.body.appendChild(box)

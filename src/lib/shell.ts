@@ -79,6 +79,7 @@ const HELP: [string, string][] = [
   ['notify <文字>', '通知を出す'],
   ['theme <テーマid>', 'テーマ変更'],
   ['lock / reboot / bios / recovery', 'ロック／再起動／BIOS／回復環境'],
+  ['recover', '復旧（キャッシュ全消去＋SW登録解除＋再読み込み）'],
   ['date / time / ver / cls / exit', '日付／時刻／バージョン／画面クリア／終了'],
 ]
 
@@ -259,6 +260,23 @@ export async function execCommand(raw: string, state: ShellState, ctx: ShellCont
       if (!ctx.recovery) return done(['このコマンドは回復環境でのみ使えます'])
       resetSettingsOnly()
       return done(['設定をリセットしました（データは保持）。boot-normal で通常起動してください'])
+    }
+    case 'recover': {
+      // 擬似復旧画面行き：開かなくなったときの復旧をコマンドから実行する
+      const lines = ['復旧を開始します：キャッシュを全消去し、Service Worker の登録を解除して再読み込みします（データは消えません）…']
+      try {
+        const keys = await caches.keys()
+        await Promise.all(keys.map((k) => caches.delete(k)))
+        lines.push(`キャッシュを ${keys.length} 件消去しました`)
+      } catch { lines.push('キャッシュの消去に失敗しました') }
+      try {
+        const regs = await navigator.serviceWorker.getRegistrations()
+        await Promise.all(regs.map((r) => r.unregister()))
+        lines.push('Service Worker の登録を解除しました')
+      } catch { /* ignore */ }
+      lines.push('再読み込みします…')
+      setTimeout(() => location.reload(), 600)
+      return done(lines)
     }
     case 'clear-cache': {
       try {

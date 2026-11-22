@@ -622,6 +622,11 @@ export const STORE_APPS: StoreAppDef[] = [
     category: 'life',
   },
   {
+    id: 'study', icon: '勉', cls: 'study', name: '勉強記録',
+    desc: '勉強した科目・内容・時間を記録。タイマーで計測もでき、今日と7日間の合計・科目別の集計を表示。', version: '1.0.0', notes: '新規アプリです。科目・内容・時間の記録、簡易タイマー、今日／7日／科目別の集計が使えます。',
+    category: 'study',
+  },
+  {
     id: 'voxel', icon: '⛏', cls: 'voxel', name: 'ボクセルワールド3D',
     desc: 'Minecraft風の3Dサンドボックス。地形を掘り、ブロックを置いて自由に建築。変更は自動保存。', version: '1.0.0', notes: '新規アプリです。一人称で歩き回り、9種のブロックを破壊・設置できます。飛行モードとタッチ操作にも対応。', category: 'game',
   },
