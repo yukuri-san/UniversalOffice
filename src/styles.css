@@ -280,6 +280,20 @@ table.sheet.freeze thead th { position: sticky; top: 0; z-index: 2; }
 .cal-repeat-badge { display: inline-block; margin-left: 6px; font-size: 11px; font-weight: 600; color: #6b4fa1; background: #ece5f7; border-radius: 4px; padding: 1px 6px; }
 .cal-form button { border: 1px solid #6b4fa1; background: #6b4fa1; color: #fff; border-radius: 8px; padding: 8px; cursor: pointer; font-weight: 600; }
 .cal-form button.cal-cancel { background: #fff; color: #333; border-color: #c6d0dd; font-weight: 400; }
+.cal-day-view { display: flex; flex-direction: column; gap: 10px; }
+.cal-day-allday { display: flex; gap: 8px; align-items: flex-start; border-bottom: 1px solid #eef2f8; padding-bottom: 8px; }
+.cal-day-allday-label { flex: none; width: 44px; font-size: 12px; font-weight: 600; color: #526173; padding-top: 4px; }
+.cal-day-allday-list { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.cal-day-timeline { position: relative; height: 1344px; }
+.cal-day-hour { height: 56px; border-top: 1px solid #eef2f8; cursor: pointer; }
+.cal-day-hour:hover { background: #f6f2fb; }
+.cal-day-hour-label { display: inline-block; width: 44px; font-size: 11.5px; color: #7a8798; transform: translateY(-8px); background: #fff; padding-right: 4px; }
+.cal-day-now { position: absolute; left: 52px; right: 0; height: 0; border-top: 2px solid #e11d48; pointer-events: none; z-index: 3; }
+.cal-day-now::before { content: ''; position: absolute; left: -5px; top: -5px; width: 8px; height: 8px; border-radius: 50%; background: #e11d48; }
+.cal-day-event { position: absolute; z-index: 2; display: block; overflow: hidden; text-align: left; font-size: 12px; border: 0; border-radius: 6px; padding: 3px 7px; cursor: pointer; white-space: normal; line-height: 1.35; }
+.cal-day-event .cal-day-event-time { font-weight: 700; margin-right: 4px; }
+.cal-day-event small { display: block; font-size: 11px; opacity: 0.8; }
+.cal-day-allday .cal-day-event { position: static; width: 100%; }
 
 @media print {
   .titlebar, .ribbon, .statusbar, footer, .toolbar, .hint { display: none !important; }
