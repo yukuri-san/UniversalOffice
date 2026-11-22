@@ -1,25 +1,25 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import WordProcessor from './components/WordProcessor'
-import Spreadsheet from './components/Spreadsheet'
+const WordProcessor = lazy(() => import('./components/WordProcessor'))
+const Spreadsheet = lazy(() => import('./components/Spreadsheet'))
 import Notepad from './components/Notepad'
 import Calendar from './components/Calendar'
 import BrowserPanel from './components/BrowserPanel'
-import FilesWindow from './components/FilesWindow'
+const FilesWindow = lazy(() => import('./components/FilesWindow'))
 import Settings, { type ThemeId } from './components/Settings'
 import { LangContext, LOCALES, translate, type Lang } from './lib/i18n'
 import SetupWizard, { SETUP_VERSION } from './components/SetupWizard'
 import EditionPrompt, { shouldShowEditionPrompt } from './components/EditionPrompt'
-import YoutubeApp from './components/YoutubeApp'
+const YoutubeApp = lazy(() => import('./components/YoutubeApp'))
 import TrashWindow from './components/TrashWindow'
 import DocsWindow, { type DocKind } from './components/DocsWindow'
 import Calculator from './components/Calculator'
 import ClockApp from './components/ClockApp'
-import Paint from './components/Paint'
+const Paint = lazy(() => import('./components/Paint'))
 import Terminal from './components/Terminal'
-import MemoDb from './components/MemoDb'
+const MemoDb = lazy(() => import('./components/MemoDb'))
 import AboutWindow from './components/AboutWindow'
 import ManualWindow from './components/ManualWindow'
-import AppStore from './components/AppStore'
+const AppStore = lazy(() => import('./components/AppStore'))
 import UpdateInfoWindow from './components/UpdateInfoWindow'
 import UnitConverter from './components/UnitConverter'
 import { STORE_APPS } from './lib/storeApps'
@@ -34,7 +34,7 @@ import { CompassApp, LevelApp, NoiseApp, SpeedTestApp } from './components/store
 import YmmDic from './components/store/YmmDic'
 import Feedback from './components/Feedback'
 import DiscordSupport from './components/DiscordSupport'
-import DeveloperApp from './components/DeveloperApp'
+const DeveloperApp = lazy(() => import('./components/DeveloperApp'))
 import CustomAppView from './components/CustomAppView'
 import { CUSTOM_APPS_EVENT, isCustomId, loadCustomApps, type CustomApp } from './lib/customApps'
 import { expandEvents } from './components/Calendar'
@@ -48,13 +48,13 @@ import { Kuku, Drill, EngQuiz, PrefQuiz, Elements, HistoryQuiz, KanjiQuiz, Capit
 import { BaseConv, Percent, TaxCalc, Discount, Loan, Tip, Salary, Pace, Aspect, Gcd, Prime, Combin } from './components/store/Mega3'
 import { TextTools, JsonFmt, Base64Tool, UrlTool, UuidGen, HashTool, PassCheck, Flashlight, Ruler, Mirror, VoiceRec, Amida, Teams, Scoreboard, Tournament } from './components/store/Mega4'
 import { Reading, MovieLog, Plants, Inventory, Expiry, GiftMemo, Savings, Subs, SleepLog, RecipeBook, WaterLog, StudyLog } from './components/store/Mega5'
-import MemoPro from './components/store/MemoPro'
-import OfficePro from './components/store/OfficePro'
-import NotePro from './components/store/NotePro'
-import SheetPro from './components/store/SheetPro'
+const MemoPro = lazy(() => import('./components/store/MemoPro'))
+const OfficePro = lazy(() => import('./components/store/OfficePro'))
+const NotePro = lazy(() => import('./components/store/NotePro'))
+const SheetPro = lazy(() => import('./components/store/SheetPro'))
 import CalcPro from './components/store/CalcPro'
-import PhotoPro from './components/store/PhotoPro'
-import { MediaConv } from './components/store/MediaConv'
+const PhotoPro = lazy(() => import('./components/store/PhotoPro'))
+const MediaConv = lazy(() => import('./components/store/MediaConv').then((m) => ({ default: m.MediaConv })))
 import SysInfo from './components/SysInfo'
 import TaskManager from './components/TaskManager'
 import ClipboardApp from './components/ClipboardApp'
@@ -1060,19 +1060,19 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windows, activeId, platform, openApp, focusWin])
 
-  const lazyGame = (node: ReactNode) => (
+  const lazyWrap = (node: ReactNode) => (
     <Suspense fallback={<div className="app-loading"><div className="app-spinner" /><p>{t('loading')}</p></div>}>{node}</Suspense>
   )
 
   const renderContent = (app: WindowApp) => {
     if (isCustomId(app)) return <CustomAppView id={app} openApp={(target) => openApp(target as WindowApp)} />
     switch (app) {
-      case 'word': return <WordProcessor onSwitch={openApp} />
-      case 'sheet': return <Spreadsheet onSwitch={openApp} />
+      case 'word': return lazyWrap(<WordProcessor onSwitch={openApp} />)
+      case 'sheet': return lazyWrap(<Spreadsheet onSwitch={openApp} />)
       case 'note': return <Notepad onSwitch={openApp} />
       case 'calendar': return <Calendar onSwitch={openApp} />
       case 'browser': return <BrowserPanel />
-      case 'files': return <FilesWindow openApp={openApp} />
+      case 'files': return lazyWrap(<FilesWindow openApp={openApp} />)
       case 'settings': return (
         <Settings
           lang={lang} setLang={setLang} theme={theme} setTheme={setTheme}
@@ -1113,16 +1113,16 @@ export default function App() {
           resizeMode={resizeMode} setResizeMode={setResizeMode}
         />
       )
-      case 'youtube': return <YoutubeApp />
+      case 'youtube': return lazyWrap(<YoutubeApp />)
       case 'trash': return <TrashWindow />
       case 'clipboard': return <ClipboardApp />
       case 'widgets': return <WidgetsApp config={widgetConfig} onChange={setWidgetConfig} appsInfo={allAppsInfo} />
-      case 'developer': return <DeveloperApp openApp={(id) => openApp(id as WindowApp)} />
+      case 'developer': return lazyWrap(<DeveloperApp openApp={(id) => openApp(id as WindowApp)} />)
       case 'feedback': return <Feedback />
       case 'discord': return <DiscordSupport />
       case 'calculator': return <Calculator />
       case 'clock': return <ClockApp />
-      case 'paint': return <Paint />
+      case 'paint': return lazyWrap(<Paint />)
       case 'terminal': return <Terminal openApp={(id) => openApp(id as WindowApp)} onClose={() => closeWin('terminal')} setTheme={(id) => setTheme(id as ThemeId)} action={(name) => {
         if (name === 'lock') setLocked(true)
         else if (name === 'reboot') location.reload()
@@ -1130,10 +1130,10 @@ export default function App() {
         else if (name === 'recovery') { localStorage.setItem('webx-boot-target', 'recovery'); location.reload() }
       }} />
       case 'docs': return <DocsWindow />
-      case 'memodb': return <MemoDb />
+      case 'memodb': return lazyWrap(<MemoDb />)
       case 'about': return <AboutWindow openDocs={(doc) => { localStorage.setItem('webx-docs-initial', doc); openApp('docs') }} />
       case 'manual': return <ManualWindow />
-      case 'store': return (
+      case 'store': return lazyWrap(
         <AppStore
           installed={installedApps}
           versions={appVersions}
@@ -1277,17 +1277,17 @@ export default function App() {
       case 'recipe': return <RecipeBook />
       case 'water': return <WaterLog />
       case 'study': return <StudyLog />
-      case 'memopro': return <MemoPro />
-      case 'officepro': return <OfficePro />
-      case 'notepro': return <NotePro />
-      case 'sheetpro': return <SheetPro />
+      case 'memopro': return lazyWrap(<MemoPro />)
+      case 'officepro': return lazyWrap(<OfficePro />)
+      case 'notepro': return lazyWrap(<NotePro />)
+      case 'sheetpro': return lazyWrap(<SheetPro />)
       case 'calcpro': return <CalcPro />
-      case 'photopro': return <PhotoPro />
-      case 'mediaconv': return <MediaConv />
-      case 'touge': return lazyGame(<TougeDrift />)
-      case 'traingo': return lazyGame(<TrainGo />)
-      case 'denshaD': return lazyGame(<DenshaD />)
-      case 'voxel': return lazyGame(<VoxelWorld />)
+      case 'photopro': return lazyWrap(<PhotoPro />)
+      case 'mediaconv': return lazyWrap(<MediaConv />)
+      case 'touge': return lazyWrap(<TougeDrift />)
+      case 'traingo': return lazyWrap(<TrainGo />)
+      case 'denshaD': return lazyWrap(<DenshaD />)
+      case 'voxel': return lazyWrap(<VoxelWorld />)
       case 'sysinfo': return <SysInfo />
       case 'taskman': return (
         <TaskManager

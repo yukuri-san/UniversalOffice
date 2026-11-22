@@ -1978,3 +1978,14 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 .updatepopup-badge { font-size: 40px; line-height: 1; }
 .updatepopup-card h3 { margin: 0; font-size: 18px; }
 .updatepopup-notes { margin: 0; font-size: 13.5px; line-height: 1.8; text-align: left; white-space: pre-wrap; }
+
+/* ===== v1.55.0: UI/UX・動作改善 第2弾 ===== */
+/* トースト通知のスライドイン */
+@keyframes toast-in { from { opacity: 0; transform: translateX(-50%) translateY(10px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+.os-toast { animation: toast-in .25s ease; }
+/* ウィンドウ内のスクロールがデスクトップへ伝わらないように */
+.os-window-body { overscroll-behavior: contain; }
+/* ボタンの押し心地（わずかな縮小フィードバック） */
+.btn { transition: transform .08s ease, filter .15s ease; }
+.btn:active { transform: scale(.97); }
+.btn:hover { filter: brightness(1.06); }
