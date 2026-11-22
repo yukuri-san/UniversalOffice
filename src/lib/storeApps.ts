@@ -224,6 +224,11 @@ export const STORE_APPS: StoreAppDef[] = [
     category: 'game',
   },
   {
+    id: 'sokoban', icon: '📦', cls: 'sokoban', name: '倉庫番',
+    desc: '荷物を押して目標に並べる定番パズル。全10ステージ、1手戻る・ベスト記録付き。', version: '1.0.0', notes: '新規アプリです。全10ステージ、矢印キー／WASD・画面ボタン・スワイプ操作、1手戻る・最初から・ステージ選択、ベスト記録（最少手数）・角詰まり警告に対応しています。',
+    category: 'game',
+  },
+  {
     id: 'todo', icon: '✓', cls: 'todo', name: 'TODOリスト',
     desc: 'やることを追加してチェックで管理。完了・未完了で絞り込みでき、端末内に保存されます。', version: '1.0.0', notes: '新規アプリです。やることの追加・完了チェック・絞り込み・完了の一括削除ができます。',
     category: 'life',
@@ -635,7 +640,7 @@ export const STORE_APPS: StoreAppDef[] = [
   },
   {
     id: 'voxel', icon: '⛏', cls: 'voxel', name: 'ボクセルワールド3D',
-    desc: 'Minecraft風の3Dサンドボックス。地形を掘り、ブロックを置いて自由に建築。変更は自動保存。', version: '1.0.0', notes: '新規アプリです。一人称で歩き回り、9種のブロックを破壊・設置できます。飛行モードとタッチ操作にも対応。', category: 'game',
+    desc: 'Minecraft風の3Dサンドボックス。地形を掘り、ブロックを置いて自由に建築。変更は自動保存。', version: '1.1.0', notes: 'タッチ操作を本格対応しました。左側のスティックは触れた場所に出て、倒した方向と量で移動できます。視点は右側ドラッグ、「置く」ボタンも長押しで連続設置できるようになりました。', category: 'game',
   },
   {
     id: 'traingo', icon: '🚃', cls: 'traingo', name: '電車運転シミュレーター3D',

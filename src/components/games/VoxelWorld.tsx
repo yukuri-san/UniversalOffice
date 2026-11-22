@@ -128,6 +128,8 @@ const FACES: { dir: [number, number, number]; corners: [number, number, number][
 
 export default function VoxelWorld() {
   const mountRef = useRef<HTMLDivElement>(null)
+  const joyBaseRef = useRef<HTMLDivElement>(null)
+  const joyKnobRef = useRef<HTMLDivElement>(null)
   const ctlRef = useRef<{ setBlock: (i: number) => void; toggleFly: () => void }>({ setBlock: () => {}, toggleFly: () => {} })
   const [phase, setPhase] = useState<'title' | 'play'>('title')
   const [sel, setSel] = useState(0)
@@ -267,7 +269,7 @@ export default function VoxelWorld() {
     let selIdx = 0
     let mouseBreak = false, mousePlace = false
     const joy = { active: false, dx: 0, dy: 0, id: -1 }
-    const touchBtn = { jump: false, brk: false, up: false, down: false }
+    const touchBtn = { jump: false, brk: false, place: false, up: false, down: false }
     ctlRef.current = {
       setBlock: (i: number) => { selIdx = i; setSel(i) },
       toggleFly: () => { player.fly = !player.fly; setFly(player.fly); player.vel.y = 0 },
@@ -401,13 +403,24 @@ export default function VoxelWorld() {
     dom.addEventListener('wheel', onWheel)
     document.addEventListener('pointerlockchange', onLockChange)
 
-    // タッチ
-    const touchState = new Map<number, { x: number; y: number; role: string }>()
+    // タッチ（左側＝アナログスティック：触れた場所を中心に倒した方向・量で移動／右側＝視点ドラッグ）
+    const touchState = new Map<number, { x: number; y: number; ox: number; oy: number; role: string }>()
+    const showJoy = (cx: number, cy: number) => {
+      const base = joyBaseRef.current, knob = joyKnobRef.current
+      if (!base || !knob) return
+      const r = mount.getBoundingClientRect()
+      base.style.display = 'block'
+      base.style.left = `${cx - r.left - 48}px`
+      base.style.top = `${cy - r.top - 48}px`
+      knob.style.transform = 'translate(0px, 0px)'
+    }
+    const hideJoy = () => { const base = joyBaseRef.current; if (base) base.style.display = 'none' }
     const onTouchStart = (e: TouchEvent) => {
+      const r = dom.getBoundingClientRect()
       for (const t of Array.from(e.changedTouches)) {
-        const role = t.clientX < window.innerWidth * 0.42 ? 'joy' : 'look'
-        touchState.set(t.identifier, { x: t.clientX, y: t.clientY, role })
-        if (role === 'joy') { joy.active = true; joy.id = t.identifier; joy.dx = 0; joy.dy = 0 }
+        const role = (t.clientX - r.left) < r.width * 0.42 ? 'joy' : 'look'
+        touchState.set(t.identifier, { x: t.clientX, y: t.clientY, ox: t.clientX, oy: t.clientY, role })
+        if (role === 'joy') { joy.active = true; joy.id = t.identifier; joy.dx = 0; joy.dy = 0; showJoy(t.clientX, t.clientY) }
       }
     }
     const onTouchMove = (e: TouchEvent) => {
@@ -415,13 +428,17 @@ export default function VoxelWorld() {
       for (const t of Array.from(e.changedTouches)) {
         const s = touchState.get(t.identifier)
         if (!s) continue
-        const dx = t.clientX - s.x, dy = t.clientY - s.y
         if (s.role === 'look') {
-          player.yaw -= dx * 0.005
-          player.pitch = THREE.MathUtils.clamp(player.pitch - dy * 0.005, -1.55, 1.55)
+          player.yaw -= (t.clientX - s.x) * 0.005
+          player.pitch = THREE.MathUtils.clamp(player.pitch - (t.clientY - s.y) * 0.005, -1.55, 1.55)
         } else {
-          joy.dx = THREE.MathUtils.clamp(dx / 42, -1, 1)
-          joy.dy = THREE.MathUtils.clamp(dy / 42, -1, 1)
+          const rawX = t.clientX - s.ox, rawY = t.clientY - s.oy
+          const len = Math.hypot(rawX, rawY), max = 46
+          const cl = len > max ? max / len : 1
+          joy.dx = (rawX * cl) / max
+          joy.dy = (rawY * cl) / max
+          const knob = joyKnobRef.current
+          if (knob) knob.style.transform = `translate(${rawX * cl}px, ${rawY * cl}px)`
         }
         s.x = t.clientX; s.y = t.clientY
       }
@@ -429,7 +446,7 @@ export default function VoxelWorld() {
     const onTouchEnd = (e: TouchEvent) => {
       for (const t of Array.from(e.changedTouches)) {
         const s = touchState.get(t.identifier)
-        if (s?.role === 'joy') { joy.active = false; joy.dx = 0; joy.dy = 0 }
+        if (s?.role === 'joy') { joy.active = false; joy.dx = 0; joy.dy = 0; hideJoy() }
         touchState.delete(t.identifier)
       }
     }
@@ -470,6 +487,7 @@ export default function VoxelWorld() {
       }
       collide(player.pos, dt)
       if (touchBtn.brk) { breakCd -= dt; if (breakCd <= 0) { edit(false); breakCd = 0.22 } }
+      if (touchBtn.place) { placeCd -= dt; if (placeCd <= 0) { edit(true); placeCd = 0.22 } }
 
       // 連続編集（マウス長押し）
       breakCd -= dt; placeCd -= dt
@@ -521,16 +539,22 @@ export default function VoxelWorld() {
 
   const tbtn: React.CSSProperties = {
     pointerEvents: 'auto', width: 56, height: 56, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.4)',
-    background: 'rgba(10,14,20,0.5)', color: '#fff', fontWeight: 900, fontSize: 12,
+    background: 'rgba(10,14,20,0.5)', color: '#fff', fontWeight: 900, fontSize: 12, touchAction: 'none',
   }
-  const touchBtnOf = (name: 'jump' | 'brk' | 'up' | 'down') => ({
+  const touchBtnOf = (name: 'jump' | 'brk' | 'place' | 'up' | 'down') => ({
     onTouchStart: (e: React.TouchEvent) => {
       e.stopPropagation()
       const m = mountRef.current as unknown as { __touchBtn?: Record<string, boolean>; __edit?: (p: boolean) => void } | null
       if (m?.__touchBtn) m.__touchBtn[name] = true
       if (name === 'brk' && m?.__edit) m.__edit(false)
+      if (name === 'place' && m?.__edit) m.__edit(true)
     },
     onTouchEnd: (e: React.TouchEvent) => {
+      e.stopPropagation()
+      const m = mountRef.current as unknown as { __touchBtn?: Record<string, boolean> } | null
+      if (m?.__touchBtn) m.__touchBtn[name] = false
+    },
+    onTouchCancel: (e: React.TouchEvent) => {
       e.stopPropagation()
       const m = mountRef.current as unknown as { __touchBtn?: Record<string, boolean> } | null
       if (m?.__touchBtn) m.__touchBtn[name] = false
@@ -585,19 +609,10 @@ export default function VoxelWorld() {
               </div>
               <div style={{ position: 'absolute', right: 80, bottom: 76, display: 'flex', gap: 10 }}>
                 <button style={tbtn} {...touchBtnOf('brk')}>壊す</button>
-                <button
-                  style={tbtn}
-                  onTouchStart={(e) => {
-                    e.stopPropagation()
-                    const m = mountRef.current as unknown as { __edit?: (p: boolean) => void } | null
-                    m?.__edit?.(true)
-                  }}
-                >
-                  置く
-                </button>
+                <button style={tbtn} {...touchBtnOf('place')}>置く</button>
               </div>
-              <div style={{ position: 'absolute', left: 16, bottom: 90, width: 92, height: 92, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', background: 'rgba(10,14,20,0.3)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 800, pointerEvents: 'none' }}>
-                左で移動
+              <div ref={joyBaseRef} style={{ position: 'absolute', width: 96, height: 96, borderRadius: '50%', border: '2px solid rgba(255,255,255,0.35)', background: 'rgba(10,14,20,0.3)', display: 'none', pointerEvents: 'none', zIndex: 6 }}>
+                <div ref={joyKnobRef} style={{ position: 'absolute', left: '50%', top: '50%', width: 44, height: 44, marginLeft: -22, marginTop: -22, borderRadius: '50%', background: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.65)' }} />
               </div>
             </>
           )}
@@ -611,7 +626,7 @@ export default function VoxelWorld() {
             <div style={{ fontSize: 12.5, color: '#e2f0da', marginTop: 3 }}>Minecraft風サンドボックス／掘って、置いて、自由に建築</div>
             <div style={{ textAlign: 'left', fontSize: 12.5, lineHeight: 1.8, background: 'rgba(8,14,8,0.6)', borderRadius: 10, padding: '10px 13px', marginTop: 12 }}>
               ・PC：WASD移動、Spaceジャンプ、左クリック長押しで破壊、右クリックで設置、1〜9／ホイールでブロック選択、Fで飛行切替<br />
-              ・スマホ：左側ドラッグで移動、右側ドラッグで視点、ボタンでジャンプ・破壊・設置<br />
+              ・スマホ：左側を触るとスティックが出て、倒した方向へ移動。右側ドラッグで視点、ボタンでジャンプ・破壊・設置（長押しで連続）<br />
               ・地形・木・水は自動生成。掘った・置いた変更は自動で端末に保存される
             </div>
             <button

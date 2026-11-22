@@ -1989,3 +1989,15 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 .btn { transition: transform .08s ease, filter .15s ease; }
 .btn:active { transform: scale(.97); }
 .btn:hover { filter: brightness(1.06); }
+
+/* 倉庫番 */
+.sokoban-board { display: inline-grid; border: 2px solid #94a3b8; border-radius: 8px; overflow: hidden; background: #e2e8f0; touch-action: none; user-select: none; }
+.sokoban-cell { width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 21px; line-height: 1; }
+.sokoban-wall { background: #64748b; font-size: 18px; }
+.sokoban-floor { background: #f8fafc; }
+.sokoban-target { background: #dcfce7; color: #16a34a; font-size: 15px; box-shadow: inset 0 0 0 2px #86efac; }
+.sokoban-box { background: #fef3c7; }
+.sokoban-boxdone { background: #bbf7d0; box-shadow: inset 0 0 0 2px #4ade80; }
+.sokoban-dpad { display: grid; grid-template-columns: repeat(3, 46px); gap: 4px; justify-content: center; }
+.sokoban-dpad .btn { height: 42px; font-size: 15px; padding: 0; }
+.game-hint { color: #b45309; font-size: 12px; }
