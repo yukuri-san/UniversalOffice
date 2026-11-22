@@ -205,6 +205,8 @@ function timeStretchPcm(src: Float32Array, ratio: number): Float32Array {
  */
 function applyPitch(bytes: Uint8Array, factor: number): Uint8Array {
   if (factor === 1) return bytes
+  // 0%（factor 0）はリサンプルが破綻するので、実効下限 0.1 に丸める
+  factor = Math.min(3, Math.max(0.1, factor))
   const info = parseWav(bytes)
   if (!info || info.bits !== 16) return bytes
   const raw = new Int16Array(bytes.buffer, bytes.byteOffset + info.dataOff, info.dataLen / 2)
@@ -899,8 +901,8 @@ export default function Yvm() {
               </label>
               <label className="yvm-lab">ピッチ
                 <span className="yvm-slider-row">
-                  <input type="range" min={50} max={200} step={5} value={c.pitch} onChange={(e) => patchChar(c.id, { pitch: Number(e.target.value) })} />
-                  <span className="yvm-num-wrap"><input className="yvm-num" type="number" min={50} max={200} step={1} value={c.pitch} onChange={(e) => { const v = Number(e.target.value); if (!Number.isNaN(v)) patchChar(c.id, { pitch: Math.min(200, Math.max(50, Math.round(v))) }) }} />%</span>
+                  <input type="range" min={0} max={300} step={5} value={c.pitch} onChange={(e) => patchChar(c.id, { pitch: Number(e.target.value) })} />
+                  <span className="yvm-num-wrap"><input className="yvm-num" type="number" min={0} max={300} step={1} value={c.pitch} onChange={(e) => { const v = Number(e.target.value); if (!Number.isNaN(v)) patchChar(c.id, { pitch: Math.min(300, Math.max(0, Math.round(v))) }) }} />%</span>
                 </span>
               </label>
               <button className="yvm-iconbtn" title="試し聞き" onClick={() => {
