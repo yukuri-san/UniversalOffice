@@ -14,9 +14,36 @@ const LS_KEY = 'webx-yvm-v1'
 
 export const YVM_VOICES = ['f1', 'f2', 'm1', 'm2', 'dvd', 'imd1', 'jgr', 'r1'] as const
 const VOICE_LABEL: Record<string, string> = {
-  f1: 'f1（女性1）', f2: 'f2（女性2）', m1: 'm1（男性1）', m2: 'm2（男性2）',
-  dvd: 'dvd', imd1: 'imd1', jgr: 'jgr', r1: 'r1（ロボ系）',
+  f1: '女声1(aq1-f1)', f2: '女声2(aq1-f2)', m1: '男声1(aq1-m1)', m2: '男声2(aq1-m2)',
+  dvd: 'dvd(aq1-dvd)', imd1: 'imd1(aq1-imd1)', jgr: 'jgr(aq1-jgr)', r1: 'ロボ(aq1-r1)',
 }
+
+// 純正 AquesTalk2 パック（新エンジン = aquestalk2 / Unicorn ベース）
+// 声は phont ファイルごとに分かれる。CDN の aquestalk2/voices/aq2/ に配置。
+const AQ2_DIR = 'https://yukuri-san.github.io/UniversalOffice/cdn/yvm/aquestalk2/voices/aq2/'
+export const YVM_AQ2_VOICES: { phont: string; label: string }[] = [
+  { phont: 'aq_yukkuri', label: 'ゆっくり(aq2-aq_yukkuri)' },
+  { phont: 'ar_f4', label: '標準(aq2-ar_f4)' },
+  { phont: 'aq_f1b', label: '女声1b(aq2-aq_f1b)' },
+  { phont: 'aq_f1c', label: '女声1c(aq2-aq_f1c)' },
+  { phont: 'aq_f3a', label: '女声3a(aq2-aq_f3a)' },
+  { phont: 'ar_mf2', label: '中性(aq2-ar_mf2)' },
+  { phont: 'aq_mf1', label: '中性1(aq2-aq_mf1)' },
+  { phont: 'aq_m3', label: '男声3(aq2-aq_m3)' },
+  { phont: 'aq_m4', label: '男声4(aq2-aq_m4)' },
+  { phont: 'aq_m4b', label: '男声4b(aq2-aq_m4b)' },
+  { phont: 'ar_m5', label: '男声5(aq2-ar_m5)' },
+  { phont: 'ar_rm3', label: 'rm3(aq2-ar_rm3)' },
+  { phont: 'aq_rm', label: 'rm(aq2-aq_rm)' },
+  { phont: 'aq_rb2', label: 'ロボ2(aq2-aq_rb2)' },
+  { phont: 'aq_rb3', label: 'ロボ3(aq2-aq_rb3)' },
+  { phont: 'aq_robo', label: 'ロボ(aq2-aq_robo)' },
+  { phont: 'aq_teto1', label: 'テト(aq2-aq_teto1)' },
+  { phont: 'aq_momo1', label: 'モモ(aq2-aq_momo1)' },
+  { phont: 'aq_huskey', label: 'ハスキー(aq2-aq_huskey)' },
+  { phont: 'aq_defo1', label: 'デフォ(aq2-aq_defo1)' },
+]
+const aq2Label = (phont: string): string => YVM_AQ2_VOICES.find((v) => v.phont === phont)?.label ?? phont
 
 interface YChar { id: string; name: string; voice: string; speed: number; pitch: number }
 interface YLine { id: string; charId: string; text: string; koeEdit: string | null }
@@ -262,27 +289,57 @@ function loadConverter(): Promise<AnyMod> {
 
 const voiceStore = createStore('webx-yvm-voices', 'kv')
 
-async function findDllPath(buf: ArrayBuffer): Promise<string | null> {
+async function openZip(buf: ArrayBuffer): Promise<AnyMod> {
   const JSZipMod = await import(/* @vite-ignore */ `${CDN}deps/jszip.js`)
   const JSZip = JSZipMod.default ?? JSZipMod
-  const zip = await new JSZip().loadAsync(buf)
+  return new JSZip().loadAsync(buf) as AnyMod
+}
+
+async function findDllPath(buf: ArrayBuffer): Promise<string | null> {
+  const zip = await openZip(buf)
   return Object.keys(zip.files).find((n) => /(^|\/)AquesTalk\.dll$/i.test(n)) ?? null
 }
 
-function loadVoice(voice: string): Promise<AnyMod> {
+/** 新エンジン（aquestalk2 / Unicorn）で DLL バイト列から合成器を作る */
+async function loadUcEngine(dll: ArrayBuffer, phont: ArrayBuffer | null): Promise<AnyMod> {
+  const m = await import(/* @vite-ignore */ `${CDN}aquestalk2/aquestalk-uc.js`) as AnyMod
+  return m.loadAquesTalkUC({ dll, phont }) as AnyMod
+}
+
+function loadVoice(voice: string, customVoices: { id: string; name: string; engine?: string }[]): Promise<AnyMod> {
   let p = aqCache.get(voice)
   if (!p) {
-    if (voice.startsWith('cv_')) {
-      // カスタム声：端末内（IndexedDB）に保存した声zipを blob URL 経由で読み込む
+    if (voice.startsWith('aq2:')) {
+      // 純正 AquesTalk2（内蔵パック）: 新エンジンで DLL + phont を CDN から読む
+      const phont = voice.slice(4)
       p = (async () => {
-        const buf = await idbGet(voice, voiceStore) as ArrayBuffer | undefined
-        if (!buf) throw new Error('カスタム声のデータが端末内にありません')
-        const dllPath = await findDllPath(buf)
-        if (!dllPath) throw new Error('zip内に AquesTalk.dll が見つかりません')
-        const url = URL.createObjectURL(new Blob([buf], { type: 'application/zip' }))
-        const m = await import(/* @vite-ignore */ `${CDN}aquestalk/dist/index.js`) as AnyMod
-        return m.loadAquesTalk(url, dllPath, { wasmPath: `${CDN}aquestalk/voices/v86.wasm` })
+        const [dll, ph] = await Promise.all([
+          fetch(`${AQ2_DIR}AquesTalk2.dll`).then((r) => { if (!r.ok) throw new Error('AquesTalk2.dll の取得に失敗'); return r.arrayBuffer() }),
+          fetch(`${AQ2_DIR}phont/${phont}.phont`).then((r) => { if (!r.ok) throw new Error('phont の取得に失敗'); return r.arrayBuffer() }),
+        ])
+        return loadUcEngine(dll, ph)
       })()
+    } else if (voice.startsWith('cv_')) {
+      const rec = customVoices.find((v) => v.id === voice)
+      if (rec?.engine === 'uc') {
+        // カスタム声（AquesTalk2形式）: 端末内に保存した DLL + phont を新エンジンで読む
+        p = (async () => {
+          const data = await idbGet(voice, voiceStore) as { dll: ArrayBuffer; phont: ArrayBuffer } | undefined
+          if (!data) throw new Error('カスタム声のデータが端末内にありません')
+          return loadUcEngine(data.dll, data.phont)
+        })()
+      } else {
+        // カスタム声（Legacy形式）: 端末内に保存した声zipを blob URL 経由で読み込む
+        p = (async () => {
+          const buf = await idbGet(voice, voiceStore) as ArrayBuffer | undefined
+          if (!buf) throw new Error('カスタム声のデータが端末内にありません')
+          const dllPath = await findDllPath(buf)
+          if (!dllPath) throw new Error('zip内に AquesTalk.dll が見つかりません')
+          const url = URL.createObjectURL(new Blob([buf], { type: 'application/zip' }))
+          const m = await import(/* @vite-ignore */ `${CDN}aquestalk/dist/index.js`) as AnyMod
+          return m.loadAquesTalk(url, dllPath, { wasmPath: `${CDN}aquestalk/voices/v86.wasm` })
+        })()
+      }
     } else {
       p = import(/* @vite-ignore */ `${CDN}aquestalk/dist/index.js`).then((m: AnyMod) => m.load(voice))
     }
@@ -302,7 +359,7 @@ export default function Yvm() {
     { id: uid(), charId: 'reimu', text: 'ゆっくりしていってね！', koeEdit: null },
   ])
   const [dict, setDict] = useState<YDict[]>([])
-  const [customVoices, setCustomVoices] = useState<{ id: string; name: string }[]>([])
+  const [customVoices, setCustomVoices] = useState<{ id: string; name: string; engine?: string }[]>([])
   const [view, setView] = useState<'lines' | 'chars' | 'dict'>('lines')
   const [engine, setEngine] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle')
   const [engineMsg, setEngineMsg] = useState('')
@@ -326,7 +383,7 @@ export default function Yvm() {
     try {
       const raw = localStorage.getItem(LS_KEY)
       if (raw) {
-        const d = JSON.parse(raw) as { chars?: YChar[]; lines?: YLine[]; dict?: YDict[]; customVoices?: { id: string; name: string }[] }
+        const d = JSON.parse(raw) as { chars?: YChar[]; lines?: YLine[]; dict?: YDict[]; customVoices?: { id: string; name: string; engine?: string }[] }
         if (Array.isArray(d.chars) && d.chars.length > 0) setChars(d.chars)
         if (Array.isArray(d.lines)) setLines(d.lines)
         if (Array.isArray(d.dict)) setDict(d.dict)
@@ -408,7 +465,7 @@ export default function Yvm() {
       if (l.koeEdit === null) setKoeMap((p) => ({ ...p, [l.id]: koe }))
     }
     setEngineMsg(`音声エンジン（${c.voice}）を準備中…`)
-    const aq = await loadVoice(c.voice)
+    const aq = await loadVoice(c.voice, customVoices)
     setEngineMsg('')
     const chunks = splitKoe(koe)
     const wavs = chunks.map((ch) => aq.run(ch, c.speed) as Uint8Array)
@@ -554,13 +611,33 @@ export default function Yvm() {
     void (async () => {
       try {
         const buf = await file.arrayBuffer()
+        const zip = await openZip(buf)
+        const names = Object.keys(zip.files)
+        const baseName = file.name.replace(/\.zip$/i, '') || 'カスタム声'
+        // AquesTalk2形式（AquesTalk2.dll + phont）: 新エンジン用に phont ごとに声を登録
+        const aq2DllPath = names.find((n) => /(^|\/)AquesTalk2\.dll$/i.test(n))
+        if (aq2DllPath) {
+          const phontPaths = names.filter((n) => /\.phont$/i.test(n) && !zip.files[n].dir)
+          if (phontPaths.length === 0) { notifyOs('AquesTalk2のzipに phont ファイルがありませんでした', 'yvm'); return }
+          const dllBuf = await zip.files[aq2DllPath].async('arraybuffer') as ArrayBuffer
+          const added: { id: string; name: string; engine?: string }[] = []
+          for (const pp of phontPaths) {
+            const phontBuf = await zip.files[pp].async('arraybuffer') as ArrayBuffer
+            const id = `cv_${uid()}`
+            await idbSet(id, { dll: dllBuf, phont: phontBuf }, voiceStore)
+            const phontName = pp.split('/').pop()?.replace(/\.phont$/i, '') ?? 'phont'
+            added.push({ id, name: `${baseName} / ${phontName}`, engine: 'uc' })
+          }
+          setCustomVoices((p) => [...p, ...added])
+          notifyOs(`AquesTalk2の声を${added.length}件追加しました。キャラ設定の声から選べます`, 'yvm')
+          return
+        }
         const dllPath = await findDllPath(buf)
-        if (!dllPath) { notifyOs('zip内に AquesTalk.dll が見つかりませんでした。通常の声zipと同じ構成のものを選んでください', 'yvm'); return }
+        if (!dllPath) { notifyOs('zip内に AquesTalk.dll / AquesTalk2.dll が見つかりませんでした。通常の声zipと同じ構成のものを選んでください', 'yvm'); return }
         const id = `cv_${uid()}`
         await idbSet(id, buf, voiceStore)
-        const name = file.name.replace(/\.zip$/i, '') || 'カスタム声'
-        setCustomVoices((p) => [...p, { id, name }])
-        notifyOs(`声「${name}」を追加しました。キャラ設定の声から選べます`, 'yvm')
+        setCustomVoices((p) => [...p, { id, name: baseName }])
+        notifyOs(`声「${baseName}」を追加しました。キャラ設定の声から選べます`, 'yvm')
       } catch { notifyOs('声zipを読み込めませんでした', 'yvm') }
     })()
   }
@@ -799,8 +876,17 @@ export default function Yvm() {
               <input className="yvm-char-name" value={c.name} onChange={(e) => patchChar(c.id, { name: e.target.value })} />
               <label className="yvm-lab">声
                 <select value={c.voice} onChange={(e) => patchChar(c.id, { voice: e.target.value })}>
-                  {YVM_VOICES.map((v) => <option key={v} value={v}>{VOICE_LABEL[v]}</option>)}
-                  {customVoices.map((v) => <option key={v.id} value={v.id}>{v.name}（カスタム）</option>)}
+                  <optgroup label="Aq2（純正AquesTalk2）">
+                    {YVM_AQ2_VOICES.map((v) => <option key={v.phont} value={`aq2:${v.phont}`}>{v.label}</option>)}
+                  </optgroup>
+                  <optgroup label="Aq1（同梱・Legacy）">
+                    {YVM_VOICES.map((v) => <option key={v} value={v}>{VOICE_LABEL[v]}</option>)}
+                  </optgroup>
+                  {customVoices.length > 0 && (
+                    <optgroup label="カスタム">
+                      {customVoices.map((v) => <option key={v.id} value={v.id}>{v.name}({v.engine === 'uc' ? 'aq2' : 'aq1'})</option>)}
+                    </optgroup>
+                  )}
                 </select>
               </label>
               <label className="yvm-lab">速さ
@@ -824,7 +910,7 @@ export default function Yvm() {
           ))}
           <button className="yvm-addrow" onClick={addChar}>＋ キャラを追加</button>
           <div className="yvm-picker-sec" style={{ marginTop: 14 }}>カスタム声（AquesTalkの声zip）</div>
-          <p className="hint" style={{ margin: 0 }}>中身が通常の声zipと同じ構成（フォルダ内に AquesTalk.dll を含むzip）を追加すると、その声をキャラに割り当てられます。zipは端末内に保存されます。</p>
+          <p className="hint" style={{ margin: 0 }}>中身が通常の声zipと同じ構成（フォルダ内に AquesTalk.dll を含むzip）を追加すると、その声をキャラに割り当てられます。AquesTalk2形式（AquesTalk2.dll と phont フォルダを含むzip）にも対応し、phontごとに声が登録されます。zipは端末内に保存されます。</p>
           {customVoices.map((v) => (
             <div key={v.id} className="yvm-char">
               <span className="yvm-ava" style={{ background: colorOf(v.name) }}>{v.name.slice(0, 1)}</span>
@@ -864,8 +950,8 @@ export default function Yvm() {
       )}
 
       <div className="yvm-foot">
-        音声合成エンジン: AquesTalk（© 株式会社アクエスト）／ ライブラリ: aquestalk.js・kanji2koe-openjtalk（y52en氏、MIT License）。
-        エンジンのファイルは自前CDN（yukuri-san.github.io/UniversalOffice/cdn）から読み込みます（初回のみ約23MB、声ごとに約0.1〜2MB）。
+        Aquestalkのプログラムを使用しています。音声合成エンジン: AquesTalk（© 株式会社アクエスト）／ ライブラリ: aquestalk.js・kanji2koe-openjtalk（y52en氏、MIT License）、Unicorn Engine（GPLv2）。
+        エンジンのファイルは自前CDN（yukuri-san.github.io/UniversalOffice/cdn）から読み込みます（初回のみ約23MB、新エンジンは声ごとに約1.3MB）。
       </div>
 
       <input ref={voiceRef} type="file" accept=".zip,application/zip" hidden onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) onVoiceZipPicked(f) }} />

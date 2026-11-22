@@ -1,0 +1,8 @@
+Aquestalkのプログラムを使用しています。
+音声合成: AquesTalk (C) 株式会社アクエスト
+
+このフォルダのエンジンについて:
+- aquestalk-uc.js: AquesTalk専用ローダー (WebX / UniversalOffice)
+- unicorn_x86.js: Unicorn Engine 2.1.4 の x86 専用ビルド (GPLv2)
+  ソース: https://github.com/unicorn-engine/unicorn
+          https://github.com/AlexAltea/unicorn.js
