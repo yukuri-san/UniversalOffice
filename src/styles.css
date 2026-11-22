@@ -2013,6 +2013,9 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 @keyframes doteater-blink { 50% { opacity: .35; } }
 .game-hint { color: #b45309; font-size: 12px; }
 
+/* ---- ソリティア ---- */
+@media (max-width: 560px) {
+}
 
 /* ---- YVM ゆっくりボイスメーカー ---- */
 .yvm-root { display: flex; flex-direction: column; height: 100%; min-height: 0; }
@@ -2061,3 +2064,34 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 .yvm-dict-row { display: flex; gap: 8px; align-items: center; border-radius: 10px; padding: 6px 10px; background: rgba(127,127,127,.06); font-size: 13px; }
 .yvm-dict-word { font-weight: 700; }
 .yvm-foot { padding: 8px 12px; font-size: 10.5px; opacity: .6; border-top: 1px solid var(--border, rgba(127,127,127,.22)); line-height: 1.6; }
+
+/* YVM モバイル専用UI（狭幅: 行を縦積み・タップ領域拡大・入力ズーム防止） */
+@media (max-width: 640px) {
+  .yvm-head { padding: 8px 10px; gap: 8px; }
+  .yvm-logo { width: 32px; height: 32px; font-size: 17px; border-radius: 10px; }
+  .yvm-sub { display: none; }
+  .yvm-engine { font-size: 10.5px; padding: 4px 8px; }
+  .yvm-tabs { flex-wrap: nowrap; overflow-x: auto; padding: 8px 8px 0; }
+  .yvm-tabs .btn { flex: 1; min-height: 40px; white-space: nowrap; }
+  .yvm-toolbar { padding: 8px 8px 0; }
+  .yvm-toolbar .btn { min-height: 40px; flex: 1; white-space: nowrap; }
+  .yvm-rows { padding: 8px 8px; gap: 8px; }
+  .yvm-row { flex-wrap: wrap; padding: 9px; gap: 6px; }
+  .yvm-idx { order: 1; }
+  .yvm-sel { order: 2; flex: 1; max-width: none; min-height: 40px; font-size: 14px; }
+  .yvm-status { order: 3; padding-top: 10px; }
+  .yvm-row-main { order: 4; flex-basis: 100%; }
+  .yvm-rowacts { order: 5; flex-basis: 100%; justify-content: flex-end; gap: 4px; }
+  .yvm-txt { font-size: 16px; padding: 10px; }
+  .yvm-koe-input { font-size: 14px; padding: 8px; min-height: 36px; }
+  .yvm-mini { font-size: 12px; padding: 6px 11px; }
+  .yvm-iconbtn { font-size: 16px; padding: 9px 11px; }
+  .yvm-addrow { padding: 14px; font-size: 14px; margin: 0 8px 10px; }
+  .yvm-pane { padding: 10px 8px; }
+  .yvm-char { padding: 10px; gap: 8px; }
+  .yvm-char-name { flex: 1; min-height: 40px; font-size: 15px; }
+  .yvm-char .yvm-lab { flex: 1 1 150px; }
+  .yvm-char select { min-height: 40px; width: 100%; font-size: 14px; }
+  .yvm-num { min-height: 36px; font-size: 15px; }
+  .yvm-foot { font-size: 10.5px; padding: 8px 10px calc(8px + env(safe-area-inset-bottom)); }
+}
