@@ -53,6 +53,26 @@ export class Engine {
     return moon
   }
 
+  setupDay() {
+    this.scene.background = new THREE.Color(0x8fc3e8)
+    this.scene.fog = new THREE.FogExp2(0xa8c8e0, 0.00055)
+    const hemi = new THREE.HemisphereLight(0xcfe5ff, 0x4a5a48, 0.95)
+    this.scene.add(hemi)
+    const sun = new THREE.DirectionalLight(0xfff2d8, 1.6)
+    sun.position.set(60, 130, 40)
+    sun.castShadow = true
+    sun.shadow.mapSize.set(2048, 2048)
+    sun.shadow.camera.left = -80
+    sun.shadow.camera.right = 80
+    sun.shadow.camera.top = 80
+    sun.shadow.camera.bottom = -80
+    sun.shadow.camera.near = 10
+    sun.shadow.camera.far = 340
+    sun.shadow.bias = -0.0006
+    this.scene.add(sun)
+    this.scene.add(sun.target)
+    this.sun = sun
+  }
   followSun(x: number, z: number) {
     if (!this.sun) return
     this.sun.position.set(x - 60, 120, z - 40)

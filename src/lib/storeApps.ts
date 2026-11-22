@@ -622,6 +622,14 @@ export const STORE_APPS: StoreAppDef[] = [
     category: 'life',
   },
   {
+    id: 'traingo', icon: '🚃', cls: 'traingo', name: '電車運転シミュレーター3D',
+    desc: '電車でGO風・BVE基準の3D運転シミュ。全5駅をノッチ運転し、定時・停止位置で採点。ATSや対向列車も再現。', version: '1.0.0', notes: '新規アプリです。BVE基準の物理（ノッチ・勾配・ジャーク制限）と走行音で、全5駅・約3.9kmの路線を運転できます。', category: 'game',
+  },
+  {
+    id: 'denshaD', icon: '🚆', cls: 'denshaD', name: '電車でDバトル3D',
+    desc: '電車でD風の列車バトル。夜の峠路線でライバルと対決し、カーブのドリフトと溝落としで勝負。', version: '1.0.0', notes: '新規アプリです。カーブで列車を流すドリフト、溝落とし、脱線リスク管理でライバル列車と競えます。', category: 'game',
+  },
+  {
     id: 'mediaconv', icon: '変', cls: 'mediaconv', name: 'メディア変換',
     desc: '動画を GIF／音声（MP3）／WebM に変換。FFmpeg を端末内で実行し、ファイルは外部送信されません。', version: '1.0.0', notes: '新規アプリです。FFmpeg（WASM）で動画を GIF・MP3・WebM に変換できます。初回のみエンジン読み込みにネット接続が必要です。',
     category: 'tool',

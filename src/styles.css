@@ -1780,3 +1780,6 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 .sushi-now { display: flex; gap: 14px; align-items: baseline; justify-content: center; padding: 8px 10px 0; flex-wrap: wrap; }
 .sushi-now-word { font-size: 22px; font-weight: 700; }
 .sushi-now-romaji { font-family: ui-monospace, monospace; font-size: 18px; color: #9ca3af; letter-spacing: 1px; }
+
+.app-icon.traingo { background: linear-gradient(135deg, #7ec3ff, #1c5fa8); }
+.app-icon.denshaD { background: linear-gradient(135deg, #ffd21f, #c2410c); }
