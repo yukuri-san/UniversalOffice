@@ -622,6 +622,10 @@ export const STORE_APPS: StoreAppDef[] = [
     category: 'life',
   },
   {
+    id: 'voxel', icon: '⛏', cls: 'voxel', name: 'ボクセルワールド3D',
+    desc: 'Minecraft風の3Dサンドボックス。地形を掘り、ブロックを置いて自由に建築。変更は自動保存。', version: '1.0.0', notes: '新規アプリです。一人称で歩き回り、9種のブロックを破壊・設置できます。飛行モードとタッチ操作にも対応。', category: 'game',
+  },
+  {
     id: 'traingo', icon: '🚃', cls: 'traingo', name: '電車運転シミュレーター3D',
     desc: '電車でGO風・BVE基準の3D運転シミュ。全5駅をノッチ運転し、定時・停止位置で採点。ATSや対向列車も再現。', version: '1.0.0', notes: '新規アプリです。BVE基準の物理（ノッチ・勾配・ジャーク制限）と走行音で、全5駅・約3.9kmの路線を運転できます。', category: 'game',
   },

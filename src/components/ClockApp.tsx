@@ -2,6 +2,42 @@ import { useEffect, useRef, useState } from 'react'
 import { LOCALES, useLang } from '../lib/i18n'
 import { notifyOs } from '../lib/notify'
 
+type AlarmRepeat = 'once' | 'daily' | 'weekdays' | 'weekends'
+type Alarm = { id: string; time: string; label: string; repeat: AlarmRepeat; enabled: boolean }
+
+const ALARM_KEY = 'webx-alarms'
+
+function loadAlarms(): Alarm[] {
+  try {
+    const raw = localStorage.getItem(ALARM_KEY)
+    if (!raw) return []
+    const list = JSON.parse(raw) as Alarm[]
+    return Array.isArray(list) ? list.filter((a) => a && typeof a.time === 'string') : []
+  } catch { return [] }
+}
+
+function beepAlarm() {
+  try {
+    const ctx = new AudioContext()
+    ;[0, 0.3, 0.6].forEach((delay, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.frequency.value = 880 + i * 110
+      gain.gain.setValueAtTime(0.15, ctx.currentTime + delay)
+      osc.start(ctx.currentTime + delay)
+      osc.stop(ctx.currentTime + delay + 0.25)
+    })
+  } catch { /* ignore */ }
+}
+
+function repeatMatches(repeat: AlarmRepeat, day: number): boolean {
+  if (repeat === 'daily' || repeat === 'once') return true
+  if (repeat === 'weekdays') return day >= 1 && day <= 5
+  return day === 0 || day === 6
+}
+
 const ZONES: { label: string; tz: string }[] = [
   { label: '東京', tz: 'Asia/Tokyo' },
   { label: 'ソウル', tz: 'Asia/Seoul' },
@@ -23,13 +59,46 @@ function fmtElapsed(ms: number): string {
 
 export default function ClockApp() {
   const { lang, t } = useLang()
-  const [tab, setTab] = useState<'world' | 'stopwatch' | 'timer'>('world')
+  const [tab, setTab] = useState<'world' | 'stopwatch' | 'timer' | 'alarm'>('world')
   const [now, setNow] = useState(new Date())
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(new Date()), 500)
     return () => window.clearInterval(id)
   }, [])
+
+  // alarm
+  const [alarms, setAlarms] = useState<Alarm[]>(() => loadAlarms())
+  const [alarmTime, setAlarmTime] = useState('07:00')
+  const [alarmLabel, setAlarmLabel] = useState('')
+  const [alarmRepeat, setAlarmRepeat] = useState<AlarmRepeat>('daily')
+  const firedRef = useRef<Set<string>>(new Set())
+
+  const persistAlarms = (next: Alarm[]) => {
+    setAlarms(next)
+    try { localStorage.setItem(ALARM_KEY, JSON.stringify(next)) } catch { /* ignore */ }
+  }
+
+  useEffect(() => {
+    const hh = String(now.getHours()).padStart(2, '0')
+    const mm = String(now.getMinutes()).padStart(2, '0')
+    const today = `${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`
+    const day = now.getDay()
+    let changed = false
+    const next = alarms.map((a) => {
+      if (!a.enabled || a.time !== `${hh}:${mm}`) return a
+      if (!repeatMatches(a.repeat, day)) return a
+      const key = `${a.id}:${today}`
+      if (firedRef.current.has(key)) return a
+      firedRef.current.add(key)
+      notifyOs(`⏰ ${a.label || a.time}`, 'clock')
+      beepAlarm()
+      if (a.repeat === 'once') { changed = true; return { ...a, enabled: false } }
+      return a
+    })
+    if (changed) persistAlarms(next)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now])
 
   // stopwatch
   const [swStart, setSwStart] = useState<number | null>(null)
@@ -74,6 +143,7 @@ export default function ClockApp() {
         <button className={tab === 'world' ? 'on' : ''} onClick={() => setTab('world')}>{t('worldClock')}</button>
         <button className={tab === 'stopwatch' ? 'on' : ''} onClick={() => setTab('stopwatch')}>{t('stopwatch')}</button>
         <button className={tab === 'timer' ? 'on' : ''} onClick={() => setTab('timer')}>{t('timer')}</button>
+        <button className={tab === 'alarm' ? 'on' : ''} onClick={() => setTab('alarm')}>{t('alarm')}</button>
       </div>
 
       {tab === 'world' && (
@@ -127,6 +197,55 @@ export default function ClockApp() {
               }}>{t('startBtn')}</button>
             )}
           </div>
+        </div>
+      )}
+
+      {tab === 'alarm' && (
+        <div className="alarm-wrap">
+          <div className="alarm-form">
+            <label>
+              {t('alarmTime')}
+              <input type="time" value={alarmTime} onChange={(e) => setAlarmTime(e.target.value)} />
+            </label>
+            <label>
+              {t('alarmLabel')}
+              <input type="text" value={alarmLabel} onChange={(e) => setAlarmLabel(e.target.value)} placeholder={t('alarmLabelPh')} />
+            </label>
+            <label>
+              {t('alarmRepeat')}
+              <select value={alarmRepeat} onChange={(e) => setAlarmRepeat(e.target.value as AlarmRepeat)}>
+                <option value="once">{t('alarmOnce')}</option>
+                <option value="daily">{t('alarmDaily')}</option>
+                <option value="weekdays">{t('alarmWeekdays')}</option>
+                <option value="weekends">{t('alarmWeekends')}</option>
+              </select>
+            </label>
+            <button onClick={() => {
+              if (!alarmTime) return
+              const alarm: Alarm = {
+                id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                time: alarmTime, label: alarmLabel.trim(), repeat: alarmRepeat, enabled: true,
+              }
+              persistAlarms([...alarms, alarm].sort((a, b) => a.time.localeCompare(b.time)))
+              setAlarmLabel('')
+            }}>{t('addBtn')}</button>
+          </div>
+          {alarms.length === 0 ? (
+            <p className="alarm-empty">{t('alarmNoAlarms')}</p>
+          ) : (
+            <ul className="alarm-list">
+              {alarms.map((a) => (
+                <li key={a.id} className={a.enabled ? '' : 'off'}>
+                  <label className="alarm-toggle">
+                    <input type="checkbox" checked={a.enabled} onChange={() => persistAlarms(alarms.map((x) => x.id === a.id ? { ...x, enabled: !x.enabled } : x))} />
+                  </label>
+                  <strong>{a.time}</strong>
+                  <span className="alarm-meta">{a.label || '—'} · {t(a.repeat === 'once' ? 'alarmOnce' : a.repeat === 'daily' ? 'alarmDaily' : a.repeat === 'weekdays' ? 'alarmWeekdays' : 'alarmWeekends')}</span>
+                  <button onClick={() => persistAlarms(alarms.filter((x) => x.id !== a.id))}>{t('deleteBtn')}</button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
     </div>
