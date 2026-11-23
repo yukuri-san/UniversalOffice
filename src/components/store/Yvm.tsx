@@ -45,7 +45,9 @@ export const YVM_AQ2_VOICES: { phont: string; label: string }[] = [
 ]
 const aq2Label = (phont: string): string => YVM_AQ2_VOICES.find((v) => v.phont === phont)?.label ?? phont
 
-interface YChar { id: string; name: string; voice: string; speed: number; pitch: number }
+/** ピッチ処理の方式。'keep'=長さを維持（YMM4風） / 'resample'=長さも変わる（単純リサンプル） */
+type PitchMode = 'keep' | 'resample'
+interface YChar { id: string; name: string; voice: string; speed: number; pitch: number; pitchMode?: PitchMode }
 interface YLine { id: string; charId: string; text: string; koeEdit: string | null }
 interface YDict { id: string; word: string; reading: string }
 interface GenInfo { key: string; url: string; bytes: number; sec: number }
@@ -200,10 +202,13 @@ function timeStretchPcm(src: Float32Array, ratio: number): Float32Array {
 }
 
 /**
- * ピッチ変更（長さを変えずに音程だけを変える。YMM4 の音程に近い方式）
- * リサンプルで音程を変えたあと、WSOLA で元の長さに戻す。
+ * ピッチ変更。方式は2つ:
+ * - 'keep'（長さ維持）: リサンプルで音程を変えたあと、WSOLA で元の長さに戻す。YMM4 の音程に近い方式。
+ * - 'resample'（長さ変化）: リサンプルのみ。音程と一緒に長さも変わる（テープの早回し風）。
+ *   単純なリサンプルで処理するアプリ（Android の読み上げ系など）に近い方式。
+ * アプリごとにピッチ処理が違うため、同じ % でも音が一致しないことがある。キャラごとに切り替える。
  */
-function applyPitch(bytes: Uint8Array, factor: number): Uint8Array {
+function applyPitch(bytes: Uint8Array, factor: number, mode: PitchMode = 'keep'): Uint8Array {
   if (factor === 1) return bytes
   // 0%（factor 0）はリサンプルが破綻するので、実効下限 0.1 に丸める
   factor = Math.min(3, Math.max(0.1, factor))
@@ -213,7 +218,7 @@ function applyPitch(bytes: Uint8Array, factor: number): Uint8Array {
   const src = new Float32Array(raw.length)
   for (let i = 0; i < raw.length; i++) src[i] = raw[i] / 32768
   const shifted = resamplePcm(src, factor)
-  const restored = timeStretchPcm(shifted, factor)
+  const restored = mode === 'resample' ? shifted : timeStretchPcm(shifted, factor)
   const out = new Int16Array(restored.length)
   for (let i = 0; i < restored.length; i++) {
     const v = Math.max(-1, Math.min(1, restored[i]))
@@ -351,8 +356,8 @@ function loadVoice(voice: string, customVoices: { id: string; name: string; engi
 }
 
 const DEFAULT_CHARS: YChar[] = [
-  { id: 'reimu', name: '霊夢', voice: 'f1', speed: 100, pitch: 100 },
-  { id: 'marisa', name: '魔理沙', voice: 'f2', speed: 100, pitch: 100 },
+  { id: 'reimu', name: '霊夢', voice: 'f1', speed: 100, pitch: 100, pitchMode: 'keep' },
+  { id: 'marisa', name: '魔理沙', voice: 'f2', speed: 100, pitch: 100, pitchMode: 'keep' },
 ]
 
 export default function Yvm() {
@@ -454,7 +459,7 @@ export default function Yvm() {
   const effectiveKoe = (l: YLine): string => l.koeEdit ?? koeMap[l.id] ?? ''
   const genKey = (l: YLine): string => {
     const c = charOf(l.charId)
-    return JSON.stringify([c.voice, c.speed, c.pitch, effectiveKoe(l)])
+    return JSON.stringify([c.voice, c.speed, c.pitch, c.pitchMode ?? 'keep', effectiveKoe(l)])
   }
 
   /** 1行分の WAV を生成（長文は分割して連結） */
@@ -473,7 +478,7 @@ export default function Yvm() {
     const chunks = splitKoe(koe)
     const wavs = chunks.map((ch) => aq.run(ch, c.speed) as Uint8Array)
     const joined = concatWavs(wavs)
-    return c.pitch === 100 ? joined : applyPitch(joined, c.pitch / 100)
+    return c.pitch === 100 ? joined : applyPitch(joined, c.pitch / 100, c.pitchMode ?? 'keep')
   }
 
   const generateLine = async (l: YLine, silent = false): Promise<GenInfo | null> => {
@@ -604,7 +609,7 @@ export default function Yvm() {
 
   // ---------- キャラ操作 ----------
   const addChar = () => {
-    const c: YChar = { id: uid(), name: `キャラ${chars.length + 1}`, voice: 'f1', speed: 100, pitch: 100 }
+    const c: YChar = { id: uid(), name: `キャラ${chars.length + 1}`, voice: 'f1', speed: 100, pitch: 100, pitchMode: 'keep' }
     setChars((p) => [...p, c])
   }
   const patchChar = (id: string, patch: Partial<YChar>) => setChars((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)))
@@ -670,7 +675,7 @@ export default function Yvm() {
       const c: YChar = {
         id: uid(), name,
         voice: YVM_VOICES[(chars.length + newChars.length) % YVM_VOICES.length],
-        speed: 100, pitch: 100,
+        speed: 100, pitch: 100, pitchMode: 'keep',
       }
       newChars.push(c)
       return c.id
@@ -873,7 +878,7 @@ export default function Yvm() {
 
       {view === 'chars' && (
         <div className="yvm-pane">
-          <p className="hint" style={{ margin: 0 }}>キャラごとに声の種類・速さ・ピッチを保存できます。ピッチは長さを変えずに音程だけを変える方式（YMM4の音程に近い処理）です。</p>
+          <p className="hint" style={{ margin: 0 }}>キャラごとに声の種類・速さ・ピッチを保存できます。ピッチの処理方式はアプリごとに違うため、同じ数値でも他のアプリと音が一致しないことがあります。YVMでは「長さを維持（YMM4風）」と「長さも変わる（単純リサンプル）」をキャラごとに切り替えられます。</p>
           {chars.map((c) => (
             <div key={c.id} className="yvm-char">
               <span className="yvm-ava" style={{ background: colorOf(c.name) }}>{c.name.slice(0, 1)}</span>
@@ -904,6 +909,12 @@ export default function Yvm() {
                   <input type="range" min={0} max={300} step={5} value={c.pitch} onChange={(e) => patchChar(c.id, { pitch: Number(e.target.value) })} />
                   <span className="yvm-num-wrap"><input className="yvm-num" type="number" min={0} max={300} step={1} value={c.pitch} onChange={(e) => { const v = Number(e.target.value); if (!Number.isNaN(v)) patchChar(c.id, { pitch: Math.min(300, Math.max(0, Math.round(v))) }) }} />%</span>
                 </span>
+              </label>
+              <label className="yvm-lab">ピッチ方式
+                <select value={c.pitchMode ?? 'keep'} onChange={(e) => patchChar(c.id, { pitchMode: e.target.value as PitchMode })}>
+                  <option value="keep">長さを維持（YMM4風）</option>
+                  <option value="resample">長さも変わる（単純）</option>
+                </select>
               </label>
               <button className="yvm-iconbtn" title="試し聞き" onClick={() => {
                 const sample: YLine = { id: '__sample__', charId: c.id, text: 'ゆっくりしていってね', koeEdit: null }
@@ -961,6 +972,7 @@ export default function Yvm() {
             <p>音声合成エンジン: AquesTalk（© 株式会社アクエスト）／ ライブラリ: aquestalk.js・kanji2koe-openjtalk（y52en氏、MIT License）、Unicorn Engine（GPLv2）。</p>
             <p>エンジンのファイルは自前CDN（yukuri-san.github.io/UniversalOffice/cdn）から読み込みます（初回のみ約23MB、新エンジンは声ごとに約1.3MB）。</p>
             <p>声の表記: 「女声1(aq1-f1)」は Aq1（AquesTalk1系・同梱）の声、「ゆっくり(aq2-aq_yukkuri)」は Aq2（純正AquesTalk2）の声です。カスタム声zipは Aq1形式・Aq2形式の両方に対応します。</p>
+            <p>ピッチ方式: 「長さを維持」は音程だけを変える方式（YMM4の音程に近い処理）、「長さも変わる」はリサンプルだけで処理する方式で、音程と一緒に音声の長さも変わります。アプリごとにピッチ処理が異なるため、同じ % の数値でもアプリ間で音が一致しないことがあります。キャラ設定で方式を切り替えて、使っている環境に近い方を選んでください。</p>
             <button className="btn accent" onClick={() => setShowInfo(false)}>閉じる</button>
           </div>
         </div>
