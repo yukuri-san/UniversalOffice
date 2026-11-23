@@ -33,6 +33,7 @@ export interface CalEvent {
   title: string
   memo: string
   repeat?: RepeatKind // 未指定は 'none' と同じ（既存データとの互換のため）
+  repeatUntil?: string // YYYY-MM-DD、繰り返しの最終日（未指定は無期限。既存データとの互換のため任意）
   reminder?: number // 何日前に通知するか（0=当日、未指定は通知なし）
   color?: EventColor // 未指定は 'blue' と同じ（既存データとの互換のため）
   createdAt: number

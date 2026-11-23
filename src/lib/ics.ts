@@ -1,6 +1,6 @@
 // カレンダー予定の ICS（iCalendar / RFC 5545）書き出し・読み込み。
 // WebX の予定（CalEvent）と相互変換する。
-// 対応する項目：タイトル・メモ・日付・時刻・終了時刻・繰り返し（毎日／毎週／毎月）・色・リマインダー。
+// 対応する項目：タイトル・メモ・日付・時刻・終了時刻・繰り返し（毎日／毎週／毎月）・繰り返し終了日・色・リマインダー。
 // 色とリマインダーは X-WEBX-COLOR / X-WEBX-REMINDER として保存し、WebX 同士の往復で維持する。
 // 時刻はタイムゾーンなしの現地時刻（floating）で扱い、他社カレンダーとも読み書きできる。
 import type { CalEvent, EventColor, RepeatKind } from './store'
@@ -74,9 +74,9 @@ export function eventsToIcs(events: CalEvent[]): string {
     }
     lines.push(`SUMMARY:${escText(e.title)}`)
     if (e.memo) lines.push(`DESCRIPTION:${escText(e.memo)}`)
-    if (repeat === 'daily') lines.push('RRULE:FREQ=DAILY')
-    else if (repeat === 'weekly') lines.push('RRULE:FREQ=WEEKLY')
-    else if (repeat === 'monthly') lines.push('RRULE:FREQ=MONTHLY')
+    if (repeat === 'daily') lines.push(`RRULE:FREQ=DAILY${e.repeatUntil && e.repeatUntil >= e.date ? `;UNTIL=${dateToIcs(e.repeatUntil)}` : ''}`)
+    else if (repeat === 'weekly') lines.push(`RRULE:FREQ=WEEKLY${e.repeatUntil && e.repeatUntil >= e.date ? `;UNTIL=${dateToIcs(e.repeatUntil)}` : ''}`)
+    else if (repeat === 'monthly') lines.push(`RRULE:FREQ=MONTHLY${e.repeatUntil && e.repeatUntil >= e.date ? `;UNTIL=${dateToIcs(e.repeatUntil)}` : ''}`)
     if (e.color && e.color !== 'blue') lines.push(`X-WEBX-COLOR:${e.color.toUpperCase()}`)
     if (e.reminder !== undefined && e.reminder >= 0) lines.push(`X-WEBX-REMINDER:${e.reminder}`)
     lines.push('END:VEVENT')
@@ -140,6 +140,14 @@ function veventToEvent(props: Map<string, { value: string; params: string }>): O
     if (freq === 'DAILY') ev.repeat = 'daily'
     else if (freq === 'WEEKLY') ev.repeat = 'weekly'
     else if (freq === 'MONTHLY') ev.repeat = 'monthly'
+    if (ev.repeat) {
+      // UNTIL=YYYYMMDD（時刻付きの場合は日付部分だけ使う）
+      const until = /UNTIL=(\d{4})(\d{2})(\d{2})/i.exec(rrule.value)
+      if (until) {
+        const date = `${until[1]}-${until[2]}-${until[3]}`
+        if (isValidDate(date) && date >= ev.date) ev.repeatUntil = date
+      }
+    }
   }
   const color = props.get('X-WEBX-COLOR')
   if (color) {
