@@ -87,6 +87,35 @@ import Bowling from './components/games/Bowling'
 import AirHockey from './components/games/AirHockey'
 import Darts from './components/games/Darts'
 import PenaltyKick from './components/games/PenaltyKick'
+import Fishing from './components/games/Fishing'
+import Maze from './components/games/Maze'
+import SpaceShooter from './components/games/SpaceShooter'
+import Basketball from './components/games/Basketball'
+import CraneGame from './components/games/CraneGame'
+import Bingo from './components/games/Bingo'
+import Babanuki from './components/games/Babanuki'
+import ConnectFour from './components/games/ConnectFour'
+import ColorCard from './components/games/ColorCard'
+import Checkers from './components/games/Checkers'
+import Poker from './components/games/Poker'
+import Sevens from './components/games/Sevens'
+import Daifugo from './components/games/Daifugo'
+import Chess from './components/games/Chess'
+import Shogi from './components/games/Shogi'
+import Hangman from './components/games/Hangman'
+import KoiKoi from './components/games/KoiKoi'
+import PuyoDrop from './components/games/PuyoDrop'
+import StackTower from './components/games/StackTower'
+import FruitCatch from './components/games/FruitCatch'
+import Domino from './components/games/Domino'
+import SpotDiff from './components/games/SpotDiff'
+import Karuta from './components/games/Karuta'
+import Shanghai from './components/games/Shanghai'
+import Go from './components/games/Go'
+import Speed from './components/games/Speed'
+import Sugoroku from './components/games/Sugoroku'
+import Wordle from './components/games/Wordle'
+import Pool from './components/games/Pool'
 import { MindMap } from './components/store/MindMap'
 import Yvm from './components/store/Yvm'
 import Wme from './components/store/Wme'
@@ -98,7 +127,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'pinball' | 'bubbleshooter' | 'minigolf' | 'bowling' | 'airhockey' | 'darts' | 'pk' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'invader' | 'sokoban' | 'doteater' | 'solitaire' | 'yvm' | 'wme' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'discord' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro' | 'mindmap'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'pinball' | 'bubbleshooter' | 'minigolf' | 'bowling' | 'airhockey' | 'darts' | 'pk' | 'fishing' | 'maze' | 'shooter' | 'basketball' | 'crane' | 'bingo' | 'babanuki' | 'connect4' | 'colorcard' | 'checkers' | 'poker' | 'sevens' | 'daifugo' | 'speed' | 'sugoroku' | 'wordle' | 'pool' | 'chess' | 'shogi' | 'hangman' | 'puyodrop' | 'stacktower' | 'fruitcatch' | 'domino' | 'spotdiff' | 'karuta' | 'koikoi' | 'shanghai' | 'go' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'invader' | 'sokoban' | 'doteater' | 'solitaire' | 'yvm' | 'wme' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'discord' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro' | 'mindmap'
 
 interface Win {
   id: WindowApp
@@ -163,6 +192,35 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   airhockey: { icon: '🏒', cls: 'airhockey' },
   darts: { icon: '🎯', cls: 'darts' },
   pk: { icon: '⚽', cls: 'pk' },
+  fishing: { icon: '🎣', cls: 'fishing' },
+  maze: { icon: '🌀', cls: 'maze' },
+  shooter: { icon: '🚀', cls: 'shooter' },
+  basketball: { icon: '🏀', cls: 'basketball' },
+  crane: { icon: '🧸', cls: 'crane' },
+  bingo: { icon: '🔢', cls: 'bingo' },
+  babanuki: { icon: '👻', cls: 'babanuki' },
+  connect4: { icon: '🔴', cls: 'connect4' },
+  colorcard: { icon: '🌈', cls: 'colorcard' },
+  checkers: { icon: '⚫', cls: 'checkers' },
+  poker: { icon: '♠', cls: 'poker' },
+  sevens: { icon: '7️⃣', cls: 'sevens' },
+  daifugo: { icon: '🃏', cls: 'daifugo' },
+  speed: { icon: '⚡', cls: 'speed' },
+  sugoroku: { icon: '🎲', cls: 'sugoroku' },
+  wordle: { icon: '🔤', cls: 'wordle' },
+  pool: { icon: '🎱', cls: 'pool' },
+  chess: { icon: '♞', cls: 'chess' },
+  shogi: { icon: '将', cls: 'shogi' },
+  hangman: { icon: '🪢', cls: 'hangman' },
+  puyodrop: { icon: '🫧', cls: 'puyodrop' },
+  stacktower: { icon: '🧱', cls: 'stacktower' },
+  fruitcatch: { icon: '🍎', cls: 'fruitcatch' },
+  domino: { icon: '🁢', cls: 'domino' },
+  spotdiff: { icon: '🔍', cls: 'spotdiff' },
+  karuta: { icon: '🎴', cls: 'karuta' },
+  koikoi: { icon: '🎴', cls: 'koikoi' },
+  shanghai: { icon: '🀄', cls: 'shanghai' },
+  go: { icon: '⚫', cls: 'go' },
   mindmap: { icon: '🧠', cls: 'mindmap' },
   minesweeper: { icon: '💣', cls: 'minesweeper' },
   sudoku: { icon: '数', cls: 'sudoku' },
@@ -1221,6 +1279,35 @@ export default function App() {
       case 'airhockey': return <AirHockey />
       case 'darts': return <Darts />
       case 'pk': return <PenaltyKick />
+      case 'fishing': return <Fishing />
+      case 'maze': return <Maze />
+      case 'shooter': return <SpaceShooter />
+      case 'basketball': return <Basketball />
+      case 'crane': return <CraneGame />
+      case 'bingo': return <Bingo />
+      case 'babanuki': return <Babanuki />
+      case 'connect4': return <ConnectFour />
+      case 'colorcard': return <ColorCard />
+      case 'checkers': return <Checkers />
+      case 'poker': return <Poker />
+      case 'sevens': return <Sevens />
+      case 'daifugo': return <Daifugo />
+      case 'speed': return <Speed />
+      case 'sugoroku': return <Sugoroku />
+      case 'wordle': return <Wordle />
+      case 'pool': return <Pool />
+      case 'chess': return <Chess />
+      case 'shogi': return <Shogi />
+      case 'hangman': return <Hangman />
+      case 'puyodrop': return <PuyoDrop />
+      case 'stacktower': return <StackTower />
+      case 'fruitcatch': return <FruitCatch />
+      case 'domino': return <Domino />
+      case 'spotdiff': return <SpotDiff />
+      case 'karuta': return <Karuta />
+      case 'koikoi': return <KoiKoi />
+      case 'shanghai': return <Shanghai />
+      case 'go': return <Go />
       case 'mindmap': return <MindMap />
       case 'minesweeper': return <Minesweeper />
       case 'sudoku': return <Sudoku />

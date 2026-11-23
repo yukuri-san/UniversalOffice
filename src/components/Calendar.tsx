@@ -15,12 +15,14 @@ export function expandEvents(events: CalEvent[], from: string, to: string): { da
   const out: { date: string; event: CalEvent }[] = []
   for (const e of events) {
     const repeat: RepeatKind = e.repeat ?? 'none'
-    if (repeat === 'none' || e.date > to) {
-      if (e.date >= from && e.date <= to) out.push({ date: e.date, event: e })
+    // 繰り返し終了日がある場合は展開範囲をその日までに絞る
+    const until = e.repeatUntil && e.repeatUntil < to ? e.repeatUntil : to
+    if (repeat === 'none' || e.date > until) {
+      if (e.date >= from && e.date <= until) out.push({ date: e.date, event: e })
       continue
     }
     const start = new Date(`${from}T00:00:00`)
-    const end = new Date(`${to}T00:00:00`)
+    const end = new Date(`${until}T00:00:00`)
     if (repeat === 'daily') {
       const d = new Date(`${e.date}T00:00:00`)
       if (d < start) d.setTime(start.getTime())
@@ -41,7 +43,7 @@ export function expandEvents(events: CalEvent[], from: string, to: string): { da
     } else {
       const day = Number(e.date.slice(8))
       const cur = new Date(`${e.date.slice(0, 7)}-01T00:00:00`)
-      const endM = new Date(`${to.slice(0, 7)}-01T00:00:00`)
+      const endM = new Date(`${until.slice(0, 7)}-01T00:00:00`)
       while (cur <= endM) {
         const dim = new Date(cur.getFullYear(), cur.getMonth() + 1, 0).getDate()
         if (day <= dim) {
@@ -76,6 +78,14 @@ export function timeLabel(e: CalEvent): string {
   return e.time
 }
 
+// 繰り返しバッジの表示（終了日がある場合は「〜日付まで」を付ける）
+export function repeatBadgeLabel(e: CalEvent, t: (key: string) => string, locale: string): string {
+  const label = t(e.repeat === 'daily' ? 'repeatDaily' : e.repeat === 'weekly' ? 'repeatWeekly' : 'repeatMonthly')
+  if (!e.repeatUntil) return label
+  const d = new Intl.DateTimeFormat(locale, { year: 'numeric', month: 'numeric', day: 'numeric' }).format(new Date(`${e.repeatUntil}T00:00:00`))
+  return `${label} ${t('repeatUntilBadge').replace('{date}', d)}`
+}
+
 // 'HH:MM' を分に換算する
 function toMinutes(hhmm: string): number {
   const [h, m] = hhmm.split(':').map(Number)
@@ -95,6 +105,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
   const [formTime, setFormTime] = useState('')
   const [formEndTime, setFormEndTime] = useState('')
   const [formRepeat, setFormRepeat] = useState<RepeatKind>('none')
+  const [formRepeatUntil, setFormRepeatUntil] = useState('')
   const [formReminder, setFormReminder] = useState(-1)
   const [formColor, setFormColor] = useState<EventColor>('blue')
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -245,6 +256,8 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     if (!formTitle.trim()) return
     // 終了時刻は開始時刻より後の場合のみ保存する
     const endTime = formTime && formEndTime && formEndTime > formTime ? formEndTime : undefined
+    // 繰り返し終了日は開始日以降の場合のみ保存する
+    const repeatUntil = formRepeat !== 'none' && formRepeatUntil && formRepeatUntil >= selected ? formRepeatUntil : undefined
     await saveEvent({
       id: editingId ?? undefined,
       date: selected,
@@ -254,6 +267,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
       memo: formMemo.trim(),
       color: formColor,
       ...(formRepeat !== 'none' ? { repeat: formRepeat } : {}),
+      ...(repeatUntil ? { repeatUntil } : {}),
       ...(formReminder >= 0 ? { reminder: formReminder } : {}),
     })
     setFormTitle('')
@@ -261,6 +275,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setFormTime('')
     setFormEndTime('')
     setFormRepeat('none')
+    setFormRepeatUntil('')
     setFormReminder(-1)
     setFormColor('blue')
     setEditingId(null)
@@ -274,6 +289,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setFormTime(e.time ?? '')
     setFormEndTime(e.endTime ?? '')
     setFormRepeat(e.repeat ?? 'none')
+    setFormRepeatUntil(e.repeatUntil ?? '')
     setFormReminder(e.reminder ?? -1)
     setFormColor(e.color ?? 'blue')
   }
@@ -285,6 +301,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     setFormTime('')
     setFormEndTime('')
     setFormRepeat('none')
+    setFormRepeatUntil('')
     setFormColor('blue')
   }
 
@@ -353,6 +370,13 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
     )
     const base = new Date(`${ev.date}T00:00:00`)
     base.setDate(base.getDate() + diffDays)
+    // 繰り返し終了日も同じ日数だけずらす（シリーズごと移動）
+    let repeatUntil: string | undefined
+    if (ev.repeatUntil) {
+      const u = new Date(`${ev.repeatUntil}T00:00:00`)
+      u.setDate(u.getDate() + diffDays)
+      repeatUntil = ymd(u.getFullYear(), u.getMonth(), u.getDate())
+    }
     await saveEvent({
       id: ev.id,
       date: ymd(base.getFullYear(), base.getMonth(), base.getDate()),
@@ -362,6 +386,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
       ...(ev.endTime ? { endTime: ev.endTime } : {}),
       ...(ev.color ? { color: ev.color } : {}),
       ...(ev.repeat && ev.repeat !== 'none' ? { repeat: ev.repeat } : {}),
+      ...(repeatUntil ? { repeatUntil } : {}),
       ...(ev.reminder !== undefined && ev.reminder >= 0 ? { reminder: ev.reminder } : {}),
     })
     await refresh()
@@ -520,7 +545,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                       <span className="cal-search-date">{new Intl.DateTimeFormat(LOCALES[lang], { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' }).format(new Date(`${date}T00:00:00`))}</span>
                       <span className="cal-color-dot" style={{ backgroundColor: eventColorHex(e.color) }} />
                       {timeLabel(e) && <span className="cal-event-time">{timeLabel(e)}</span>}
-                      {(e.repeat ?? 'none') !== 'none' && <span className="cal-repeat-badge">↻ {t(e.repeat === 'daily' ? 'repeatDaily' : e.repeat === 'weekly' ? 'repeatWeekly' : 'repeatMonthly')}</span>}
+                      {(e.repeat ?? 'none') !== 'none' && <span className="cal-repeat-badge">↻ {repeatBadgeLabel(e, t, LOCALES[lang])}</span>}
                       <strong>{e.title}</strong>
                       {e.memo && <small>{e.memo}</small>}
                     </button>
@@ -620,7 +645,7 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                 <li key={e.id} className={editingId === e.id ? 'editing' : ''}>
                   <div draggable onDragStart={(ev) => onEventDragStart(ev, e, selected)}>
                     <strong><span className="cal-color-dot" style={{ backgroundColor: eventColorHex(e.color) }} />{e.time ? <span className="cal-event-time">{timeLabel(e)} </span> : <span className="cal-event-time">{t('allDay')} </span>}{e.title}</strong>
-                    {(e.repeat ?? 'none') !== 'none' && <span className="cal-repeat-badge">↻ {t(e.repeat === 'daily' ? 'repeatDaily' : e.repeat === 'weekly' ? 'repeatWeekly' : 'repeatMonthly')}</span>}
+                    {(e.repeat ?? 'none') !== 'none' && <span className="cal-repeat-badge">↻ {repeatBadgeLabel(e, t, LOCALES[lang])}</span>}
                     {e.memo && <small>{e.memo}</small>}
                   </div>
                   <button onClick={() => startEdit(e)}>{t('editEvent')}</button>
@@ -649,6 +674,12 @@ export default function Calendar({ onSwitch }: { onSwitch: (app: AppId) => void 
                 <option value="monthly">{t('repeatMonthly')}</option>
               </select>
             </label>
+            {formRepeat !== 'none' && (
+              <label className="cal-repeat-row">
+                <span>{t('repeatUntilLabel')}</span>
+                <input type="date" value={formRepeatUntil} min={selected} onChange={(e) => setFormRepeatUntil(e.target.value)} aria-label={t('repeatUntilLabel')} />
+              </label>
+            )}
             <label className="cal-repeat-row">
               <span>{t('reminderLabel')}</span>
               <select value={formReminder} onChange={(e) => setFormReminder(Number(e.target.value))} aria-label={t('reminderLabel')}>
