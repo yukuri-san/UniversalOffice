@@ -1332,10 +1332,14 @@ function makeEnemyDefs(cfg: { spd: number; den: number }): { down: EnemyDef; sid
     },
   }
 }
-// ===== BGM（WebAudioステップシーケンサ／完全オリジナル曲） =====
-// ZUN風の文法：高速マイナーキー、鋸波＋ビブラートのトランペット風リード、
-// 三角波の高速アルペジオ、駆けるベース、ノイズのドラム。原作の旋律は使わない。
+// ===== BGM（WebAudio FMシンセ／完全オリジナル曲） =====
+// PC-98 の FM 音源（YM2608/OPNA）を意識した自作シンセで鳴らす。
+// 4オペレータFM（アルゴリズム切替＋フィードバック）でトランペット風リード／ブラス／ベル、
+// FMベース、SSG風の矩形波アルペジオ、ノイズ＋サイン落ちのリズム隊、簡易ディレイで奥行きを出す。
+// 曲は ZUN 風の作風（短調・疾走するベース・リフの反復・速いアルペジオ）を狙った完全新作で、
+// 原作の旋律・フレーズは一切使わない。
 type TrackId = 'title' | 'stage' | 'boss' | 'exstage' | 'exboss' | 'jingle'
+type FmPatchName = 'trumpet' | 'brass' | 'bell'
 type Track = {
   bpm: number
   lead: { notes: (number | null)[]; lens: number[] }
@@ -1344,6 +1348,8 @@ type Track = {
   chords: number[][]
   kick: string; snare: string; hat: string
   arpDiv: number; cut: number; once?: boolean
+  patch: FmPatchName
+  stab?: boolean
 }
 function noteNum(tok: string): number {
   const m = /^([A-G])(#|b)?(\d)$/.exec(tok)
@@ -1374,52 +1380,81 @@ const BASS_PAT_GALLOP = parseOff('0 0 . 0 . 0 0 . 0 . 0 0 . 0 . 12')
 const ARP_SEQ = [0, 1, 2, 3, 2, 1]
 const TRACKS: Record<TrackId, Track> = {
   title: {
-    bpm: 138, cut: 1500, arpDiv: 2,
-    lead: parseLead('A4 . . . C5 . . . E5 . . . A5 . . . G5 . . . E5 . . . F5 . E5 . D5 . . . E5 . . . G5 . . . A5 . . . C6 . . . B5 . A5 . G5 . E5 . D5 . . . E5 . . .'),
-    roots: [45, 41, 48, 43],
+    bpm: 134, cut: 1700, arpDiv: 2, patch: 'trumpet',
+    lead: parseLead('E5 . . . A5 . . . C6 . . . B5 . . . A5 . . . . . G5 . E5 . . . D5 . . . F5 . . . A5 . . . C6 . . . A5 . . . B5 . . . D6 . . . B5 . . . G5 . . . A5 . . . C6 . . . E6 . . . D6 . . . C6 . . . B5 . . . A5 . . . . . G5 . A5 . . . F5 . . . E5 . . . D5 . . . E5 . . . . . . . B4 . . . E5 . . .'),
+    roots: [45, 45, 41, 43, 45, 45, 41, 40],
     bassPat: BASS_PAT_CALM,
-    chords: [[57, 60, 64, 69], [53, 57, 60, 65], [52, 55, 60, 64], [55, 59, 62, 67]],
+    chords: [[57, 60, 64, 69], [57, 60, 64, 69], [53, 57, 60, 65], [55, 59, 62, 67], [57, 60, 64, 69], [57, 60, 64, 69], [53, 57, 60, 65], [52, 56, 59, 64]],
     kick: 'x.......x.......', snare: '................', hat: 'x.x.x.x.x.x.x.x.',
   },
   stage: {
-    bpm: 172, cut: 2600, arpDiv: 1,
-    lead: parseLead('D5 . F5 . A5 . D6 . C6 . A5 . F5 . D5 . E5 . F5 . G5 . A5 . G5 . F5 . E5 . F5 . D5 . F5 . Bb5 . A5 . G5 . F5 . D5 . F5 . E5 . F5 . E5 . C#5 . D5 . . . A4 . . .'),
-    roots: [38, 38, 34, 33],
+    bpm: 176, cut: 2600, arpDiv: 1, patch: 'trumpet',
+    lead: parseLead('D5 . F5 . A5 . D6 . C6 . A5 . F5 . A5 . D6 . . . C6 . A5 . F5 . E5 . F5 . G5 . Bb5 . A5 . G5 . F5 . D5 . F5 . Bb5 . A5 . G5 . A5 . C6 . A5 . G5 . E5 . F5 . E5 . D5 F5 G5 A5 Bb5 A5 G5 F5 E5 F5 G5 A5 C6 . . . D6 . C6 . A5 . F5 . A5 . G5 . F5 . E5 . F5 . Bb5 . A5 . G5 . F5 . D5 . E5 . F5 . E5 . F5 . C#5 . E5 . A5 . . . x x x x A5 . D6 . F6 . D6 . A5 . F5 . D5 . F5 . G5 . A5 . Bb5 . A5 . G5 . F5 . E5 . D5 . D6 . . . . . C6 . Bb5 . A5 . G5 . F5 . F5 . G5 . A5 . C6 . B5 . A5 . G5 . F5 . D6 C6 A5 F5 D5 F5 A5 D6 C6 . . . A5 . . . F6 . D6 . C6 . A5 . G5 . A5 . Bb5 . A5 . Bb5 . A5 . G5 . F5 . G5 . A5 . Bb5 . C6 . C#6 . . . E6 . . . A5 . . . x x x x'),
+    roots: [38, 38, 34, 36, 38, 38, 34, 33],
     bassPat: BASS_PAT_DRIVE,
-    chords: [[62, 65, 69, 74], [62, 65, 69, 74], [58, 62, 65, 70], [57, 61, 64, 69]],
+    chords: [[62, 65, 69, 74], [62, 65, 69, 74], [58, 62, 65, 70], [60, 64, 67, 72], [62, 65, 69, 74], [62, 65, 69, 74], [58, 62, 65, 70], [57, 61, 64, 69]],
     kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'o.x.o.x.o.x.o.x.',
   },
   boss: {
-    bpm: 184, cut: 2800, arpDiv: 1,
-    lead: parseLead('D5 . . F5 . . A5 . D6 . C6 A5 F5 . D5 . E5 . . G5 . . Bb5 . A5 . G5 F5 E5 . F5 . G5 . . F5 . . D5 . F5 . G5 . A5 . . . A5 . G5 . F5 . E5 . C#5 . E5 . A5 . . .'),
-    roots: [38, 34, 43, 33],
+    bpm: 188, cut: 3000, arpDiv: 1, patch: 'brass', stab: true,
+    lead: parseLead('D5 . D5 . F5 . D5 . A5 . D5 . F5 . D5 . D6 . . . C6 . A5 . F5 . E5 . F5 . G5 . Bb5 . A5 . G5 . D5 . G5 . Bb5 . D6 . C6 . C#6 . . . E6 . . . A5 . G5 . F5 . E5 . F5 . G5 . A5 . D6 . C6 . A5 . F5 . D5 . D5 . G5 . Bb5 . G5 . A5 . Bb5 . C6 . D6 . Bb5 . . A5 . . G5 . F5 . E5 . F5 . G5 . A5 . . . G5 . F5 . E5 . C#5 . E5 . A4 . D6 . F6 . D6 . A5 . F5 . D5 . F5 . A5 . Bb5 . A5 . G5 . F5 . E5 . F5 . G5 . A5 . D6 . . . . . C6 . Bb5 . A5 . G5 . F5 . E6 . . . C#6 . . . A5 . . . G5 . F5 . F6 E6 D6 C6 Bb5 A5 G5 F5 E5 F5 G5 A5 Bb5 C6 D6 . D6 . . G5 . . Bb5 . A5 . G5 . F5 . E5 . F5 . Bb5 . A5 . G5 . A5 . Bb5 . C6 . D6 . C#6 . . . . . . . E6 . . . A5 . . .'),
+    roots: [38, 43, 38, 33, 38, 43, 34, 33],
     bassPat: BASS_PAT_GALLOP,
-    chords: [[62, 65, 69, 74], [58, 62, 65, 70], [55, 58, 62, 67], [57, 61, 64, 69]],
+    chords: [[62, 65, 69, 74], [58, 62, 65, 70], [62, 65, 69, 74], [57, 61, 64, 69], [62, 65, 69, 74], [58, 62, 65, 70], [58, 62, 65, 69], [57, 61, 64, 69]],
     kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'oxxooxxooxxooxxo',
   },
   exstage: {
-    bpm: 182, cut: 2600, arpDiv: 1,
-    lead: parseLead('E5 . G5 . B5 . E6 . D6 . B5 . G5 . E5 . E5 . G5 . A5 . G5 . E5 . D5 . E5 . G5 . B5 . A5 . G5 . A5 . B5 . D6 . B5 . G5 . A5 . B5 . A5 . F#5 . G5 . . . B4 . . .'),
-    roots: [40, 36, 43, 38],
+    bpm: 184, cut: 2800, arpDiv: 1, patch: 'trumpet',
+    lead: parseLead('E5 . G5 . B5 . E6 . D6 . B5 . G5 . B5 . E6 . D6 . B5 . G5 . A5 . B5 . D6 . B5 . C6 . B5 . A5 . G5 . E5 . G5 . C6 . E6 . D6 . C6 . B5 . A5 . F#5 . A5 . D6 . B5 . E6 D6 B5 G5 E5 G5 B5 E6 B5 . . . A5 . . . G5 . A5 . B5 . D6 . E6 . D6 . B5 . A5 . E6 . C6 . A5 . G5 . A5 . C6 . E6 . D6 . D#6 . . . B5 . . . F#5 . D#5 . B4 . . . B5 . E6 . G6 . E6 . B5 . G5 . E5 . G5 . A5 . B5 . C6 . B5 . A5 . G5 . F#5 . E5 . G5 . C6 . E6 . C6 . D6 . B5 . G5 . B5 . A5 . D6 . F#6 . D6 . C6 . B5 . A5 . G5 . E6 . . B5 . . G5 . E5 . G5 . B5 . D6 . C6 . D6 . E6 . G6 . E6 . D6 . B5 . A5 . C6 . . . G5 . . . A5 . B5 . C6 . D6 . B5 . . . D#6 . . . E6 . . . x x x x'),
+    roots: [40, 40, 36, 38, 40, 40, 36, 35],
     bassPat: BASS_PAT_DRIVE,
-    chords: [[64, 67, 71, 76], [60, 64, 67, 72], [59, 62, 67, 71], [62, 66, 69, 74]],
+    chords: [[64, 67, 71, 76], [64, 67, 71, 76], [60, 64, 67, 72], [62, 66, 69, 74], [64, 67, 71, 76], [64, 67, 71, 76], [60, 64, 67, 72], [59, 63, 66, 71]],
     kick: 'x...x...x...x...', snare: '....x.......x...', hat: 'oxxooxxooxxooxxo',
   },
   exboss: {
-    bpm: 194, cut: 3000, arpDiv: 1,
-    lead: parseLead('E5 . . G5 . . B5 . E6 . D6 B5 G5 . E5 . D#5 . . F#5 . . B5 . A5 . G5 . F#5 . D#5 . E6 . . D6 . . C6 . B5 . A5 . G5 . A5 . B5 . A5 . G5 . F#5 . D#5 . F#5 . B5 . . .'),
-    roots: [40, 40, 36, 35],
+    bpm: 196, cut: 3200, arpDiv: 1, patch: 'brass', stab: true,
+    lead: parseLead('E5 . E5 . G5 . E5 . B5 . E5 . G5 . E5 . E6 . . . D6 . B5 . G5 . F#5 . G5 . A5 . C6 . B5 . A5 . E5 . A5 . C6 . E6 . D6 . D#6 . . . B5 . . . F#5 . A5 . B5 . D#6 . E6 D6 B5 G5 F#5 G5 A5 B5 C6 B5 A5 G5 F#5 D#5 E5 . B5 . . . G5 . . . E5 . . . x . B4 . C6 . E6 . G6 . E6 . D6 . B5 . G5 . B5 . D#6 . . . . . . . B5 . A5 . G5 . F#5 . E6 . G6 . B6 . G6 . E6 . B5 . G5 . E5 . D6 . C6 . B5 . A5 . G5 . A5 . B5 . D6 . E6 . C6 . A5 . E5 . F#5 . G5 . A5 . B5 . D#6 . . . F#6 . . . B5 . . . x x x x E6 . . . D6 . . . C6 . . . B5 . . . A5 . B5 . C6 . D6 . E6 . D6 . B5 . G5 . G5 . C6 . E6 . G6 . F#6 . D6 . B5 . D6 . D#6 . . . B5 . . . E6 . . . x x x x'),
+    roots: [40, 40, 33, 35, 40, 40, 36, 35],
     bassPat: BASS_PAT_GALLOP,
-    chords: [[64, 67, 71, 76], [64, 67, 71, 76], [60, 64, 67, 72], [59, 63, 66, 71]],
+    chords: [[64, 67, 71, 76], [64, 67, 71, 76], [60, 64, 69, 72], [59, 63, 66, 71], [64, 67, 71, 76], [64, 67, 71, 76], [60, 64, 67, 72], [59, 63, 66, 71]],
     kick: 'x...x...x...x.x.', snare: '....x.......x...', hat: 'xoxoxoxoxoxoxoxo',
   },
   jingle: {
-    bpm: 150, cut: 2400, arpDiv: 2, once: true,
-    lead: parseLead('D5 . F5 . A5 . D6 . F6 . E6 . D6 . A5 . D6 . . . A5 . F5 . D5 . . . D5 . . .'),
-    roots: [38, 38],
+    bpm: 150, cut: 2400, arpDiv: 2, once: true, patch: 'bell',
+    lead: parseLead('D5 . F#5 . A5 . D6 . F#6 . . . D6 . . . E6 . D6 . C#6 . A5 . F#5 . A5 . D6 . . . G5 . B5 . D6 . G6 . F#6 . D6 . B5 . G5 . A5 . C#6 . E6 . A6 . D6 . . . . . . .'),
+    roots: [38, 38, 43, 45],
     bassPat: BASS_PAT_CALM,
-    chords: [[62, 65, 69, 74], [62, 65, 69, 74]],
+    chords: [[62, 66, 69, 74], [62, 66, 69, 74], [59, 62, 67, 71], [61, 64, 69, 73]],
     kick: 'x.......x.......', snare: '....x.......x...', hat: 'x.x.x.x.x.x.x.x.',
+  },
+}
+
+// ===== FM音色定義（4オペレータ） =====
+// alg 'stack': op1→op2→op3→op4(キャリア) の直列。リード／トランペット系。
+// alg 'dual' : op1→op2(キャリア) と op3→op4(キャリア) の2系統並列。ブラス／ベル系。
+// modIdx は変調指数（基本周波数に対する倍率）、fb は op1 のフィードバック量。
+type FmPatchDef = {
+  alg: 'stack' | 'dual'
+  ratios: [number, number, number, number]
+  fb: number
+  modIdx: [number, number, number]
+  modSus: number
+  atk: number; dec: number; susLvl: number
+  vibRate: number; vibAmt: number; vibDelay: number
+  out: number
+}
+const FM_PATCHES: Record<FmPatchName, FmPatchDef> = {
+  trumpet: {
+    alg: 'stack', ratios: [1, 2, 1, 1], fb: 0.35, modIdx: [0.5, 1.1, 2.3], modSus: 0.45,
+    atk: 0.03, dec: 0.22, susLvl: 0.55, vibRate: 5.6, vibAmt: 20, vibDelay: 0.15, out: 0.2,
+  },
+  brass: {
+    alg: 'dual', ratios: [1, 1, 1, 1.004], fb: 0.22, modIdx: [1.7, 0, 1.7], modSus: 0.6,
+    atk: 0.018, dec: 0.16, susLvl: 0.7, vibRate: 5.2, vibAmt: 7, vibDelay: 0.22, out: 0.15,
+  },
+  bell: {
+    alg: 'dual', ratios: [3.51, 1, 2.76, 1.002], fb: 0.1, modIdx: [1.3, 0, 0.9], modSus: 0.12,
+    atk: 0.004, dec: 0.5, susLvl: 0.06, vibRate: 0, vibAmt: 0, vibDelay: 0, out: 0.16,
   },
 }
 
@@ -1434,13 +1469,14 @@ function createBgm(): Bgm {
   let ctx: AudioContext | null = null
   let master: GainNode | null = null
   let noiseBuf: AudioBuffer | null = null
+  let delaySend: GainNode | null = null
   let timer: number | null = null
   let cur: TrackId | null = null
   let step = 0
   let nextTime = 0
   let schedTicks = 0
   let muted = false
-  const VOL = 0.15
+  const VOL = 0.16
   const freq = (m: number) => 440 * Math.pow(2, (m - 69) / 12)
 
   function ensure() {
@@ -1453,6 +1489,13 @@ function createBgm(): Bgm {
         const comp = ctx.createDynamicsCompressor()
         comp.threshold.value = -18; comp.ratio.value = 6
         master.connect(comp); comp.connect(ctx.destination)
+        // 簡易ディレイ（リードとアルペジオに薄く送って奥行きを作る）
+        delaySend = ctx.createGain(); delaySend.gain.value = 1
+        const dly = ctx.createDelay(1); dly.delayTime.value = 0.29
+        const fb = ctx.createGain(); fb.gain.value = 0.24
+        const wet = ctx.createGain(); wet.gain.value = 0.45
+        delaySend.connect(dly); dly.connect(fb); fb.connect(dly)
+        dly.connect(wet); wet.connect(master)
         noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate)
         const d = noiseBuf.getChannelData(0)
         for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
@@ -1461,6 +1504,7 @@ function createBgm(): Bgm {
         ctx = null
         master = null
         noiseBuf = null
+        delaySend = null
       }
     }
     // Android Chrome ではユーザー操作なしに作られた／止められた Context が
@@ -1472,42 +1516,133 @@ function createBgm(): Bgm {
   function unlock() {
     ensure()
   }
-  function leadNote(m: number, t: number, dur: number, cut: number) {
+  // 4オペレータFMボイス。変調側は指数エンベロープ（倍音が時間で減る）、
+  // キャリア側は ADSR 風の音量エンベロープで鳴らす。
+  function fmVoice(m: number, t: number, dur: number, p: FmPatchDef, vol: number, bright: number, sendLvl: number) {
     if (!ctx || !master) return
-    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq(m)
-    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = cut; f.Q.value = 0.7
-    const g = ctx.createGain()
-    g.gain.setValueAtTime(0, t)
-    g.gain.linearRampToValueAtTime(0.2, t + 0.015)
-    g.gain.setValueAtTime(0.2, t + Math.max(0.015, dur - 0.06))
-    g.gain.linearRampToValueAtTime(0, t + dur)
-    const lfo = ctx.createOscillator(); lfo.frequency.value = 5.6
-    const lg = ctx.createGain()
-    lg.gain.setValueAtTime(0, t)
-    lg.gain.linearRampToValueAtTime(26, t + 0.16)
-    lfo.connect(lg); lg.connect(o.detune)
-    o.connect(f); f.connect(g); g.connect(master)
-    o.start(t); o.stop(t + dur + 0.05)
-    lfo.start(t); lfo.stop(t + dur + 0.05)
+    const base = freq(m)
+    const out = ctx.createGain(); out.gain.value = vol * p.out
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = bright; f.Q.value = 0.5
+    out.connect(f); f.connect(master)
+    if (delaySend && sendLvl > 0) {
+      const send = ctx.createGain(); send.gain.value = sendLvl
+      f.connect(send); send.connect(delaySend)
+    }
+    const oscs: OscillatorNode[] = []
+    const gains: GainNode[] = []
+    for (let i = 0; i < 4; i++) {
+      const o = ctx.createOscillator(); o.type = 'sine'
+      o.frequency.value = base * p.ratios[i]
+      const g = ctx.createGain(); g.gain.value = 0
+      o.connect(g)
+      oscs.push(o); gains.push(g)
+    }
+    const rel = Math.min(0.09, dur * 0.4)
+    const ampEnv = (g: GainNode, peak: number) => {
+      const sus = Math.max(0.001, peak * p.susLvl)
+      g.gain.setValueAtTime(0, t)
+      g.gain.linearRampToValueAtTime(peak, t + p.atk)
+      g.gain.exponentialRampToValueAtTime(sus, t + p.atk + p.dec)
+      g.gain.setValueAtTime(sus, t + Math.max(p.atk + p.dec, dur - rel))
+      g.gain.linearRampToValueAtTime(0, t + dur)
+    }
+    const modEnv = (g: GainNode, idxHz: number) => {
+      const sus = Math.max(1, idxHz * p.modSus)
+      g.gain.setValueAtTime(idxHz, t)
+      g.gain.exponentialRampToValueAtTime(sus, t + Math.min(0.28, dur * 0.6))
+      g.gain.setValueAtTime(sus, t + Math.max(0.01, dur - rel))
+      g.gain.linearRampToValueAtTime(0, t + dur)
+    }
+    if (p.alg === 'stack') {
+      gains[0].connect(oscs[1].frequency)
+      gains[1].connect(oscs[2].frequency)
+      gains[2].connect(oscs[3].frequency)
+      gains[3].connect(out)
+      modEnv(gains[0], p.modIdx[0] * base)
+      modEnv(gains[1], p.modIdx[1] * base)
+      modEnv(gains[2], p.modIdx[2] * base)
+      ampEnv(gains[3], 1)
+    } else {
+      gains[0].connect(oscs[1].frequency)
+      gains[1].connect(out)
+      gains[2].connect(oscs[3].frequency)
+      gains[3].connect(out)
+      modEnv(gains[0], p.modIdx[0] * base)
+      modEnv(gains[2], p.modIdx[2] * base)
+      ampEnv(gains[1], 0.8)
+      ampEnv(gains[3], 0.8)
+    }
+    if (p.fb > 0) {
+      const fb = ctx.createGain(); fb.gain.value = p.fb
+      gains[0].connect(fb); fb.connect(oscs[0].frequency)
+    }
+    if (p.vibAmt > 0) {
+      const lfo = ctx.createOscillator(); lfo.frequency.value = p.vibRate
+      const lg = ctx.createGain()
+      lg.gain.setValueAtTime(0, t)
+      lg.gain.linearRampToValueAtTime(p.vibAmt, t + p.vibDelay + 0.18)
+      lfo.connect(lg)
+      for (const o of oscs) lg.connect(o.detune)
+      lfo.start(t); lfo.stop(t + dur + 0.05)
+    }
+    for (const o of oscs) { o.start(t); o.stop(t + dur + 0.05) }
   }
+  function leadNote(m: number, t: number, dur: number, tr: Track) {
+    fmVoice(m, t, dur, FM_PATCHES[tr.patch], 1, tr.cut, 0.3)
+  }
+  function stabNote(m: number, t: number, dur: number, tr: Track) {
+    fmVoice(m, t, dur, FM_PATCHES.brass, 0.32, tr.cut, 0.1)
+  }
+  // FMベース：フィードバック付き2オペでアタックの芯を作り、2倍音ペアでクリックを足す
   function bassNote(m: number, t: number, dur: number) {
     if (!ctx || !master) return
-    const o = ctx.createOscillator(); o.type = 'sawtooth'; o.frequency.value = freq(m)
-    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 720
-    const g = ctx.createGain()
-    g.gain.setValueAtTime(0, t)
-    g.gain.linearRampToValueAtTime(0.17, t + 0.008)
-    g.gain.exponentialRampToValueAtTime(0.05, t + dur)
-    o.connect(f); f.connect(g); g.connect(master)
-    o.start(t); o.stop(t + dur + 0.03)
+    const C = ctx
+    const base = freq(m)
+    const out = C.createGain(); out.gain.value = 0.42
+    const f = C.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 950
+    out.connect(f); f.connect(master)
+    const mk = (ratio: number) => {
+      const o = C.createOscillator(); o.type = 'sine'; o.frequency.value = base * ratio
+      const g = C.createGain(); g.gain.value = 0
+      o.connect(g)
+      return { o, g }
+    }
+    const p1 = mk(1); const p2 = mk(1); const p3 = mk(2); const p4 = mk(1)
+    p1.g.connect(p2.o.frequency); p2.g.connect(out)
+    p3.g.connect(p4.o.frequency); p4.g.connect(out)
+    const fb = C.createGain(); fb.gain.value = 0.55
+    p1.g.connect(fb); fb.connect(p1.o.frequency)
+    const rel = Math.min(0.06, dur * 0.35)
+    // 変調（パンチ）：強く入って素早く落ち着く
+    p1.g.gain.setValueAtTime(2.6 * base, t)
+    p1.g.gain.exponentialRampToValueAtTime(0.7 * base, t + 0.09)
+    p1.g.gain.setValueAtTime(0.7 * base, t + Math.max(0.09, dur - rel))
+    p1.g.gain.linearRampToValueAtTime(0, t + dur)
+    p3.g.gain.setValueAtTime(1.3 * base, t)
+    p3.g.gain.exponentialRampToValueAtTime(Math.max(1, 0.1 * base), t + 0.05)
+    p3.g.gain.linearRampToValueAtTime(0, t + Math.min(dur, 0.08))
+    // キャリア音量
+    p2.g.gain.setValueAtTime(0, t)
+    p2.g.gain.linearRampToValueAtTime(1, t + 0.006)
+    p2.g.gain.exponentialRampToValueAtTime(0.45, t + dur * 0.7)
+    p2.g.gain.linearRampToValueAtTime(0, t + dur)
+    p4.g.gain.setValueAtTime(0.32, t)
+    p4.g.gain.exponentialRampToValueAtTime(0.001, t + 0.06)
+    for (const p of [p1, p2, p3, p4]) { p.o.start(t); p.o.stop(t + dur + 0.03) }
   }
+  // SSG風：矩形波＋短い減衰でチップチューンらしい粒立ちにする
   function arpNote(m: number, t: number, dur: number) {
     if (!ctx || !master) return
-    const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = freq(m)
+    const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = freq(m)
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 3400
     const g = ctx.createGain()
-    g.gain.setValueAtTime(0.05, t)
+    g.gain.setValueAtTime(0.055, t)
     g.gain.exponentialRampToValueAtTime(0.004, t + dur)
-    o.connect(g); g.connect(master)
+    o.connect(f); f.connect(g); g.connect(master)
+    if (delaySend) {
+      const send = ctx.createGain(); send.gain.value = 0.5
+      g.connect(send); send.connect(delaySend)
+    }
     o.start(t); o.stop(t + dur + 0.02)
   }
   function kick(t: number) {
@@ -1538,12 +1673,16 @@ function createBgm(): Bgm {
     const bar = Math.floor(s / 16)
     const li = s % tr.lead.notes.length
     const ln = tr.lead.notes[li]
-    if (ln !== null) leadNote(ln, t, spb * tr.lead.lens[li] * 0.95, tr.cut)
+    if (ln !== null) leadNote(ln, t, spb * tr.lead.lens[li] * 0.95, tr)
     const bo = tr.bassPat[s16]
     if (bo !== null && bo !== undefined) bassNote(tr.roots[bar % tr.roots.length] + bo, t, spb * 1.7)
     if (s % tr.arpDiv === 0) {
       const ch = tr.chords[bar % tr.chords.length]
       arpNote(ch[ARP_SEQ[s % 6]], t, spb * 0.95)
+    }
+    if (tr.stab && s16 === 0) {
+      const ch = tr.chords[bar % tr.chords.length]
+      for (const cn of ch) stabNote(cn, t, spb * 5, tr)
     }
     if (tr.kick[s16] === 'x') kick(t)
     if (tr.snare[s16] === 'x') noiseHit(t, 0.36, 0.09, 'bandpass', 1800)
