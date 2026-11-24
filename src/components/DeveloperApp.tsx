@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { loadCustomApps, newCustomId, saveCustomApps, type CustomApp } from '../lib/customApps'
 import { ownUsageBytes, storageInfo } from '../lib/store'
+import { API_DOCS, API_DOC_CATEGORIES, type ApiDocCategory } from '../lib/apiDocs'
 
-/* 開発者アプリ：プレイグラウンド／マイApp作成／システム関数（API）／ストレージ検査 */
-type Tab = 'play' | 'apps' | 'api' | 'storage'
+/* 開発者アプリ：プレイグラウンド／マイApp作成／システム関数（API）／APIリファレンス／ストレージ検査 */
+type Tab = 'play' | 'apps' | 'api' | 'apiref' | 'storage'
 
 const API_LIST: { sig: string; desc: string }[] = [
   { sig: 'WebX.notify(text)', desc: 'OS の通知センターに通知を出す。通知タップで自分のアプリが開く' },
@@ -55,6 +56,24 @@ export default function DeveloperApp({ openApp }: { openApp: (id: string) => voi
   const [html, setHtml] = useState(DEFAULT_HTML)
   const [lsRows, setLsRows] = useState<{ key: string; size: number }[]>([])
   const [usage, setUsage] = useState('')
+  const [apiCat, setApiCat] = useState<'all' | ApiDocCategory>('all')
+  const [apiQuery, setApiQuery] = useState('')
+  const [apiSelId, setApiSelId] = useState<string | null>(null)
+
+  const apiFiltered = useMemo(() => {
+    const q = apiQuery.trim().toLowerCase()
+    return API_DOCS.filter((e) => {
+      if (apiCat !== 'all' && e.category !== apiCat) return false
+      if (!q) return true
+      return (
+        e.name.toLowerCase().includes(q) ||
+        e.summary.toLowerCase().includes(q) ||
+        e.keywords.toLowerCase().includes(q) ||
+        e.signature.toLowerCase().includes(q)
+      )
+    })
+  }, [apiCat, apiQuery])
+  const apiSel = API_DOCS.find((e) => e.id === apiSelId) ?? apiFiltered[0] ?? null
 
   useEffect(() => { localStorage.setItem(PG_KEY, code) }, [code])
 
@@ -112,6 +131,7 @@ export default function DeveloperApp({ openApp }: { openApp: (id: string) => voi
         <button className={tab === 'play' ? 'chip on' : 'chip'} onClick={() => setTab('play')}>▶ プレイグラウンド</button>
         <button className={tab === 'apps' ? 'chip on' : 'chip'} onClick={() => setTab('apps')}>📦 マイApp作成</button>
         <button className={tab === 'api' ? 'chip on' : 'chip'} onClick={() => setTab('api')}>🧩 システム関数（API）</button>
+        <button className={tab === 'apiref' ? 'chip on' : 'chip'} onClick={() => setTab('apiref')}>📖 APIリファレンス</button>
         <button className={tab === 'storage' ? 'chip on' : 'chip'} onClick={() => setTab('storage')}>🗄 ストレージ検査</button>
       </div>
 
@@ -180,6 +200,60 @@ export default function DeveloperApp({ openApp }: { openApp: (id: string) => voi
             }}>サンプルAppを作成して開く</button>
           </div>
           <p className="wxapp-note">ストレージはアプリごとに分離されていて、他のアプリのデータには触れません。対応していない機能の呼び出しはエラーになります。</p>
+        </>
+      )}
+
+      {tab === 'apiref' && (
+        <>
+          <p className="wxapp-note">WebX のゲーム・アプリ開発用ライブラリ（danmaku-engine / toho-engine / errorDialog）の公開APIリファレンスです。名前・説明・キーワードで検索できます。同内容はドキュメントの API.md にも載っています。</p>
+          <div className="wxapp-search">
+            <input type="text" value={apiQuery} onChange={(e) => setApiQuery(e.target.value)} placeholder="API名・キーワードで検索（例：レーザー、freeze、自機）" />
+          </div>
+          <div className="wxapp-chips">
+            <button className={apiCat === 'all' ? 'chip on' : 'chip'} onClick={() => setApiCat('all')}>すべて（{API_DOCS.length}）</button>
+            {API_DOC_CATEGORIES.map((c) => (
+              <button key={c.id} className={apiCat === c.id ? 'chip on' : 'chip'} onClick={() => setApiCat(c.id)}>
+                {c.label}（{API_DOCS.filter((e) => e.category === c.id).length}）
+              </button>
+            ))}
+          </div>
+
+          {apiSel && (
+            <div className="dev-apiref-detail">
+              <div className="dev-apiref-head">
+                <strong>{apiSel.name}</strong>
+                <span className="wxapp-count">{API_DOC_CATEGORIES.find((c) => c.id === apiSel.category)?.label}</span>
+              </div>
+              <pre className="dev-output dev-apiref-pre">{apiSel.signature}</pre>
+              <p className="dev-apiref-summary">{apiSel.summary}</p>
+              {apiSel.params && apiSel.params.length > 0 && (
+                <>
+                  <label className="wxapp-label">引数・フィールド</label>
+                  <div className="dev-ls-list dev-apiref-params">
+                    {apiSel.params.map((p) => (
+                      <div key={p.name} className="dev-ls-row">
+                        <code>{p.name}</code>
+                        <span className="dev-apiref-ptype">{p.type}</span>
+                        <span>{p.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+              <label className="wxapp-label">使用例</label>
+              <pre className="dev-output dev-apiref-pre">{apiSel.example}</pre>
+            </div>
+          )}
+
+          <div className="dev-apiref-list">
+            {apiFiltered.map((e) => (
+              <button key={e.id} className={apiSel && apiSel.id === e.id ? 'dev-apiref-item on' : 'dev-apiref-item'} onClick={() => setApiSelId(e.id)}>
+                <code>{e.name}</code>
+                <span>{e.summary}</span>
+              </button>
+            ))}
+            {apiFiltered.length === 0 && <p className="wxapp-empty">「{apiQuery}」に一致するAPIがありません。</p>}
+          </div>
         </>
       )}
 

@@ -2,6 +2,7 @@ import { addFolder, deleteDoc, listDocs, listEvents, listFolders, saveDoc, stora
 import { APP_VERSION } from './version'
 import { editionLabel } from './edition'
 import { resetSettingsOnly } from './reset'
+import { showErrorDialog } from './errorDialog'
 
 /* WebX コマンドライン基盤（ターミナル／回復コンソール共用）
    DOS / Windows CMD 風コマンドで、WebX の保存ファイルをファイルシステムとして操作する。 */
@@ -78,6 +79,7 @@ const HELP: [string, string][] = [
   ['sysinfo / storage', 'システム情報／保存容量'],
   ['events', '今後の予定'],
   ['notify <文字>', '通知を出す'],
+  ['error [タイトル メッセージ]', 'エラーウインドウを試しに出す（引数なしでサンプル、error "題" "文" でカスタム）'],
   ['theme <テーマid>', 'テーマ変更'],
   ['lock / reboot / bios / recovery', 'ロック／再起動／BIOS／回復環境'],
   ['recover', '復旧（キャッシュ全消去＋SW登録解除＋再読み込み）'],
@@ -248,6 +250,17 @@ export async function execCommand(raw: string, state: ShellState, ctx: ShellCont
       if (!argStr) return done(['使い方: notify <文字>'])
       ctx.notify(argStr)
       return done(['通知しました'])
+    }
+    case 'error': {
+      // テーマ別エラーウインドウのお試し表示（lib/errorDialog の API をそのまま叩く）
+      if (!args[0]) {
+        showErrorDialog('エラー', 'これはサンプルのエラーメッセージです。\nerror <タイトル> <メッセージ> の形式で、カスタムの文面でも試せます。')
+        return done(['サンプルのエラーウインドウを表示しました'])
+      }
+      const title = args[0]
+      const message = args.slice(1).join(' ') || '（メッセージなし）'
+      showErrorDialog(title, message)
+      return done([`エラーウインドウを表示しました: ${title}`])
     }
     case 'theme': {
       if (!args[0] || !ctx.setTheme) return done(['使い方: theme <テーマid>（light / dark など）'])

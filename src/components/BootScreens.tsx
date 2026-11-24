@@ -289,6 +289,11 @@ export function RecoveryScreen({ onExit }: { onExit: () => void }) {
     window.setTimeout(() => location.reload(), 800)
   }
   const runNetTest = async () => {
+    // オフライン時は取得を試みず、ローカル情報のまま進める
+    if (!navigator.onLine) {
+      setNetTest('オンライン：いいえ ／ オフラインのためサーバー応答は測定できません')
+      return
+    }
     setNetTest('測定中…')
     try {
       const t0 = performance.now()

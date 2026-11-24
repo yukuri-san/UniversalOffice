@@ -22,6 +22,8 @@ export function compareVersions(a: string, b: string): number {
 
 /** 公開されている最新バージョンを取得する。失敗したら null。 */
 export async function fetchLatestVersion(): Promise<string | null> {
+  // オフライン時は新規バージョンの取得を行わない（更新なし扱いで中立に返す）
+  if (!navigator.onLine) return null
   try {
     const res = await fetch(`version.json?ts=${Date.now()}`, { cache: 'no-store' })
     if (!res.ok) return null

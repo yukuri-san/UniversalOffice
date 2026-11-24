@@ -21,6 +21,8 @@ let cache: StoreCatalog | null = null
 
 export async function fetchStoreCatalog(force = false): Promise<StoreCatalog | null> {
   if (cache && !force) return cache
+  // オフライン時は新規カタログの取得を行わない（手元のカタログ／同梱カタログで中立に進める）
+  if (!navigator.onLine) return cache
   try {
     const res = await fetch(`store.json?ts=${Date.now()}`, { cache: 'no-store' })
     if (!res.ok) return null

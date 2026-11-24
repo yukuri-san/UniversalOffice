@@ -3,7 +3,7 @@ import { clearAllStoredData, ownUsageBytes, requestPersist, storageInfo } from '
 import { notifyOs } from '../lib/notify'
 import { TIMEZONES } from './SetupWizard'
 import { useEffect, useRef, useState } from 'react'
-import { APP_VERSION } from '../lib/version'
+import { APP_BUILD, APP_VERSION } from '../lib/version'
 import { EDITIONS, PRO_PRODUCT_KEY, getEdition, isProUnlocked, setEdition as applyEdition, unlockPro, type EditionId } from '../lib/edition'
 import { clearPin, getPin, setPin } from '../lib/pin'
 import { SETTINGS_KEYS as SETTINGS_KEYS_SHARED } from '../lib/reset'
@@ -395,7 +395,7 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
 
       <section className="settings-section">
         <h3>{translate(lang, 'updateSection')}</h3>
-        <p className="settings-note">WebX / {translate(lang, 'versionLabel')} {APP_VERSION}</p>
+        <p className="settings-note">WebX / {translate(lang, 'versionLabel')} v{APP_VERSION} (build {APP_BUILD})</p>
         <p className="settings-note">更新の確認と適用は「ストア」アプリで行います。</p>
         <div className="settings-options" style={{ marginTop: 10 }}>
           <button className="opt" onClick={onOpenStore}>ストアを開く</button>
@@ -420,7 +420,7 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
 
       <section className="settings-section">
         <h3>{translate(lang, 'about')}</h3>
-        <p className="settings-note">WebX / {translate(lang, 'versionLabel')} {APP_VERSION}</p>
+        <p className="settings-note">WebX / {translate(lang, 'versionLabel')} v{APP_VERSION} (build {APP_BUILD})</p>
         <div className="settings-options" style={{ marginTop: 10 }}>
           <button className="opt" onClick={() => openAbout()}>{translate(lang, 'aboutWebX')}</button>
           <button className="opt" onClick={() => openDocs('license')}>{translate(lang, 'viewLicense')}</button>

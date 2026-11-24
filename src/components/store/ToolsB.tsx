@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { showErrorDialog } from '../../lib/errorDialog'
 
 const todayStr = () => new Date().toISOString().slice(0, 10)
 const fmtDate = (d: Date) => `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）`
@@ -123,6 +124,10 @@ export function Currency() {
       setRateInfo(`最新レートを取得しました（${when} 時点）`)
     } catch {
       setRateInfo('最新レートを取得できませんでした。従来の固定レートを使います')
+      showErrorDialog(
+        '為替レートを取得できませんでした',
+        'レート取得サーバーへの接続に失敗しました。換算は従来の固定レートで行います。',
+      )
     } finally { setFetching(false) }
   }
   return (

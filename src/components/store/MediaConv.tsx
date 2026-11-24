@@ -2,12 +2,15 @@ import { useRef, useState } from 'react'
 
 /* ================================================================
    メディア変換（FFmpeg WASM）
-   - @ffmpeg/ffmpeg 0.11 の UMD を CDN から動的読み込み（npm 依存なし）
+   - @ffmpeg/ffmpeg 0.11 の UMD を自前ホスト（cdn/mediaconv/）から
+     動的読み込み（npm 依存なし・外部 CDN 依存なし）
    - 変換処理はすべて端末内。ファイルは外部送信されない
    ================================================================ */
 
-const FFMPEG_SCRIPT = 'https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.11.0/dist/ffmpeg.min.js'
-const FFMPEG_CORE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js'
+// 自オリジン内の同梱ファイル（public/cdn/mediaconv/）。SW の cdn/ cache-first に乗る
+const FFMPEG_BASE = 'https://yukuri-san.github.io/UniversalOffice/cdn/mediaconv/'
+const FFMPEG_SCRIPT = `${FFMPEG_BASE}ffmpeg.min.js`
+const FFMPEG_CORE = `${FFMPEG_BASE}ffmpeg-core.js`
 
 declare global {
   interface Window { FFmpeg?: any }
@@ -21,7 +24,7 @@ function loadFFmpegLib(): Promise<any> {
     const s = document.createElement('script')
     s.src = FFMPEG_SCRIPT
     s.onload = () => (window.FFmpeg ? resolve(window.FFmpeg) : reject(new Error('FFmpeg の読み込みに失敗しました')))
-    s.onerror = () => { loadPromise = null; reject(new Error('FFmpeg 本体の読み込みに失敗しました（ネット接続を確認してください）')) }
+    s.onerror = () => { loadPromise = null; reject(new Error('FFmpeg 本体の読み込みに失敗しました')) }
     document.head.appendChild(s)
   })
   return loadPromise
@@ -41,7 +44,7 @@ export function MediaConv() {
 
   const ensureFF = async () => {
     if (ffRef.current) return ffRef.current
-    setStatus('FFmpeg コアを読み込んでいます…（初回はネット接続が必要です）')
+    setStatus('FFmpeg コアを読み込んでいます…（初回は約24MBの読み込みが発生します）')
     const lib = await loadFFmpegLib()
     const ff = lib.createFFmpeg({ log: false, corePath: FFMPEG_CORE })
     ff.setProgress(({ ratio }: { ratio: number }) => {
@@ -95,7 +98,7 @@ export function MediaConv() {
 
   return (
     <div className="sa-app">
-      <p className="sa-note">動画を GIF／音声／WebM に変換します。変換は <b>すべて端末内</b> で行われ、ファイルが外部に送信されることはありません。ただし初回のみ、変換エンジン（FFmpeg）の読み込みにネット接続が必要です。</p>
+      <p className="sa-note">動画を GIF／音声／WebM に変換します。変換は <b>すべて端末内</b> で行われ、ファイルが外部に送信されることはありません。変換エンジン（FFmpeg）も WebX 内に同梱されているため、外部サーバーへ接続することはありません（初回のみ約24MBの読み込みが発生し、以降はキャッシュから読み込まれます）。</p>
       <div className="sa-row">
         <input type="file" accept="video/*,audio/*" onChange={(e) => { setFile(e.target.files?.[0] ?? null); setOut(null) }} />
       </div>

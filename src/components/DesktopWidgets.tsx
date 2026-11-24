@@ -104,6 +104,8 @@ function WeatherWidget({ cityId }: { cityId: string }) {
   const [failed, setFailed] = useState(false)
   useEffect(() => {
     let alive = true
+    // 30分以内の成功データは再取得を省くためのスロットルとして保持するだけ。
+    // 取得に失敗したときは古いデータを表示せず、プレースホルダにする（ポップアップも出さない）
     const cacheKey = 'webx-widget-weather'
     try {
       const cached = JSON.parse(localStorage.getItem(cacheKey) ?? 'null') as { city: string; temp: number; code: number; at: number } | null
@@ -125,7 +127,9 @@ function WeatherWidget({ cityId }: { cityId: string }) {
         setFailed(false)
         try { localStorage.setItem(cacheKey, JSON.stringify({ city: city.id, temp, code, at: Date.now() })) } catch { /* ignore */ }
       } catch {
-        if (alive) setFailed(true)
+        if (!alive) return
+        setData(null)
+        setFailed(true)
       }
     })()
     return () => { alive = false }

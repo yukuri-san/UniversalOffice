@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { listDocs, listEvents, listTrashedDocs, ownUsageBytes, storageInfo } from '../lib/store'
-import { APP_VERSION } from '../lib/version'
+import { APP_BUILD, APP_VERSION } from '../lib/version'
 import { editionLabel } from '../lib/edition'
 import { STORE_APPS } from '../lib/storeApps'
 
@@ -101,7 +101,7 @@ export default function SysInfo() {
     {
       title: 'WebX とストレージ',
       rows: [
-        ['OS', `WebX ${APP_VERSION}`],
+        ['OS', `WebX v${APP_VERSION} (build ${APP_BUILD})`],
         ['エディション', editionLabel()],
         ['保存方式', info ? info.backend : '読み込み中…'],
         ['WebX の使用量', info ? mb(info.own) : '…'],

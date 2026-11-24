@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { WEATHER_CITIES } from '../../lib/widgets'
+import { showErrorDialog } from '../../lib/errorDialog'
 
 /* ---------- 天気（Open-Meteo） ---------- */
 interface Place { name: string; lat: number; lon: number }
@@ -38,20 +39,32 @@ export function WeatherApp() {
   useEffect(() => {
     let alive = true
     setError('')
+    setData(null)
+    const fail = () => {
+      if (!alive) return
+      setError('天気を取得できませんでした')
+      showErrorDialog(
+        '天気を取得できませんでした',
+        navigator.onLine
+          ? '天気サーバーへの接続に失敗しました。通信環境を確認して、もう一度お試しください。'
+          : 'オフラインのため天気を取得できません。通信環境を確認して、もう一度お試しください。',
+      )
+    }
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${place.lat}&longitude=${place.lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=7`
     fetch(url)
-      .then((r) => r.json())
+      .then((r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then((j: { current: { temperature_2m: number; apparent_temperature: number; relative_humidity_2m: number; wind_speed_10m: number; weather_code: number }; hourly: { time: string[]; temperature_2m: number[]; weather_code: number[] }; daily: { time: string[]; weather_code: number[]; temperature_2m_max: number[]; temperature_2m_min: number[] } }) => {
         if (!alive) return
         const nowH = new Date().toISOString().slice(0, 13)
         const startIdx = Math.max(0, j.hourly.time.findIndex((t) => t.slice(0, 13) >= nowH))
-        setData({
+        const next: WxData = {
           cur: { temp: j.current.temperature_2m, feels: j.current.apparent_temperature, hum: j.current.relative_humidity_2m, wind: j.current.wind_speed_10m, code: j.current.weather_code },
           hourly: j.hourly.time.slice(startIdx, startIdx + 24).map((t, i) => ({ time: t, temp: j.hourly.temperature_2m[startIdx + i], code: j.hourly.weather_code[startIdx + i] })),
           daily: j.daily.time.map((d, i) => ({ date: d, code: j.daily.weather_code[i], max: j.daily.temperature_2m_max[i], min: j.daily.temperature_2m_min[i] })),
-        })
+        }
+        setData(next)
       })
-      .catch(() => { if (alive) setError('天気を取得できませんでした（通信環境を確認してください）') })
+      .catch(fail)
     return () => { alive = false }
   }, [place])
 
@@ -68,7 +81,10 @@ export function WeatherApp() {
       .then((j: { results?: { name: string; latitude: number; longitude: number; country?: string; admin1?: string }[] }) => {
         setResults((j.results ?? []).map((x) => ({ name: `${x.name}${x.admin1 ? `（${x.admin1}）` : ''}`, lat: x.latitude, lon: x.longitude })))
       })
-      .catch(() => setError('地名を検索できませんでした'))
+      .catch(() => {
+        setError('地名を検索できませんでした')
+        showErrorDialog('地名を検索できませんでした', '地名検索サーバーへの接続に失敗しました。通信環境を確認して、もう一度お試しください。')
+      })
   }
 
   const [ci, cl] = data ? wmo(data.cur.code) : ['🌡️', '']

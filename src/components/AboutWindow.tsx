@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ownUsageBytes, storageInfo } from '../lib/store'
-import { APP_VERSION } from '../lib/version'
+import { APP_BUILD, APP_VERSION } from '../lib/version'
 import { editionLabel } from '../lib/edition'
 import { useLang } from '../lib/i18n'
 import type { DocKind } from './DocsWindow'
@@ -28,7 +28,7 @@ export default function AboutWindow({ openDocs }: { openDocs: (doc: DocKind) => 
       <h1>WebX</h1>
       <p className="about-tagline">UniversalOffice Web OS</p>
       <dl className="about-specs">
-        <div><dt>{t('versionLabel')}</dt><dd>{APP_VERSION}</dd></div>
+        <div><dt>{t('versionLabel')}</dt><dd>v{APP_VERSION} (build {APP_BUILD})</dd></div>
         <div><dt>{t('edition')}</dt><dd>{editionLabel()}</dd></div>
         <div><dt>{t('backend')}</dt><dd>{info ? info.backend : '…'}</dd></div>
         <div><dt>{t('webxUsage')}</dt><dd>{info ? formatBytes(info.own) : '…'}</dd></div>
