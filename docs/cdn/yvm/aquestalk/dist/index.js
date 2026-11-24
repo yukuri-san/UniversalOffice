@@ -9,7 +9,7 @@ var __classPrivateFieldGet = (this && this.__classPrivateFieldGet) || function (
     if (typeof state === "function" ? receiver !== state || !f : !state.has(receiver)) throw new TypeError("Cannot read private member from an object whose class did not declare it");
     return kind === "m" ? f : kind === "a" ? f.call(receiver) : f ? f.value : state.get(receiver);
 };
-var _AquesTalk_instances, _AquesTalk_dllImage, _AquesTalk_writableSections, _AquesTalk_emu, _AquesTalk_baseAddress, _AquesTalk_aquesTalk_SyntheAddress, _AquesTalk_adjustFdivTargetAddress, _AquesTalk_returnAddress, _AquesTalk_stackTop, _AquesTalk_heap, _AquesTalk_reset_esp, _AquesTalk_init, _AquesTalk_reset, _AquesTalk_reset_writable_sections;
+var _AquesTalk_instances, _AquesTalk_mode, _AquesTalk_phontAddress, _AquesTalk_dllImage, _AquesTalk_writableSections, _AquesTalk_emu, _AquesTalk_baseAddress, _AquesTalk_aquesTalk_SyntheAddress, _AquesTalk_adjustFdivTargetAddress, _AquesTalk_returnAddress, _AquesTalk_stackTop, _AquesTalk_heap, _AquesTalk_reset_esp, _AquesTalk_init, _AquesTalk_reset, _AquesTalk_reset_writable_sections;
 import JSZip from "../../deps/jszip.js";
 import { V86Emu, REG_EAX, REG_ESP } from "./v86_emu.js";
 import { call, push } from "./x86_util.js";
@@ -73,6 +73,7 @@ function inspectPE(file) {
     return pe;
 }
 const NATIVE_HOOK_MAP = {
+    memcpy: NATIVE_CLIB_SYMBOLS.memcpy,
     strncmp: NATIVE_CLIB_SYMBOLS.strncmp,
     strncpy: NATIVE_CLIB_SYMBOLS.strncpy,
     strtok: NATIVE_CLIB_SYMBOLS.strtok,
@@ -87,6 +88,8 @@ const NATIVE_HOOK_MAP = {
 export class AquesTalk {
     constructor(file, emu, options = {}) {
         _AquesTalk_instances.add(this);
+        _AquesTalk_mode.set(this, void 0);
+        _AquesTalk_phontAddress.set(this, void 0);
         _AquesTalk_dllImage.set(this, void 0);
         _AquesTalk_writableSections.set(this, void 0);
         _AquesTalk_emu.set(this, void 0);
@@ -97,6 +100,8 @@ export class AquesTalk {
         _AquesTalk_stackTop.set(this, 0);
         _AquesTalk_heap.set(this, null);
         const pe = inspectPE(file);
+        __classPrivateFieldSet(this, _AquesTalk_mode, options.mode ?? "aq1", "f");
+        this._yvmPhont = options.phont ?? null;
         const heapSize = options.heapSize ?? DEFAULT_HEAP_SIZE;
         const loadAddress = pe.baseRelocationOffsets.length > 0
             ? DEFAULT_LOAD_ADDRESS
@@ -148,9 +153,22 @@ export class AquesTalk {
             const koeAddress = __classPrivateFieldGet(this, _AquesTalk_heap, "f").allocate(sjis.byteLength + 1);
             emu.mem_write(koeAddress, sjis);
             emu.mem_clear(koeAddress + sjis.byteLength, 1);
-            push(emu, size);
-            push(emu, speed);
-            push(emu, koeAddress);
+            if (__classPrivateFieldGet(this, _AquesTalk_mode, "f") === "aq2") {
+                push(emu, __classPrivateFieldGet(this, _AquesTalk_phontAddress, "f"));
+                push(emu, size);
+                push(emu, koeAddress);
+            }
+            else if (__classPrivateFieldGet(this, _AquesTalk_mode, "f") === "aq2s") {
+                push(emu, __classPrivateFieldGet(this, _AquesTalk_phontAddress, "f"));
+                push(emu, size);
+                push(emu, speed);
+                push(emu, koeAddress);
+            }
+            else {
+                push(emu, size);
+                push(emu, speed);
+                push(emu, koeAddress);
+            }
             emu.set_eip(__classPrivateFieldGet(this, _AquesTalk_returnAddress, "f"));
             call(emu, __classPrivateFieldGet(this, _AquesTalk_aquesTalk_SyntheAddress, "f"));
             try {
@@ -180,14 +198,20 @@ export class AquesTalk {
         await __classPrivateFieldGet(this, _AquesTalk_emu, "f").destroy();
     }
 }
-_AquesTalk_dllImage = new WeakMap(), _AquesTalk_writableSections = new WeakMap(), _AquesTalk_emu = new WeakMap(), _AquesTalk_baseAddress = new WeakMap(), _AquesTalk_aquesTalk_SyntheAddress = new WeakMap(), _AquesTalk_adjustFdivTargetAddress = new WeakMap(), _AquesTalk_returnAddress = new WeakMap(), _AquesTalk_stackTop = new WeakMap(), _AquesTalk_heap = new WeakMap(), _AquesTalk_instances = new WeakSet(), _AquesTalk_reset_esp = function _AquesTalk_reset_esp() {
+_AquesTalk_mode = new WeakMap(), _AquesTalk_phontAddress = new WeakMap(), _AquesTalk_dllImage = new WeakMap(), _AquesTalk_writableSections = new WeakMap(), _AquesTalk_emu = new WeakMap(), _AquesTalk_baseAddress = new WeakMap(), _AquesTalk_aquesTalk_SyntheAddress = new WeakMap(), _AquesTalk_adjustFdivTargetAddress = new WeakMap(), _AquesTalk_returnAddress = new WeakMap(), _AquesTalk_stackTop = new WeakMap(), _AquesTalk_heap = new WeakMap(), _AquesTalk_instances = new WeakSet(), _AquesTalk_reset_esp = function _AquesTalk_reset_esp() {
     reg_write_uint32(__classPrivateFieldGet(this, _AquesTalk_emu, "f"), REG_ESP, __classPrivateFieldGet(this, _AquesTalk_stackTop, "f"));
 }, _AquesTalk_init = function _AquesTalk_init(pe) {
     const emu = __classPrivateFieldGet(this, _AquesTalk_emu, "f");
-    __classPrivateFieldSet(this, _AquesTalk_aquesTalk_SyntheAddress, __classPrivateFieldGet(this, _AquesTalk_baseAddress, "f") + pe.aquesTalkSyntheRVA, "f");
+    __classPrivateFieldSet(this, _AquesTalk_aquesTalk_SyntheAddress, __classPrivateFieldGet(this, _AquesTalk_baseAddress, "f") + (__classPrivateFieldGet(this, _AquesTalk_mode, "f").startsWith("aq2") ? pe.aquesTalk2SyntheRVA : pe.aquesTalkSyntheRVA), "f");
     __classPrivateFieldSet(this, _AquesTalk_adjustFdivTargetAddress, pe.adjustFdivTarget, "f");
     __classPrivateFieldSet(this, _AquesTalk_heap, new Heap(emu, this.HEAP_ADDRESS, this.HEAP_LENGTH), "f");
     const nativeCodeAddress = __classPrivateFieldGet(this, _AquesTalk_heap, "f").set_mem_value(emu, NATIVE_CLIB_BIN);
+    if (this._yvmPhont) {
+        const pa = __classPrivateFieldGet(this, _AquesTalk_heap, "f").set_mem_value(emu, this._yvmPhont);
+        __classPrivateFieldSet(this, _AquesTalk_phontAddress, pa, "f");
+    } else {
+        __classPrivateFieldSet(this, _AquesTalk_phontAddress, 0, "f");
+    }
     // Keep dynamic allocations 1 MiB away from executable helper code. v86's
     // JIT executes beyond the OUT stop instruction. Keep a 512 KiB NOP sled:
     // 256 KiB corrupts warmed output, while this retains a 2x safety margin.
@@ -280,6 +304,10 @@ export async function loadAquesTalk(zippath, dllpath, options = {}) {
     const zipbin = await getData(zippath);
     const ziproot = await zip.loadAsync(zipbin);
     const dllfile = await ziproot.files[dllpath].async("arraybuffer");
+    let phont = null;
+    if (options.phontPath) {
+        phont = new Uint8Array(await ziproot.files[options.phontPath].async("arraybuffer"));
+    }
     const pe = inspectPE(dllfile);
     const heapSize = options.heapSize ?? DEFAULT_HEAP_SIZE;
     const loadAddress = pe.baseRelocationOffsets.length > 0 ? DEFAULT_LOAD_ADDRESS : pe.baseAddress;
@@ -301,6 +329,8 @@ export async function loadAquesTalk(zippath, dllpath, options = {}) {
         await emu.init({ ...options, memorySize });
         return new AquesTalk(dllfile, emu, {
             heapSize,
+            mode: options.mode ?? "aq1",
+            phont,
         });
     }
     catch (error) {

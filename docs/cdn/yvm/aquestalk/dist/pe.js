@@ -6,6 +6,7 @@ const HOOKED_IMPORTS = new Set([
     "strtok",
     "strchr",
     "stricmp",
+    "memcpy",
     "_stricmp",
     "_initterm",
     "initterm",
@@ -102,6 +103,7 @@ export function parsePE(buffer) {
     }
     // Find AquesTalk_Synthe in Export Table
     let aquesTalkSyntheRVA = 0;
+    let aquesTalk2SyntheRVA = 0;
     if (exportDirRVA !== 0) {
         const exportOffset = rvaToOffset(exportDirRVA);
         requireRange(exportOffset, 40, "export directory");
@@ -118,6 +120,10 @@ export function parsePE(buffer) {
             const nameRVA = view.getUint32(namesOffset + i * 4, true);
             const nameOffset = rvaToOffset(nameRVA);
             const name = readNullTerminatedString(nameOffset, "export name");
+            if (name === "AquesTalk2_Synthe") {
+                const ordinal = view.getUint16(ordinalsOffset + i * 2, true);
+                aquesTalk2SyntheRVA = view.getUint32(functionsOffset + ordinal * 4, true);
+            }
             if (name === "AquesTalk_Synthe") {
                 const ordinal = view.getUint16(ordinalsOffset + i * 2, true);
                 requireRange(functionsOffset + ordinal * 4, 4, "export function");
@@ -207,6 +213,7 @@ export function parsePE(buffer) {
         baseAddress: imageBase,
         imageSize,
         aquesTalkSyntheRVA,
+        aquesTalk2SyntheRVA,
         iatHooks,
         adjustFdivRVA,
         adjustFdivTarget,
