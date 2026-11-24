@@ -1,4 +1,4 @@
-const CACHE = 'universal-office-v165'
+const CACHE = 'universal-office-v167'
 self.addEventListener('install', (event) => {
   // ページ本体（HTML）はプリキャッシュしない。デプロイ途中の空応答などを
   // 取り込むと、空のドキュメントが固定されて開けなくなる事故が起きるため。
@@ -53,6 +53,67 @@ function recoveryResponse() {
 
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting()
+})
+
+// ---- オフライン対応（v1.59.1 臨時ビルドで追加） ----
+// ナビゲーション: network-first。取得できた HTML は「200 かつ本文 200 バイト以上」の
+// ときだけ index.html としてキャッシュし、通信できないときはそれを返して
+// オフラインでも WebX が開くようにする（空ページ事故の再発防止条件は従来どおり厳守）。
+// 静的アセット: 同一オリジンの assets/（ハッシュ付き JS/CSS）と cdn/（YVM エンジン等）は
+// cache-first のランタイムキャッシュ。cdn/ の大容量ファイルはプリキャッシュせず、
+// 初回利用時に貯める。それ以外（version.json / store.json / release-notes.json /
+// 外部 API など）は SW では扱わず、ブラウザ既定の挙動に任せる。
+function relToScope(url) {
+  const sp = new URL(self.registration.scope).pathname
+  return url.pathname.startsWith(sp) ? url.pathname.slice(sp.length) : ''
+}
+async function cacheHtmlIfValid(cache, res) {
+  try {
+    const text = await res.clone().text()
+    if (text.length < 200) return // 空・極小の本文は毒なのでキャッシュしない
+    await cache.put('./index.html', res)
+  } catch { /* ignore */ }
+}
+self.addEventListener('fetch', (event) => {
+  const req = event.request
+  if (req.method !== 'GET') return
+  if (req.mode === 'navigate') {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE)
+      try {
+        const res = await fetch(req)
+        if (res.status === 200) event.waitUntil(cacheHtmlIfValid(cache, res.clone()))
+        return res
+      } catch {
+        const cached = (await cache.match('./index.html')) || (await cache.match('./'))
+        if (cached) {
+          try {
+            const text = await cached.clone().text()
+            if (text.length >= 200) return cached
+          } catch { /* 壊れたキャッシュは使わない */ }
+        }
+        return recoveryResponse()
+      }
+    })())
+    return
+  }
+  let url
+  try { url = new URL(req.url) } catch { return }
+  if (url.origin !== self.location.origin) return
+  const rel = relToScope(url)
+  if (rel.startsWith('assets/') || rel.startsWith('cdn/')) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE)
+      const hit = await cache.match(req)
+      if (hit) return hit
+      const res = await fetch(req)
+      // 200 かつ空でない応答だけをキャッシュする（エラーページや空応答を固定しない）
+      if (res.status === 200 && Number(res.headers.get('content-length') ?? '1') > 0) {
+        event.waitUntil(cache.put(req, res.clone()))
+      }
+      return res
+    })())
+  }
 })
 
 // ---- アップデート通知（PWA利用者・通知許可済みユーザー向け） ----
