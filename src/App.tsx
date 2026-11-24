@@ -125,6 +125,7 @@ import Wme from './components/store/Wme'
 import { listDocs, listEvents, requestPersist, type CalEvent, type LocalDoc } from './lib/store'
 import { APP_VERSION } from './lib/version'
 import { compareVersions, fetchLatestVersion } from './lib/updateCheck'
+import { sendStartupTelemetry } from './lib/telemetry'
 import { bundledGaps, fetchStoreCatalog, outdatedFromCatalog, type StoreCatalog } from './lib/storeCheck'
 import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
@@ -793,6 +794,10 @@ export default function App() {
   }, [])
   useEffect(() => {
     void requestPersist()
+  }, [])
+  // 匿名の利用統計：起動時に1回だけ送信する（設定でオフ可。送信処理は起動をブロックしない）
+  useEffect(() => {
+    sendStartupTelemetry()
   }, [])
   // 更新チェック：起動時に加えて、設定した間隔（1〜180分）でも定期チェックし、新しい更新があれば通知する
   useEffect(() => {
