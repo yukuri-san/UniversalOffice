@@ -45,8 +45,15 @@ export const YVM_AQ2_VOICES: { phont: string; label: string }[] = [
 ]
 const aq2Label = (phont: string): string => YVM_AQ2_VOICES.find((v) => v.phont === phont)?.label ?? phont
 
-/** ピッチ処理の方式。'keep'=長さを維持（YMM4風） / 'resample'=長さも変わる（単純リサンプル） */
-type PitchMode = 'keep' | 'resample'
+/**
+ * ピッチ処理の方式。
+ * 'keep'=長さを維持（YMM4風） / 'resample'=長さも変わる（単純リサンプル）
+ * 'ymm4'=YMM4に合わせる（単純リサンプル＋補正）。ユーザーの実測比較（2026-11-23、Aq1 f2、同じ設定）で
+ * YMM4の実効ピッチは YVMの実効ピッチの 1.072倍（YMM4 ×1.469 / YVM ×1.370）だったため、数値に 1.072 を掛けて処理する。
+ * 1点からの推定で、別のピッチでの再測定で検証が必要。
+ */
+type PitchMode = 'keep' | 'resample' | 'ymm4'
+const YMM4_PITCH_CORRECTION = 1.072
 interface YChar { id: string; name: string; voice: string; speed: number; pitch: number; pitchMode?: PitchMode }
 interface YLine { id: string; charId: string; text: string; koeEdit: string | null }
 interface YDict { id: string; word: string; reading: string }
@@ -202,23 +209,25 @@ function timeStretchPcm(src: Float32Array, ratio: number): Float32Array {
 }
 
 /**
- * ピッチ変更。方式は2つ:
+ * ピッチ変更。方式は3つ:
  * - 'keep'（長さ維持）: リサンプルで音程を変えたあと、WSOLA で元の長さに戻す。YMM4 の音程に近い方式。
  * - 'resample'（長さ変化）: リサンプルのみ。音程と一緒に長さも変わる（テープの早回し風）。
  *   単純なリサンプルで処理するアプリ（Android の読み上げ系など）に近い方式。
+ * - 'ymm4'（YMM4に合わせる）: リサンプルのみ＋YMM4換算の補正（×1.072）。YMM4の音程に音も長さも近づける。
  * アプリごとにピッチ処理が違うため、同じ % でも音が一致しないことがある。キャラごとに切り替える。
  */
 function applyPitch(bytes: Uint8Array, factor: number, mode: PitchMode = 'keep'): Uint8Array {
-  if (factor === 1) return bytes
+  if (factor === 1 && mode !== 'ymm4') return bytes
   // 0%（factor 0）はリサンプルが破綻するので、実効下限 0.1 に丸める
   factor = Math.min(3, Math.max(0.1, factor))
+  if (mode === 'ymm4') factor = Math.min(3, factor * YMM4_PITCH_CORRECTION)
   const info = parseWav(bytes)
   if (!info || info.bits !== 16) return bytes
   const raw = new Int16Array(bytes.buffer, bytes.byteOffset + info.dataOff, info.dataLen / 2)
   const src = new Float32Array(raw.length)
   for (let i = 0; i < raw.length; i++) src[i] = raw[i] / 32768
   const shifted = resamplePcm(src, factor)
-  const restored = mode === 'resample' ? shifted : timeStretchPcm(shifted, factor)
+  const restored = mode === 'keep' ? timeStretchPcm(shifted, factor) : shifted
   const out = new Int16Array(restored.length)
   for (let i = 0; i < restored.length; i++) {
     const v = Math.max(-1, Math.min(1, restored[i]))
@@ -478,7 +487,8 @@ export default function Yvm() {
     const chunks = splitKoe(koe)
     const wavs = chunks.map((ch) => aq.run(ch, c.speed) as Uint8Array)
     const joined = concatWavs(wavs)
-    return c.pitch === 100 ? joined : applyPitch(joined, c.pitch / 100, c.pitchMode ?? 'keep')
+    const mode = c.pitchMode ?? 'keep'
+    return c.pitch === 100 && mode !== 'ymm4' ? joined : applyPitch(joined, c.pitch / 100, mode)
   }
 
   const generateLine = async (l: YLine, silent = false): Promise<GenInfo | null> => {
@@ -878,7 +888,7 @@ export default function Yvm() {
 
       {view === 'chars' && (
         <div className="yvm-pane">
-          <p className="hint" style={{ margin: 0 }}>キャラごとに声の種類・速さ・ピッチを保存できます。ピッチの処理方式はアプリごとに違うため、同じ数値でも他のアプリと音が一致しないことがあります。YVMでは「長さを維持（YMM4風）」と「長さも変わる（単純リサンプル）」をキャラごとに切り替えられます。</p>
+          <p className="hint" style={{ margin: 0 }}>キャラごとに声の種類・速さ・ピッチを保存できます。ピッチの処理方式はアプリごとに違うため、同じ数値でも他のアプリと音が一致しないことがあります。YVMでは「長さを維持（YMM4風）」「長さも変わる（単純リサンプル）」「YMM4に合わせる（推定）」をキャラごとに切り替えられます。</p>
           {chars.map((c) => (
             <div key={c.id} className="yvm-char">
               <span className="yvm-ava" style={{ background: colorOf(c.name) }}>{c.name.slice(0, 1)}</span>
@@ -914,6 +924,7 @@ export default function Yvm() {
                 <select value={c.pitchMode ?? 'keep'} onChange={(e) => patchChar(c.id, { pitchMode: e.target.value as PitchMode })}>
                   <option value="keep">長さを維持（YMM4風）</option>
                   <option value="resample">長さも変わる（単純）</option>
+                  <option value="ymm4">YMM4に合わせる（推定）</option>
                 </select>
               </label>
               <button className="yvm-iconbtn" title="試し聞き" onClick={() => {
@@ -972,7 +983,7 @@ export default function Yvm() {
             <p>音声合成エンジン: AquesTalk（© 株式会社アクエスト）／ ライブラリ: aquestalk.js・kanji2koe-openjtalk（y52en氏、MIT License）、Unicorn Engine（GPLv2）。</p>
             <p>エンジンのファイルは自前CDN（yukuri-san.github.io/UniversalOffice/cdn）から読み込みます（初回のみ約23MB、新エンジンは声ごとに約1.3MB）。</p>
             <p>声の表記: 「女声1(aq1-f1)」は Aq1（AquesTalk1系・同梱）の声、「ゆっくり(aq2-aq_yukkuri)」は Aq2（純正AquesTalk2）の声です。カスタム声zipは Aq1形式・Aq2形式の両方に対応します。</p>
-            <p>ピッチ方式: 「長さを維持」は音程だけを変える方式（YMM4の音程に近い処理）、「長さも変わる」はリサンプルだけで処理する方式で、音程と一緒に音声の長さも変わります。アプリごとにピッチ処理が異なるため、同じ % の数値でもアプリ間で音が一致しないことがあります。キャラ設定で方式を切り替えて、使っている環境に近い方を選んでください。</p>
+            <p>ピッチ方式: 「長さを維持」は音程だけを変える方式（YMM4の音程に近い処理）、「長さも変わる」はリサンプルだけで処理する方式で、音程と一緒に音声の長さも変わります。「YMM4に合わせる」はリサンプル＋YMM4換算の補正（×1.072）で、YMM4の音程に音も長さも近づけます。補正値は1回の実測比較（Aq1 f2、同じ設定で YMM4 ×1.469 / YVM ×1.370）から出した推定値です。アプリごとにピッチ処理が異なるため、同じ % の数値でもアプリ間で音が一致しないことがあります。キャラ設定で方式を切り替えて、使っている環境に近い方を選んでください。</p>
             <button className="btn accent" onClick={() => setShowInfo(false)}>閉じる</button>
           </div>
         </div>
