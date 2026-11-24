@@ -1,13 +1,14 @@
 // App Store のカタログ。新規アプリはここに登録する（コアには入れない）。
 // ユーザーはストアからインストール／アンインストールでき、更新はアプリごとに個別処理する。
 // アプリを改良したら、そのアプリの version だけを上げる（WebX 本体のバージョンとは独立）。
-export type StoreCategory = 'game' | 'tool' | 'calc' | 'life' | 'study'
+export type StoreCategory = 'game' | 'tool' | 'calc' | 'life' | 'study' | 'touhou'
 export const STORE_CATEGORIES: { id: StoreCategory; label: string; key: string; emoji: string }[] = [
   { id: 'game', label: '🎮 ゲーム', key: 'catGame', emoji: '🎮' },
   { id: 'tool', label: '🧰 ツール', key: 'catTool', emoji: '🧰' },
   { id: 'calc', label: '🧮 計算・変換', key: 'catCalc', emoji: '🧮' },
   { id: 'life', label: '🌿 暮らし', key: 'catLife', emoji: '🌿' },
   { id: 'study', label: '📚 学習', key: 'catStudy', emoji: '📚' },
+  { id: 'touhou', label: '🦇 東方Project', key: 'catTouhou', emoji: '🦇' },
 ]
 export interface StoreAppDef {
   id: string
@@ -596,8 +597,8 @@ export const STORE_APPS: StoreAppDef[] = [
   },
   {
     id: 'koumakyou', icon: '🦇', cls: 'koumakyou', name: '紅魔郷弾幕STG',
-    desc: '東方紅魔郷インスパイアのファンメイド弾幕シューティング。全6面＋EXステージを原作の進行で進み、ルーミアからレミリア、フランドールまで全ボスと戦えます。BGMつき。', version: '1.0.0', notes: '新規アプリです。東方紅魔郷をモチーフにした完全オリジナルの弾幕STGです（原作の画像・音楽・データは使っていません）。公式リメイク「New Classic」と同じく原作の進行を踏襲し、全6面＋EXステージ構成です。各面は道中＋中ボス＋ボス戦で、ボスはルーミア／チルノ／紅美鈴／パチュリー／十六夜咲夜／レミリア、EXボスにフランドール。スペルカードは全18枚（弾幕パターンはすべて自作）。EXはNormal以上で全クリアすると解放されます。自機は霊夢（広角＋誘導）と魔理沙（前方集中＋高速）から選択可能。難易度は3段階（Easyは5面まで）、残機無限のチャレンジモードも搭載。BGMはZUN風の作風で作った完全オリジナル曲6曲をWebAudioで演奏します（原曲の旋律は使っていません）。グレイズ（かすり）・ボム・パワーアップ・スペルカードボーナス対応。キーボード（矢印/WASD、Zショット、Xボム、Shift低速、Mミュート）とタッチ（ドラッグ移動＋自動ショット＋ボムボタン）の両対応です。',
-    category: 'game',
+    desc: '東方紅魔郷インスパイアのファンメイド弾幕シューティング。全6面＋EXステージを原作の進行で進み、ルーミアからレミリア、フランドールまで全ボスと戦えます。BGMつき。', version: '1.1.0', notes: '専用弾幕エンジンへ移植し高速化。ボスの入場・退場演出や、フォーオブアカインド／レーヴァテイン等のスペル挙動を原作に寄せて再現度を高めました。チャレンジモードにミス回数と専用ベスト記録を追加。全6面＋EX・スペル全18枚・難易度対応。',
+    category: 'touhou',
   },
   {
     id: 'shiritori', icon: '詞', cls: 'shiritori', name: 'しりとり判定',
@@ -863,7 +864,7 @@ export const STORE_APPS: StoreAppDef[] = [
   },
   {
     id: 'mediaconv', icon: '変', cls: 'mediaconv', name: 'メディア変換',
-    desc: '動画を GIF／音声（MP3）／WebM に変換。FFmpeg を端末内で実行し、ファイルは外部送信されません。', version: '1.0.0', notes: '新規アプリです。FFmpeg（WASM）で動画を GIF・MP3・WebM に変換できます。初回のみエンジン読み込みにネット接続が必要です。',
+    desc: '動画を GIF／音声（MP3）／WebM に変換。FFmpeg を端末内で実行し、ファイルは外部送信されません。', version: '1.0.1', notes: 'FFmpeg を自前ホスト化し、外部サーバーへの接続をなくしました。初回に約24MBを読み込み、以降はキャッシュからも動作します。',
     category: 'tool',
   },
   {

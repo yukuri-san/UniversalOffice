@@ -9,6 +9,7 @@ import Settings, { type ThemeId } from './components/Settings'
 import { LangContext, LOCALES, translate, type Lang } from './lib/i18n'
 import SetupWizard, { SETUP_VERSION } from './components/SetupWizard'
 import EditionPrompt, { shouldShowEditionPrompt } from './components/EditionPrompt'
+import ErrorDialogHost from './components/ErrorDialogHost'
 const YoutubeApp = lazy(() => import('./components/YoutubeApp'))
 import TrashWindow from './components/TrashWindow'
 import DocsWindow, { type DocKind } from './components/DocsWindow'
@@ -835,7 +836,8 @@ export default function App() {
     void (async () => {
       try {
         const seen = localStorage.getItem('webx-last-seen-version')
-        if (seen && seen !== APP_VERSION) {
+        // オフライン時はリリースノートの取得を行わず、ローカル版のまま進める
+        if (seen && seen !== APP_VERSION && navigator.onLine) {
           const res = await fetch(`release-notes.json?ts=${Date.now()}`, { cache: 'no-store' })
           if (res.ok) {
             const data = (await res.json()) as { version?: string; notes?: string }
@@ -1791,6 +1793,8 @@ export default function App() {
       )}
 
       {toast && <div className="os-toast">{toast}</div>}
+
+      <ErrorDialogHost ui={resolvedUi} theme={theme} />
 
       {nightLight && <div className="nightlight-overlay" />}
       {brightness > 0 && <div className="brightness-overlay" style={{ opacity: brightness / 100 }} />}
