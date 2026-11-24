@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import { APP_BUILD, APP_VERSION } from '../lib/version'
 import { EDITIONS, PRO_PRODUCT_KEY, getEdition, isProUnlocked, setEdition as applyEdition, unlockPro, type EditionId } from '../lib/edition'
 import { clearPin, getPin, setPin } from '../lib/pin'
+import { isTelemetryEnabled, setTelemetryEnabled } from '../lib/telemetry'
 import { SETTINGS_KEYS as SETTINGS_KEYS_SHARED } from '../lib/reset'
 
 export type ThemeId = 'light' | 'dark' | 'ipados' | 'macos' | 'win11' | 'win7' | 'winxp' | 'win95' | 'cyber' | 'sakura' | 'ocean' | 'sunset' | 'forest' | 'candy' | 'midnight' | 'lavender'
@@ -137,6 +138,8 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
     }
   }
   const [pinDraft, setPinDraft] = useState('')
+  const [telemetryOn, setTelemetryOnState] = useState(() => isTelemetryEnabled())
+  const setTelemetryOn = (v: boolean) => { setTelemetryOnState(v); setTelemetryEnabled(v) }
   const [pinSetNow, setPinSetNow] = useState(() => getPin() !== null)
   const [info, setInfo] = useState<{ usage: number; quota: number; persisted: boolean; backend: string } | null>(null)
   const [ownBytes, setOwnBytes] = useState(0)
@@ -404,6 +407,14 @@ export default function Settings({ lang, setLang, theme, setTheme, wpPreset, onS
           {translate(lang, 'updCheckInterval')}
           <input type="number" min={1} max={180} value={updInterval} onChange={(e) => changeUpdInterval(e.target.value)} style={{ width: 72 }} />
         </label>
+        <div className="settings-toggle-row" style={{ marginTop: 10 }}>
+          <span>匿名の利用統計を送信する</span>
+          <span className="settings-options">
+            <button className={telemetryOn ? 'opt on' : 'opt'} onClick={() => setTelemetryOn(true)}>{translate(lang, 'onOffOn')}</button>
+            <button className={!telemetryOn ? 'opt on' : 'opt'} onClick={() => setTelemetryOn(false)}>{translate(lang, 'onOffOff')}</button>
+          </span>
+        </div>
+        <p className="settings-note">利用統計について：この設定がオンの場合、アプリの起動時に1回だけ、UserAgent（お使いのブラウザ・OSの情報）、PWAとして利用しているかどうか、WebX のバージョンとエディションを、開発者の Discord サーバーへ匿名の利用統計として送信します。今後の改善の参考にするためのもので、名前やドキュメントの内容など、個人を特定する情報は送信しません。オフにすると一切送信しません。</p>
       </section>
 
       <section className="settings-section">
