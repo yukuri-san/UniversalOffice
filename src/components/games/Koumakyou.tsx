@@ -3,6 +3,8 @@
 // 原作の素材（画像・音楽・データ）は一切使わず、描画はすべて Canvas の図形、
 // BGM は WebAudio で合成する完全オリジナル曲（ZUN風アレンジの文法で作曲）。
 // 進行は全6面＋EXステージ（原作／New Classic の構成を踏襲したファンメイド再現）。
+// ボス戦前／撃破後には会話シーン（台詞は自作文、ポートレートは自前生成イラストを
+// public/cdn/koumakyou/ から配信）があり、タイトル／選択画面も原作の構成に寄せている。
 //
 // 内部実装は自作エンジン2点に移植済み：
 //  - danmaku-engine（弾プール／レーザー／Emitter／固定60Hzループ）
@@ -223,7 +225,8 @@ function buildBossDef(id: BossId): BossDef {
           setup: (ctx) => {
             phaseState(ctx).a3 = 1.4 // 最初のレーザー斉射までの猶予
             const sp = new SpiralEmitter()
-            sp.arms = 2; sp.angleVel = 0.85; sp.interval = ivOf(ctx, 0.085)
+            // 弾の間隔（速度×間隔）が当たり判定直径を下回ると螺旋の腕が「隙間のない壁」になるため間隔を確保
+            sp.arms = 2; sp.angleVel = 0.85; sp.interval = ivOf(ctx, 0.16)
             sp.bullet = { speed: spdOf(ctx, 88), r: 4.5, color: 5, kind: 'orb' }
             ctx.addEmitter(sp)
             const am = new AimedEmitter()
@@ -268,12 +271,13 @@ function buildBossDef(id: BossId): BossDef {
           name: '闇符「ディマーケイション」', hp: 1240, timeLimit: 55, move: 'sine', moveRange: 105, moveSpeed: 0.61, ...BONUS,
           setup: (ctx) => {
             const sp = new SpiralEmitter()
-            sp.arms = 3; sp.angleVel = 1.5; sp.interval = ivOf(ctx, 0.075)
+            // 腕が固体壁にならないよう、弾の間隔（速度×間隔）＞当たり判定直径を保つ
+            sp.arms = 3; sp.angleVel = 1.5; sp.interval = ivOf(ctx, 0.15)
             sp.bullet = { speed: spdOf(ctx, 96), r: 4.5, color: 7, kind: 'orb' }
             ctx.addEmitter(sp)
             // 逆回転の渦を重ねて「境界（ディマーケイション）」の交差感を出す
             const sp2 = new SpiralEmitter()
-            sp2.arms = 2; sp2.angleVel = -1.5; sp2.angle = 0.7; sp2.interval = ivOf(ctx, 0.11)
+            sp2.arms = 2; sp2.angleVel = -1.5; sp2.angle = 0.7; sp2.interval = ivOf(ctx, 0.17)
             sp2.bullet = { speed: spdOf(ctx, 84), r: 4.5, color: 5, kind: 'orb' }
             ctx.addEmitter(sp2)
             const am = new AimedEmitter()
@@ -346,7 +350,8 @@ function buildBossDef(id: BossId): BossDef {
             s.ang += dt * 1.15
             s.a1 -= dt; s.a2 -= dt
             if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 0.11)
+              // 9方向の腕が固体壁にならないよう発射間隔を広げ、腕の間に抜け道を残す
+              s.a1 = ivOf(ctx, 0.17)
               for (let k = 0; k < 9; k++) {
                 ctx.spawn({
                   x: ctx.bossX(), y: ctx.bossY(), angle: s.ang + (k * Math.PI * 2) / 9,
@@ -400,7 +405,8 @@ function buildBossDef(id: BossId): BossDef {
             s.ang += dt * 1.35
             s.a1 -= dt; s.a2 -= dt
             if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 0.09)
+              // 二重渦の腕が固体壁にならないよう発射間隔を確保
+              s.a1 = ivOf(ctx, 0.15)
               ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang, speed: spdOf(ctx, 92), r: 4.5, color: 0, kind: 'orb' })
               ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: -s.ang + 0.8, speed: spdOf(ctx, 92), r: 4.5, color: 1, kind: 'orb' })
             }
@@ -460,13 +466,15 @@ function buildBossDef(id: BossId): BossDef {
             const s = phaseState(ctx)
             s.a1 -= dt; s.a2 -= dt
             if (s.a1 <= 0) { s.a1 = ivOf(ctx, 1.5); ctx.ring(16, { speed: 100, r: 4, color: 7, kind: 'knife', angle: Math.random() * Math.PI * 2 }) }
-            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 0.7); ctx.aimed(3, 0.12, { speed: 176, r: 4, color: 7, kind: 'knife' }) }
+            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 0.85); ctx.aimed(3, 0.12, { speed: 176, r: 4, color: 7, kind: 'knife' }) }
           },
         },
         {
           name: '時符「ルナクロック」', hp: 1450, timeLimit: 60, move: 'sine', moveRange: 85, moveSpeed: 0.56, ...BONUS,
           template: 'timestop',
-          params: { interval: 0.42, count: 12, speed: 122, travel: 0.6, freeze: 1.05, resumeSpeed: 140, color: 5 },
+          // 波の間隔が短すぎると凍結ナイフが同心円の壁になり、再加速も絶え間なく追尾して
+          // 抜け道が消えるため、原作のリズム（溜めて→止めて→一斉再加速）に寄せて間隔を空ける
+          params: { interval: 1.5, count: 14, speed: 122, travel: 0.6, freeze: 1.2, resumeSpeed: 128, color: 5 },
           update: (ctx, dt) => {
             const s = phaseState(ctx)
             s.a2 -= dt
@@ -507,11 +515,27 @@ function buildBossDef(id: BossId): BossDef {
         },
         {
           name: '夜符「スカーレットミスト」', hp: 1400, timeLimit: 60, move: 'sine', moveRange: 130, moveSpeed: 0.67, ...BONUS,
-          template: 'mist',
-          params: { interval: 0.09, count: 2, speed: 55, grow: 6, maxR: 15, color: 0, aimedInterval: 99, aimedSpeed: 128 },
+          // 霧弾はテンプレート（減衰で失速し画面に滞留）だと膨らんだ泡が幕になって
+          // 隙間が消えるため、自前実装にする：常に下へ流れ続ける扇状の霧＋帯の休止で
+          // 「常時どこかに抜け道がある」状態を保つ
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.a2 -= dt
+            s.a1 -= dt; s.a2 -= dt
+            if (s.a1 <= 0) {
+              s.a1 = ivOf(ctx, 0.34)
+              s.a3 += 1
+              if (s.a3 % 4 !== 0) { // 4回に1回は休止し、霧の帯の間に横の抜け道を作る
+                const bx = ctx.bossX(), by = ctx.bossY() + 6
+                for (let i = 0; i < 5; i++) {
+                  const off = (i - 2) * 0.42 + (Math.random() - 0.5) * 0.14
+                  ctx.spawn({
+                    x: bx + (Math.random() - 0.5) * 26, y: by,
+                    angle: DOWN + off, speed: spdOf(ctx, 56 + Math.random() * 18),
+                    r: 6, color: 0, kind: 'bubble', grow: 3.2, maxR: 11, ay: 10,
+                  })
+                }
+              }
+            }
             if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.9); ctx.aimed(5, 0.16, { speed: 128, r: 4, color: 0 }) }
           },
         },
@@ -522,7 +546,7 @@ function buildBossDef(id: BossId): BossDef {
             s.ang += dt * 1.2
             s.a1 -= dt; s.a2 -= dt; s.a3 -= dt
             if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 0.42)
+              s.a1 = ivOf(ctx, 0.5)
               for (let i = -1; i <= 1; i++) {
                 ctx.spawn({
                   x: ctx.bossX(), y: ctx.bossY() + 4, angle: DOWN + i * 0.5,
@@ -531,22 +555,24 @@ function buildBossDef(id: BossId): BossDef {
               }
             }
             if (s.a2 <= 0) {
-              s.a2 = ivOf(ctx, 0.15)
+              // 二方向渦の弾間隔（88×0.15≒13px）が当たり判定直径とほぼ同じで腕が壁化していたため、
+              // 間隔を広げて腕を横切れる抜け道を作る
+              s.a2 = ivOf(ctx, 0.24)
               ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang, speed: spdOf(ctx, 88), r: 4.5, color: 6, kind: 'orb' })
               ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang + Math.PI, speed: spdOf(ctx, 88), r: 4.5, color: 6, kind: 'orb' })
             }
             if (s.a3 <= 0) {
-              s.a3 = ivOf(ctx, 2.4)
+              s.a3 = ivOf(ctx, 2.7)
               // 蝙蝠の群れが自機へ突進する（吸血鬼幻想の核：蝙蝠化と突進）
               const bx = ctx.bossX(), by = ctx.bossY()
               const base = Math.atan2(ctx.player.y - by, ctx.player.x - bx)
               const perp = base + Math.PI / 2
-              for (let i = 0; i < 7; i++) {
-                const off = (i - 3) * 14
+              for (let i = 0; i < 6; i++) {
+                const off = (i - 2.5) * 15
                 ctx.spawn({
                   x: bx + Math.cos(perp) * off, y: by + Math.sin(perp) * off,
-                  angle: base + (i - 3) * 0.06, speed: spdOf(ctx, 148),
-                  r: 4.5, color: 6, kind: 'ellipse', curve: (i % 2 === 0 ? 1 : -1) * 0.55,
+                  angle: base + (i - 2.5) * 0.06, speed: spdOf(ctx, 148),
+                  r: 4.5, color: 6, kind: 'ellipse', curve: (i % 2 === 0 ? 1 : -1) * 0.45,
                 })
               }
             }
@@ -565,7 +591,8 @@ function buildBossDef(id: BossId): BossDef {
             s.a1 -= dt; s.a2 -= dt
             if (s.a1 <= 0) { s.a1 = ivOf(ctx, 0.5); ctx.aimed(3, 0.18, { speed: 126, r: 4.5, color: 0 }) }
             if (s.a2 <= 0) {
-              s.a2 = ivOf(ctx, 0.12)
+              // 渦の弾間隔が当たり判定直径未満で腕が壁化していたため間隔を確保
+              s.a2 = ivOf(ctx, 0.17)
               ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang, speed: spdOf(ctx, 86), r: 4.5, color: 6, kind: 'orb' })
               ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang + Math.PI, speed: spdOf(ctx, 86), r: 4.5, color: 0, kind: 'orb' })
             }
@@ -889,6 +916,382 @@ const BOSS_META: Record<BossId, { name: string; epithet: string }> = {
   flandre: { name: 'フランドール・スカーレット', epithet: '悪魔の妹' },
 }
 
+// ===== 会話シーン（ボス戦前／撃破後） =====
+// 台詞は原作の書き起こしではなく、キャラの口調と場面構成（遭遇→掛け合い→戦闘開始）に
+// 寄せた自作文。自機（霊夢／魔理沙）で分岐し、ボス側の応答も自機に合わせて変えている。
+// w: 'p' = 自機, 'b' = ボス
+type DLine = { w: 'p' | 'b'; t: string }
+type DlgScript = { pre: DLine[]; post: DLine[] }
+const dl = (w: 'p' | 'b', t: string): DLine => ({ w, t })
+const DIALOGUES: Record<BossId, Record<CharaId, DlgScript>> = {
+  rumia: {
+    reimu: {
+      pre: [
+        dl('b', 'わー、真っ暗。……あれ、人間？'),
+        dl('p', 'こんな霧の中で、よく平気で飛んでられるわね。'),
+        dl('b', '私は暗い方が好きだもん。そっちこそ、霧で何も見えないのに大丈夫？'),
+        dl('p', '大丈夫じゃないから来たの。この紅い霧、幻想郷中を覆ってるのよ。'),
+        dl('b', 'ふーん。で、私が怪しいって？'),
+        dl('p', '暗闇を操る妖怪が霧の中をうろうろしてたら、そりゃ疑うわ。'),
+        dl('b', 'ひどいなー。私はお散歩してただけだよ？ あと、お腹が空いたから獲物を探してただけ。'),
+        dl('p', '……その獲物って、まさか私じゃないでしょうね。'),
+        dl('b', 'えへへ、人間っておいしいの？'),
+        dl('p', '食べたら祟るわよ。ほら、さっさとどきなさい。先を急ぐの。'),
+        dl('b', 'やだ。せっかく目の前にご飯……じゃなくて、お客さんが来たんだもん。'),
+        dl('p', '話が通じないわね。なら、実力でどいてもらうわ。'),
+        dl('b', 'わーい、遊んでくれるんだ！ じゃあ私も本気出しちゃおうかなー。'),
+        dl('p', '遊びじゃないって言ってるのに……。もう、行くわよ！'),
+      ],
+      post: [
+        dl('b', 'あいたたた……もうお腹いっぱい。弾幕でお腹いっぱいになるとは思わなかったよ。'),
+        dl('p', 'だから言ったじゃない。私は食べ物じゃないの。'),
+        dl('b', 'ねえねえ、霧の出どころなら、あっちの湖の向こうだよ。大きなお屋敷があるの。'),
+        dl('p', '最初からそう言えば、こんなことにならなかったのに。'),
+        dl('b', 'だって、その方が楽しいじゃない。……あ、でも私はもう寝る。おやすみー。'),
+        dl('p', 'まったく、調子のいい妖怪ね。……湖の向こう、か。'),
+      ],
+    },
+    marisa: {
+      pre: [
+        dl('b', 'あれー？ 人間がこんな所に来るなんて珍しいね。'),
+        dl('p', 'お、暗闇の妖怪か。ちょうどいい、この霧について聞きたいことがあるんだぜ。'),
+        dl('b', '霧？ 知らないなー。私はただ、お腹が空いて飛んでただけだよ。'),
+        dl('p', 'へえ。じゃあ、その「お腹が空いた」ってのは、私を見て言ってるのか？'),
+        dl('b', 'えへへ、ばれた？ 人間って、食べると元気になるんでしょ？'),
+        dl('p', '残念だが、私は硬くてまずいぜ。それより、霧の出どころを知らないか？'),
+        dl('b', '知ってても、タダじゃ教えないもん。遊んでくれたら考えてあげる。'),
+        dl('p', 'ほう、弾幕で遊ぼうってのか。いいぜ、望むところだ。'),
+        dl('b', 'わーい！ じゃあ、暗くしてあげるね。何も見えなくなっちゃえー。'),
+        dl('p', '私の魔法は光るからな。暗闇なんて関係ないぜ。'),
+        dl('b', 'へえ、面白そう。じゃあ本気でいっちゃおうかな。'),
+        dl('p', '来いよ。霧の手がかり、勝って聞き出すぜ！'),
+      ],
+      post: [
+        dl('b', 'うぅ……目が回るー。光る弾幕、眩しすぎだよー。'),
+        dl('p', '暗闇が得意な奴に、光は天敵だな。で、霧の出どころは？'),
+        dl('b', '湖の向こうのお屋敷だよ。あそこから霧が出てるの、私も見たもん。'),
+        dl('p', '最初から素直に言えば痛い目を見ずに済んだのにな。'),
+        dl('b', 'でも、楽しかったからいいの。私は寝るね、おやすみー。'),
+        dl('p', '寝るのかよ……。まあいい、湖の向こうだな。急ぐぜ。'),
+      ],
+    },
+  },
+  cirno: {
+    reimu: {
+      pre: [
+        dl('b', 'あたいの湖にようこそ！ ……って、あんた誰？'),
+        dl('p', '紅い霧の出どころを探してるの。湖の向こうの館が怪しいと思ってね。'),
+        dl('b', 'ふーん。でも、ここはあたいの縄張りだよ。通過料、払っていきな！'),
+        dl('p', '通過料？ 生憎と、お賽銭以外は持ち歩かない主義なの。'),
+        dl('b', 'じゃあ、力ずくで通るって？ あたい、最強なんだからね！'),
+        dl('p', '最強ねぇ。氷の妖精が、この程度の霧ごときに勝てるのかしら。'),
+        dl('b', '霧なんて、あたいが凍らせてやるもん！ ついでにあんたもカチコチだよ！'),
+        dl('p', 'あら怖い。でも、溶けたらどうするの？ 夏は暑いわよ。'),
+        dl('b', 'うっ……そ、それでもあたいは最強なの！ 文句があるなら掛かってきな！'),
+        dl('p', 'はいはい。じゃあ、その自信が本物か試してあげる。'),
+        dl('b', 'やってやるー！ あたいの本気、見てなさい！'),
+        dl('p', 'ほどほどにね。凍傷にはなりたくないから。'),
+      ],
+      post: [
+        dl('b', 'うぅ……あたいが負けるなんて……。でも次は勝つもん！'),
+        dl('p', 'はいはい、その意気やよし。ほら、通してくれる？'),
+        dl('b', '約束だからね。あ、でも館の奴ら、あたいより強いよ？ 知らないからね！'),
+        dl('p', '忠告ありがとう。あんたは湖で大人しくしてなさい。'),
+        dl('b', 'むー……あたい、特訓する！ 待ってなさいよー！'),
+        dl('p', 'ふふ、元気なのはいいことね。さて、館はもうすぐそこか。'),
+      ],
+    },
+    marisa: {
+      pre: [
+        dl('b', '止まれー！ ここから先は、あたいの湖だよ！'),
+        dl('p', 'おお、氷の妖精じゃないか。元気そうだな、チルノ。'),
+        dl('b', '知ってるの？ ……まあ、あたい有名だからね！ で、何しに来たの？'),
+        dl('p', '紅い霧の出どころを探してる。湖の向こうの館だと思うんだが。'),
+        dl('b', 'ふーん。でもね、タダでは通さないよ。あたいと勝負しな！'),
+        dl('p', '勝負ね。負けたら素直に通してくれるのか？'),
+        dl('b', 'あたいが負けるわけないもん！ あたい最強だし！'),
+        dl('p', 'その自信、嫌いじゃないぜ。だが最強は一人だけだと思うんだよな。'),
+        dl('b', 'なに言ってるの、あたいが最強に決まってるでしょ！'),
+        dl('p', 'じゃあ決着をつけようぜ。最強の称号は、勝った方のものだ。'),
+        dl('b', 'やってやる！ 凍てつくあたいの力、思い知りなさい！'),
+        dl('p', '望むところだぜ。いくぞ、チルノ！'),
+      ],
+      post: [
+        dl('b', 'ひどーい……あたいの氷、ぜんぶ溶けちゃった……。'),
+        dl('p', '悪いな。火力ならこっちが上だったみたいだぜ。'),
+        dl('b', '約束だから通してあげる。でも、館の連中はあたいより強いよ！'),
+        dl('p', 'そうか、忠告感謝するぜ。……って、おい、もう立ち直ったのか？'),
+        dl('b', 'あたいは最強だからね！ 次に会うときは負けないんだから！'),
+        dl('p', 'はは、その調子だ。じゃあな、チルノ。館に行ってくるぜ。'),
+      ],
+    },
+  },
+  meiling: {
+    reimu: {
+      pre: [
+        dl('b', 'はい止まって！ ここは紅魔館の門。関係者以外は通れません！'),
+        dl('p', 'やっぱりこの館が霧の出どころなのね。通してもらうわよ。'),
+        dl('b', 'だめです！ 門番として、それは聞けません。……むにゃ。'),
+        dl('p', 'ちょっと、今うとうとしてたでしょう。'),
+        dl('b', 'し、してません！ 私は紅美鈴、眠らない門番です！'),
+        dl('p', '目が泳いでるわよ。……まあいいわ、寝てる間に通らせてもらうから。'),
+        dl('b', 'それは困ります！ お嬢様に怒られちゃう……いえ、門番の誇りにかけて！'),
+        dl('p', '誇りねぇ。居眠り門番の誇りって、いくらするのかしら。'),
+        dl('b', 'うぅ、言い返せない……。でも、通すわけにはいかないんです！'),
+        dl('p', 'なら仕方ないわね。実力で通らせてもらうわ。'),
+        dl('b', '華符の腕前、侮らないでくださいね。いきますよ！'),
+        dl('p', 'ええ、受けて立つわ。手加減はしないから。'),
+      ],
+      post: [
+        dl('b', 'あいたた……やっぱり強いですね、巫女さん。'),
+        dl('p', 'あんたも、寝起きの割にはやるじゃない。さ、通してくれる？'),
+        dl('b', '約束ですから……。でも、中の皆さんはもっと手強いですよ。'),
+        dl('p', '分かってるわ。ところで、館の主はどんな奴なの？'),
+        dl('b', 'お嬢様は、気まぐれで、強くて、ちょっと退屈してる……そんな方です。'),
+        dl('p', '退屈しのぎに異変を起こすタイプか。面倒な相手ね。'),
+        dl('b', 'はは……頑張ってください。私は少し、休憩します……むにゃ。'),
+        dl('p', '結局寝るんかい。……まあ、ゆっくり休みなさい。'),
+      ],
+    },
+    marisa: {
+      pre: [
+        dl('b', 'こらー！ そこの黒いの、止まりなさい！ ここは紅魔館です！'),
+        dl('p', 'お、門番か。悪いな、私はこの館に用があるんだ。通してくれ。'),
+        dl('b', '用って、まさか霧のことですか？ それなら尚更通せません！'),
+        dl('p', 'やっぱりこの館が出どころか。答えてくれてありがとうな。'),
+        dl('b', 'あっ、しまった……。い、いえ！ 何も言ってません！'),
+        dl('p', '遅いぜ。さて、どうやって通ろうかな。力ずくが早そうだな。'),
+        dl('b', '門番を舐めないでください！ 私だって、起きてるときは強いんです！'),
+        dl('p', '起きてるときは、か。今はどうなんだ？'),
+        dl('b', '今は……絶好調です！ たぶん！ ほら、構えてください！'),
+        dl('p', 'はは、面白い奴だな。じゃあ遠慮なく行くぜ！'),
+        dl('b', '受けて立ちます！ 紅魔館の門は、私が守る！'),
+        dl('p', 'その意気だ。門番の力、見せてもらうぜ。'),
+      ],
+      post: [
+        dl('b', 'うぅ……負けちゃいました。門番失格ですね……。'),
+        dl('p', 'なに、いい戦いだったぜ。ほら、約束通り通してくれよな。'),
+        dl('b', 'はい……。でも館の中は迷路みたいですから、気をつけて。'),
+        dl('p', '迷路か。まあ、まっすぐ進めば何とかなるだろ。'),
+        dl('b', 'あと、図書館には近づきすぎない方が……あ、もう行っちゃった。'),
+        dl('p', '忠告は聞いたぜ。じゃあな、美鈴。いい夢見ろよ。'),
+      ],
+    },
+  },
+  patchouli: {
+    reimu: {
+      pre: [
+        dl('b', '……図書館に何の用？ 本を借りるなら、まず手続きをして。'),
+        dl('p', '生憎、読書に来たんじゃないの。この館から出てる紅い霧について聞きたいの。'),
+        dl('b', '霧なら、レミィの仕業よ。日差しが嫌で、館ごと覆ってるの。'),
+        dl('p', 'あっさり教えてくれるのね。じゃあ、そのレミィとやらに会わせて。'),
+        dl('b', 'だめ。彼女、今は機嫌がいいの。邪魔したら、私が怒られる。'),
+        dl('p', '怒られるのが嫌なら、霧を止めるよう言ってくれればいいのに。'),
+        dl('b', '言っても聞かないわよ、あの子は。……だから、あなたをここで止める。'),
+        dl('p', '本の虫が、腕まくりして出てくるなんてね。珍しいこともあるものだわ。'),
+        dl('b', '私だって魔法使い。知識は力よ。……げほっ。'),
+        dl('p', '体調が悪そうね。無理しない方がいいんじゃない？'),
+        dl('b', 'これくらい、いつものこと。……さあ、図書館で暴れるなら、相応の覚悟をして。'),
+        dl('p', 'ええ。でも、本は傷つけないよう気をつけるわ。'),
+        dl('b', 'それは助かる。……じゃあ、始めるわよ。'),
+        dl('p', '行くわ、パチュリー。'),
+      ],
+      post: [
+        dl('b', 'げほっ、げほっ……負けたわ。あなたの弾幕、予想以上ね。'),
+        dl('p', 'だから言ったのに。ほら、水でも飲んで休みなさい。'),
+        dl('b', 'ありがとう。……レミィは最上階よ。咲夜が途中で止めるでしょうけど。'),
+        dl('p', '咲夜？ あのメイドね。……分かった、ありがとう。'),
+        dl('b', '礼には及ばないわ。ただ、あの子をあまり困らせないで。退屈してるだけなんだから。'),
+        dl('p', '退屈しのぎに付き合わされるこっちの身にもなってほしいわね。'),
+      ],
+    },
+    marisa: {
+      pre: [
+        dl('b', '……あら、珍しいお客さん。でも、図書館は静かにが鉄則よ。'),
+        dl('p', 'おう、魔理沙だ。本を借りに来た……と言いたいところだが、今日は霧の件だ。'),
+        dl('b', '霧はレミィの仕業。……それより、あなた、前に本を持ち出そうとしたでしょう。'),
+        dl('p', '人聞きの悪い。死ぬまで借りてるだけだぜ。'),
+        dl('b', 'それを世間では窃盗と言うの。……まあ、今日は霧の用件だけ？'),
+        dl('p', 'ああ。館の主に会いたい。霧を止めさせないと、幻想郷中が困るんだ。'),
+        dl('b', '会わせるわけにはいかないわ。彼女の退屈しのぎに付き合うのは、私の役目でもあるの。'),
+        dl('p', 'へえ、友達思いじゃないか。じゃあ、あんたを倒して進むしかないな。'),
+        dl('b', '魔法使い同士、話が早くて助かるわ。……げほっ、げほっ。'),
+        dl('p', 'おいおい、その体で大丈夫か？ 手加減した方がいいか？'),
+        dl('b', '余計なお世話。知識の差を見せてあげるわ。'),
+        dl('p', 'いいぜ。私の火力と、あんたの知識、どっちが上か決めよう！'),
+      ],
+      post: [
+        dl('b', '……負けたわ。火力一点突破に弱いのは、課題ね。げほっ。'),
+        dl('p', 'はは、悪かったな。でも、あんたの魔法も多彩で面白かったぜ。'),
+        dl('b', 'お世辞でも嬉しいわ。……レミィは最上階。咲夜が案内……はしないでしょうね。'),
+        dl('p', '咲夜ってメイドか。また戦うことになりそうだな。'),
+        dl('b', 'ええ、彼女は強いわよ。……あと、私の本、勝手に持っていかないでね。'),
+        dl('p', 'へいへい。……1冊くらい、いいだろ？'),
+        dl('b', 'だめ。'),
+        dl('p', 'ちっ、バレたか。じゃあ行くぜ、パチュリー。お大事にな。'),
+      ],
+    },
+  },
+  sakuya: {
+    reimu: {
+      pre: [
+        dl('b', 'お嬢様の館へようこそ。……申し訳ありませんが、ここから先はお通しできません。'),
+        dl('p', '丁寧な門前払いね。でも、霧を止めてもらわないと帰れないの。'),
+        dl('b', '霧はお嬢様のお望みです。メイドの私が、それを覆すことはできません。'),
+        dl('p', '主思いのいいメイドね。でも、幻想郷中が迷惑してるのよ。'),
+        dl('b', '存じております。……ですが、お嬢様の退屈こそ、私たちにとって一番の問題でして。'),
+        dl('p', '退屈しのぎに異変を起こす主と、それに付き合う従者。困った館ね。'),
+        dl('b', 'お言葉ですが、お嬢様を侮辱することは許しません。'),
+        dl('p', 'あら、怖い顔。じゃあ、力ずくで通るしかないわね。'),
+        dl('b', 'ええ、その覚悟があるのなら。……時間を止めるまでもなく、片付けます。'),
+        dl('p', '時間を止める？ へえ、面白い能力を持ってるのね。'),
+        dl('b', 'すぐに分かりますわ。さあ、紅魔館のメイドの作法、ご覧に入れましょう。'),
+        dl('p', '望むところよ。行くわ、咲夜！'),
+      ],
+      post: [
+        dl('b', '……見事です。私の時間を、ここまでかわし切るとは。'),
+        dl('p', 'ナイフの雨は冷や汗ものだったわ。さ、主のところへ案内して。'),
+        dl('b', 'お約束ですから。……お嬢様、きっと喜ばれますわ。退屈が紛れると。'),
+        dl('p', '喜ばれるのは複雑ね。でも、決着をつけに行くわ。'),
+        dl('b', 'どうか、お手柔らかに。……いえ、あの方には不要な心配でしたね。'),
+        dl('p', 'ふふ、いいメイドね、あんた。じゃあ行ってくるわ。'),
+      ],
+    },
+    marisa: {
+      pre: [
+        dl('b', 'あら、お客様。……ですが、生憎と今日は面会謝絶です。'),
+        dl('p', '面会謝絶か。生憎と、こっちは押しかける気満々だぜ。'),
+        dl('b', '霧の件ですね。お嬢様のお望みですので、止めるわけにはいきません。'),
+        dl('p', '主の命令は絶対ってか。あんた、時間を操るんだってな。'),
+        dl('b', 'どこでお聞きに？ ……ええ、多少は。お帰り頂くには十分な程度に。'),
+        dl('p', 'へえ、時間を止めて追い返す気か。面白いじゃないか。'),
+        dl('b', '面白い、で済めばよいのですが。ナイフも少々、添えさせて頂きます。'),
+        dl('p', 'ナイフ投げメイドか。物騒でいいな、嫌いじゃないぜ。'),
+        dl('b', '光栄です。では、紅魔館の流儀でおもてなしを。'),
+        dl('p', '望むところだ。時間停止とやら、破ってみせるぜ！'),
+        dl('b', 'ふふ、意気込みは買います。……いらっしゃい、霧雨魔理沙。'),
+        dl('p', 'おう、行くぜ咲夜！ 全力で来い！'),
+      ],
+      post: [
+        dl('b', '……お見事。止めた時間の中を、ここまで動かれるとは思いませんでした。'),
+        dl('p', 'はは、速さなら負けないぜ。いい勝負だったな、咲夜。'),
+        dl('b', 'ありがとうございます。……お嬢様は最上階でお待ちですわ。'),
+        dl('p', '待ちか。退屈してるって話だし、歓迎されそうだな。'),
+        dl('b', 'ええ、とても。どうか、よい「お茶会」を。'),
+        dl('p', 'お茶会、ね。弾幕の、だけどな。行ってくるぜ。'),
+      ],
+    },
+  },
+  remilia: {
+    reimu: {
+      pre: [
+        dl('b', 'ようこそ紅魔館へ。……あら、人間の巫女？ 珍しいお客さんね。'),
+        dl('p', 'あんたがこの館の主ね。紅い霧、今すぐ止めてもらうわよ。'),
+        dl('b', 'いきなりね。自己紹介もなし？ 私はレミリア・スカーレット。500年を生きる吸血鬼よ。'),
+        dl('p', '博麗霊夢。幻想郷の巫女よ。で、霧の理由を聞かせて。'),
+        dl('b', '理由は簡単。日差しが眩しいの。だから霧で空を覆ったのよ。'),
+        dl('p', '……それだけ？ そのせいで幻想郷中が迷惑してるのよ。'),
+        dl('b', '迷惑？ 私は快適よ。吸血鬼の都合も考えてほしいわ。'),
+        dl('p', '自分勝手にも程があるわね。力ずくでも止めてもらうわ。'),
+        dl('b', 'あら、怖い。でも退屈していたところなの。少しは楽しませてくれる？'),
+        dl('p', '楽しませる気はないけど、後悔はさせてあげる。'),
+        dl('b', 'ふふ、強気な人間は嫌いじゃないわ。運命は、私の味方をするの。'),
+        dl('p', '運命ね。あんたの運命、今から書き換えてあげるわ。'),
+        dl('b', 'いいわ、来なさい霊夢。紅い月夜の舞踏会、開演よ！'),
+        dl('p', '行くわよ、レミリア！'),
+      ],
+      post: [
+        dl('b', 'あらあら……負けちゃった。でも、楽しかったわ。'),
+        dl('p', '楽しかった、じゃないの。約束通り、霧は止めてよね。'),
+        dl('b', 'ええ、約束は約束。……でも、時々は遊びに来てくれてもいいのよ？'),
+        dl('p', '異変を起こさないなら、考えてあげる。'),
+        dl('b', 'ふふ、厳しい巫女さんね。……咲夜、お茶の用意をして。この人にも振る舞ってあげて。'),
+        dl('p', 'あら、気が利くじゃない。じゃあ、一杯だけ頂こうかしら。'),
+      ],
+    },
+    marisa: {
+      pre: [
+        dl('b', 'あら、また人間？ 今日はお客さんが多い日ね。'),
+        dl('p', '霧雨魔理沙だ。単刀直入に言うぜ、あの紅い霧を止めてくれ。'),
+        dl('b', '止める？ 眩しい日差しを遮る、素敵な霧でしょう？ 私は気に入ってるわ。'),
+        dl('p', 'あんたの快適のために、みんなが困ってるんだぜ。'),
+        dl('b', 'みんな、ね。私、レミリア・スカーレットの前では、みんなも何もないわ。'),
+        dl('p', '500年物の吸血鬼様は言うことが違うな。だが、聞き分けのない奴にはこれだ。'),
+        dl('b', '弾幕で説得する気？ 野蛮ね。……でも、退屈していたのは本当よ。'),
+        dl('p', '退屈ならちょうどいい。私が相手をしてやるぜ、全力でな。'),
+        dl('b', 'ふふ、人間の分際で。運命の糸は、私が握っているのよ。'),
+        dl('p', '運命ね。その糸、力ずくでちぎってやるぜ。'),
+        dl('b', '面白いわ。来なさい、魔理沙。紅い夜に溺れさせてあげる。'),
+        dl('p', '望むところだ！ いくぜ、レミリア！'),
+      ],
+      post: [
+        dl('b', 'まさか、人間に負けるなんて……。でも、悪くない気分だわ。'),
+        dl('p', 'どうだ、退屈は紛れたか？ 約束通り、霧は止めてくれよな。'),
+        dl('b', 'ええ、止めるわ。吸血鬼は約束を守るものよ。……たぶん。'),
+        dl('p', 'たぶん、は不安なんだが。まあ、また出したら懲らしめに来るぜ。'),
+        dl('b', 'ふふ、それも悪くないわね。咲夜、お茶を。お客さんをもてなして。'),
+        dl('p', 'お、気が利くな。一杯もらっていくぜ。'),
+      ],
+    },
+  },
+  flandre: {
+    reimu: {
+      pre: [
+        dl('b', 'あら、お姉様じゃない人間が来た。ねえ、あなたは誰？'),
+        dl('p', '博麗霊夢よ。あんたが、この地下室にいた吸血鬼の妹ね。'),
+        dl('b', 'そう、フランドール。495年、ずっとここにいたの。ねえ、遊んでくれる？'),
+        dl('p', '遊びね……。あんたの「遊び」は、物騒だと聞いてるけど。'),
+        dl('b', 'だって、みんなすぐ壊れちゃうんだもん。丈夫な人間は久しぶり。'),
+        dl('p', '壊れる前提で話すの、やめてくれない？'),
+        dl('b', 'ねえねえ、あなたはどのくらい丈夫なの？ 試してもいい？'),
+        dl('p', '試すのは勝手だけど、私は壊れる気はないわよ。'),
+        dl('b', 'わーい！ じゃあ、壊れるまで遊ぼうね。たくさん、たくさん！'),
+        dl('p', '……話が通じないのは姉妹そっくりね。仕方ない、相手をするわ。'),
+        dl('b', 'ほんと？ やったぁ！ お姉様より強いといいなぁ。'),
+        dl('p', '期待に応えられるかしらね。行くわよ、フランドール。'),
+      ],
+      post: [
+        dl('b', 'あれ……負けちゃった。でも、壊れなかったね、あなた。'),
+        dl('p', 'ええ、丈夫さだけは自信があるの。あんたこそ、大丈夫？'),
+        dl('b', 'うん、平気。……ねえ、また遊びに来てくれる？'),
+        dl('p', '暴れないって約束できるなら、考えてあげる。'),
+        dl('b', '約束する！ ……たぶん。えへへ。'),
+        dl('p', 'たぶん、か。まあ、今日のところは信じてあげるわ。'),
+      ],
+    },
+    marisa: {
+      pre: [
+        dl('b', 'わ、人間だ。人間がここまで来るなんて、珍しいね。'),
+        dl('p', '霧雨魔理沙だ。あんたがレミリアの妹か。地下室暮らしは長いんだってな。'),
+        dl('b', '495年だよ。ずっと一人。だから、遊び相手には困ってたの。'),
+        dl('p', '遊び、ね。あんたの遊びは、周りが壊れるって噂だぜ。'),
+        dl('b', '壊れるのが悪いんじゃない？ 私はそっと触ってるつもりだよ？'),
+        dl('p', 'そっと、でそれか。……まあ、私は簡単には壊れないぜ。'),
+        dl('b', 'ほんとに？ じゃあ、思いっきり遊んでもいいんだね！'),
+        dl('p', 'ああ、来いよ。ただし、壊れたらあんたの負けだからな。'),
+        dl('b', 'わーい！ 楽しい遊びにしようね。レーヴァテインも連れてくる！'),
+        dl('p', 'おいおい、その剣は反則級だろ……。まあいい、全力で相手するぜ。'),
+        dl('b', 'えへへ、いくよ魔理沙。495年分の退屈、今晴らすんだから！'),
+        dl('p', '望むところだ。行くぜ、フランドール！'),
+      ],
+      post: [
+        dl('b', 'あはは、楽しかった！ あなた、全然壊れないね。'),
+        dl('p', 'はは、丈夫さには自信があるんだ。あんたも相当だったぜ。'),
+        dl('b', 'ねえ、また来てくれる？ 次はもっと、すごい遊びを考えておくから。'),
+        dl('p', '……考えものだな。でも、約束を守れるなら考えてやる。'),
+        dl('b', 'やった！ じゃあ約束。指切りげんまん、だよ。'),
+        dl('p', 'おう。……まったく、姉妹そろって退屈が過ぎるぜ。'),
+      ],
+    },
+  },
+}
+
+// ===== ポートレート画像（自前生成イラスト） =====
+// public/cdn/koumakyou/<id>.webp を自オリジン相対（BASE_URL基準）で参照し、
+// SW の cdn/ キャッシュに乗せる。読み込み失敗時は呼び出し側が図形／文字の
+// フォールバック表示に切り替えるため、画像が無くてもゲームは動作する。
+const portraitUrl = (id: string): string => `${import.meta.env.BASE_URL}cdn/koumakyou/${id}.webp`
+
 // ===== 道中ザコ敵の定義（難易度ごとに射撃間隔・弾速を調整） =====
 function makeEnemyDefs(cfg: { spd: number; den: number }): { down: EnemyDef; side: EnemyDef; big: EnemyDef } {
   const fairyFire = (w: DanmakuWorld, e: { x: number; y: number }) => {
@@ -1024,6 +1427,8 @@ type Bgm = {
   play: (id: TrackId) => void
   stop: () => void
   toggleMute: () => boolean
+  /** ユーザー操作のたびに呼ぶ：AudioContext の生成とサスペンド復帰 */
+  unlock: () => void
 }
 function createBgm(): Bgm {
   let ctx: AudioContext | null = null
@@ -1033,24 +1438,39 @@ function createBgm(): Bgm {
   let cur: TrackId | null = null
   let step = 0
   let nextTime = 0
+  let schedTicks = 0
   let muted = false
   const VOL = 0.15
   const freq = (m: number) => 440 * Math.pow(2, (m - 69) / 12)
 
   function ensure() {
     if (!ctx) {
-      const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
-      ctx = new AC()
-      master = ctx.createGain()
-      master.gain.value = muted ? 0 : VOL
-      const comp = ctx.createDynamicsCompressor()
-      comp.threshold.value = -18; comp.ratio.value = 6
-      master.connect(comp); comp.connect(ctx.destination)
-      noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate)
-      const d = noiseBuf.getChannelData(0)
-      for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+      try {
+        const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        ctx = new AC()
+        master = ctx.createGain()
+        master.gain.value = muted ? 0 : VOL
+        const comp = ctx.createDynamicsCompressor()
+        comp.threshold.value = -18; comp.ratio.value = 6
+        master.connect(comp); comp.connect(ctx.destination)
+        noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate)
+        const d = noiseBuf.getChannelData(0)
+        for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1
+      } catch {
+        // 音声が使えない環境でもゲーム本体の処理は止めない
+        ctx = null
+        master = null
+        noiseBuf = null
+      }
     }
-    if (ctx.state === 'suspended') void ctx.resume()
+    // Android Chrome ではユーザー操作なしに作られた／止められた Context が
+    // suspended のまま固まることがあるため、呼ばれるたびに復帰を試みる
+    if (ctx && (ctx.state === 'suspended' || (ctx.state as string) === 'interrupted')) {
+      void ctx.resume()
+    }
+  }
+  function unlock() {
+    ensure()
   }
   function leadNote(m: number, t: number, dur: number, cut: number) {
     if (!ctx || !master) return
@@ -1133,6 +1553,13 @@ function createBgm(): Bgm {
   }
   function sched() {
     if (!ctx || !cur) return
+    // サスペンド中は現在時刻が進まないので何も予約せず、約1秒ごとに復帰を試みる
+    // （Android Chrome のオーディオフォーカス喪失などからの回復用）
+    if (ctx.state !== 'running') {
+      schedTicks++
+      if (schedTicks % 40 === 0) void ctx.resume()
+      return
+    }
     const tr = TRACKS[cur]
     const spb = 60 / tr.bpm / 4
     // タブが裏に回ってタイマーが間引かれた場合は過去分を捨てて再同期する
@@ -1168,7 +1595,7 @@ function createBgm(): Bgm {
     if (ctx && master) master.gain.linearRampToValueAtTime(muted ? 0 : VOL, ctx.currentTime + 0.05)
     return muted
   }
-  return { play, stop, toggleMute }
+  return { play, stop, toggleMute, unlock }
 }
 
 
@@ -1273,12 +1700,25 @@ export default function Koumakyou() {
   const [chara, setChara] = useState<CharaId>('reimu')
   const [diff, setDiff] = useState<DiffId>('normal')
   const [challenge, setChallenge] = useState(false)
-  const [exUnlocked, setExUnlocked] = useState<boolean>(() => {
-    try { return localStorage.getItem(EX_KEY) === '1' } catch { return false }
-  })
   const [mutedUi, setMutedUi] = useState(false)
   const selRef = useRef({ chara, diff, challenge })
   selRef.current = { chara, diff, challenge }
+  // ===== 会話シーンの橋渡し（ゲームループ ⇔ React UI） =====
+  // active の間、ゲームループは停止する。done は会話終了時の接続先（戦闘開始／次ステージ）。
+  const dlgRef = useRef<{ active: boolean; done: (() => void) | null }>({ active: false, done: null })
+  const [dlgUi, setDlgUi] = useState<{ boss: BossId; lines: DLine[]; idx: number } | null>(null)
+  // ===== タイトル画面のステップ（原作のメニュー構成に寄せた多段選択） =====
+  const [titleStep, setTitleStep] = useState<'menu' | 'chara' | 'diff' | 'records' | 'help'>('menu')
+  const [pendingRun, setPendingRun] = useState<'story' | 'extra'>('story')
+  // ポートレート画像の読み込み失敗を記録し、フォールバック表示に切り替える
+  const [imgErr, setImgErr] = useState<ReadonlySet<string>>(new Set())
+  const markImgErr = (id: string) =>
+    setImgErr((prev) => {
+      if (prev.has(id)) return prev
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
   const bgmRef = useRef<Bgm | null>(null)
   const getBgm = (): Bgm => {
     if (!bgmRef.current) bgmRef.current = createBgm()
@@ -1336,6 +1776,7 @@ export default function Koumakyou() {
     }
     let enter: EnterState | null = null
     let exitFx: ExitState | null = null
+    let bossDlgDone = false // このボスの戦前会話を既に挟んだか
 
     // ===== パーティクル =====
     function burst(x: number, y: number, n: number, c: string, spd = 120) {
@@ -1420,8 +1861,8 @@ export default function Koumakyou() {
       if (clear) {
         const lastStage = G.stageList[G.stageList.length - 1]
         if (lastStage === 5 && G.diff !== 'easy' && !G.challenge) {
+          // EX解放の記録（表示ゲートには使わない。EXTRAは常時挑戦可能）
           try { localStorage.setItem(EX_KEY, '1') } catch { /* ignore */ }
-          setExUnlocked(true)
         }
         if (lastStage === 6) { setEndTitle('EXTRA CLEAR!'); setEndSub('悪魔の妹を退治した！') } else if (G.diff === 'easy') {
           setEndTitle('EASY CLEAR!'); setEndSub('STAGE 5までクリア。Normal以上で全6面とEXに挑戦しよう')
@@ -1502,17 +1943,28 @@ export default function Koumakyou() {
       G.bossId = sd.boss
       G.phase = 'boss'
       G.phaseT = 0
+      bossDlgDone = false
       const meta = BOSS_META[sd.boss]
       G.msg = `${meta.epithet} ${meta.name}`
       G.msgT = 2.5
-      bgmPlay(G.stageIdx === 6 ? 'exboss' : 'boss')
+      // BGMは会話を挟んで戦闘開始時（launchBoss）に切り替える
       // 入場演出：画面外から飛来してから戦闘開始
       enter = { t: 1.05, max: 1.05, fig: BOSS_FIGURES[sd.boss], homeY: 88, kind: 'boss' }
     }
     function launchBoss() {
       const sd = STAGES[G.stageIdx]
+      bgmPlay(G.stageIdx === 6 ? 'exboss' : 'boss')
       bossCtl.start(makeBossDef(sd.boss), world, playerRef, FW / 2, 88)
       burst(FW / 2, 88, 16, '#ffcdd2', 90)
+    }
+
+    // ===== 会話シーンの開始（ゲームループを止め、終了時に done へ接続） =====
+    function openDialogue(boss: BossId, kind: 'pre' | 'post', done: () => void) {
+      const script = DIALOGUES[boss][G.chara]
+      const lines = kind === 'pre' ? script.pre : script.post
+      if (lines.length === 0) { done(); return }
+      dlgRef.current = { active: true, done }
+      setDlgUi({ boss, lines, idx: 0 })
     }
 
     // ===== ボス／中ボスのフェイズ終了処理 =====
@@ -1556,7 +2008,8 @@ export default function Koumakyou() {
     }
     bossCtl.onDefeat = () => {
       if (ctlIsMid) return // 中ボスの後処理は onPhaseEnd で完了している
-      const fig = G.bossId ? BOSS_FIGURES[G.bossId] : null
+      const bid = G.bossId
+      const fig = bid ? BOSS_FIGURES[bid] : null
       const bx = bossCtl.x, by = bossCtl.y
       G.bossId = null
       state.addScore(100000)
@@ -1564,9 +2017,12 @@ export default function Koumakyou() {
         if (G.stagePos + 1 < G.stageList.length) startStage(G.stagePos + 1)
         else finish(true)
       }
-      // 退場演出（爆発＋フェード上昇）を挟んでから次へ進む
+      // 退場演出（爆発＋フェード上昇）→ 撃破後会話 → 次ステージ／クリア の順に進む
       if (fig) {
-        exitFx = { t: 1.15, max: 1.15, fig, x: bx, y: by, burstT: 0, action: proceed }
+        exitFx = {
+          t: 1.15, max: 1.15, fig, x: bx, y: by, burstT: 0,
+          action: bid ? () => openDialogue(bid, 'post', proceed) : proceed,
+        }
       } else {
         proceed()
       }
@@ -1583,11 +2039,18 @@ export default function Koumakyou() {
       if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault()
       keys.add(k)
       if (k === 'm') setMutedUi(getBgmFromEffect().toggleMute())
-      if (running && k === 'x') tryBomb()
+      if (running && k === 'x' && !dlgRef.current.active) tryBomb()
     }
     const onKeyUp = (e: KeyboardEvent) => keys.delete(e.key.toLowerCase())
     window.addEventListener('keydown', onKeyDown)
     window.addEventListener('keyup', onKeyUp)
+
+    // Android Chrome の WebAudio 対策：AudioContext が suspended のまま固まると
+    // BGM が一切鳴らなくなるため、あらゆるユーザー操作と画面復帰のたびに復帰させる
+    const onGestureAudio = () => { bgmRef.current?.unlock() }
+    const onVisAudio = () => { if (!document.hidden) bgmRef.current?.unlock() }
+    window.addEventListener('pointerdown', onGestureAudio)
+    document.addEventListener('visibilitychange', onVisAudio)
 
     // タッチ／ポインタ：相対ドラッグ移動＋自動ショット
     let pointerDown = false
@@ -1656,6 +2119,7 @@ export default function Koumakyou() {
     }
 
     function stepGame(dt: number) {
+      if (dlgRef.current.active) return // 会話中はゲームを停止する（描画は直前の状態で継続）
       G.time += dt
       if (!running) return
       G.phaseT += dt
@@ -1707,7 +2171,17 @@ export default function Koumakyou() {
       } else if (G.phase === 'boss') {
         if (enter) {
           enter.t -= dt
-          if (enter.t <= 0) { enter = null; launchBoss() }
+          if (enter.t <= 0) {
+            enter = null
+            // 入場が終わったら、戦前会話を挟んでから戦闘を開始する
+            if (!bossDlgDone && G.bossId) {
+              bossDlgDone = true
+              const bid = G.bossId
+              openDialogue(bid, 'pre', () => launchBoss())
+            } else {
+              launchBoss()
+            }
+          }
         } else {
           bossCtl.update(dt)
         }
@@ -1860,6 +2334,10 @@ export default function Koumakyou() {
       if (enter) {
         const p = easeOut(clamp(1 - enter.t / enter.max, 0, 1))
         drawFigure(ctx, enter.fig, FW / 2, -48 + (enter.homeY + 48) * p, { t: G.time })
+      }
+      // 戦前会話中：入場済みのボスが定位置で待機している姿を描く
+      if (G.phase === 'boss' && !enter && !bossCtl.active && G.bossId && dlgRef.current.active) {
+        drawFigure(ctx, BOSS_FIGURES[G.bossId], FW / 2, 88, { t: G.time })
       }
       // 退場演出：撃破されたボスがフェードしながら上昇する
       if (exitFx) {
@@ -2026,6 +2504,8 @@ export default function Koumakyou() {
     startRef.current = (run: 'story' | 'extra') => {
       const sel = selRef.current
       const list = run === 'extra' ? [6] : sel.diff === 'easy' ? [0, 1, 2, 3, 4] : [0, 1, 2, 3, 4, 5]
+      dlgRef.current = { active: false, done: null }
+      setDlgUi(null)
       world.clearBullets()
       world.clearLasers()
       world.clearEmitters()
@@ -2053,6 +2533,8 @@ export default function Koumakyou() {
       cancelAnimationFrame(raf)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('pointerdown', onGestureAudio)
+      document.removeEventListener('visibilitychange', onVisAudio)
       canvas.removeEventListener('pointerdown', onPointerDown)
       canvas.removeEventListener('pointermove', onPointerMove)
       canvas.removeEventListener('pointerup', onPointerUp)
@@ -2088,9 +2570,66 @@ export default function Koumakyou() {
   const toggleMute = () => setMutedUi(getBgm().toggleMute())
   const touchTitle = () => { getBgm().play('title') }
 
+  // ===== 会話シーンの操作 =====
+  const closeDlg = () => {
+    const done = dlgRef.current.done
+    dlgRef.current = { active: false, done: null }
+    setDlgUi(null)
+    if (done) done()
+  }
+  const advanceDlg = () => {
+    if (!dlgUi) return
+    if (dlgUi.idx + 1 < dlgUi.lines.length) setDlgUi({ ...dlgUi, idx: dlgUi.idx + 1 })
+    else closeDlg()
+  }
+  const skipDlg = () => { if (dlgUi) closeDlg() }
+  useEffect(() => {
+    if (!dlgUi) return
+    const h = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase()
+      if (k === 'escape') { e.preventDefault(); closeDlg() }
+      else if (k === 'z' || k === 'enter' || k === ' ') { e.preventDefault(); advanceDlg() }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  })
+  // ポートレート表示（読み込み失敗時は名前入りの図形プレースホルダにフォールバック）
+  const portraitEl = (id: string, label: string, style: React.CSSProperties) => {
+    if (imgErr.has(id)) {
+      return (
+        <div
+          style={{
+            ...style, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'linear-gradient(160deg, #4a1030 0%, #20060f 100%)',
+            color: '#ffb3b3', fontWeight: 'bold', fontSize: 20, letterSpacing: 2,
+          }}
+        >
+          {label}
+        </div>
+      )
+    }
+    return (
+      <img
+        src={portraitUrl(id)}
+        alt={label}
+        draggable={false}
+        onError={() => markImgErr(id)}
+        style={{ objectFit: 'cover', ...style }}
+      />
+    )
+  }
+
   return (
     <div ref={wrapRef} style={{ width: '100%', maxWidth: 560, margin: '0 auto', userSelect: 'none' }}>
-      <style>{`.kouma-btn:active { transform: scale(0.96); }`}</style>
+      <style>{`
+        .kouma-btn:active { transform: scale(0.96); }
+        .kouma-menu { transition: background 0.12s, color 0.12s; }
+        .kouma-menu:hover, .kouma-menu:active { background: rgba(255, 70, 85, 0.18); color: #ffd7d7; }
+        .kouma-menu .kouma-caret { opacity: 0; transition: opacity 0.12s; }
+        .kouma-menu:hover .kouma-caret, .kouma-menu:active .kouma-caret { opacity: 1; }
+        .kouma-card { transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s; }
+        .kouma-card:hover, .kouma-card:active { transform: translateY(-2px); border-color: rgba(255,150,150,0.95) !important; box-shadow: 0 10px 26px rgba(0,0,0,0.55); }
+      `}</style>
       <div style={{ position: 'relative' }}>
         <canvas
           ref={canvasRef}
@@ -2128,52 +2667,261 @@ export default function Koumakyou() {
             ボム
           </button>
         )}
-        {screen === 'title' && (
-          <div style={overlayStyle}>
-            <div style={{ fontSize: 12, letterSpacing: 4, color: '#ff9e9e' }}>ファンメイド弾幕STG</div>
-            <div style={{ fontSize: 32, fontWeight: 'bold', color: '#ff5252', textShadow: '0 0 14px rgba(255,60,60,0.7)' }}>東方紅魔郷</div>
-            <div style={{ fontSize: 12, color: '#d1c4e9' }}>〜 全6面＋EXステージ 〜</div>
-            <div style={selLabel}>自機</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" style={selBtn(chara === 'reimu')} onClick={() => { setChara('reimu'); touchTitle() }}>霊夢（誘導・広角）</button>
-              <button type="button" style={selBtn(chara === 'marisa')} onClick={() => { setChara('marisa'); touchTitle() }}>魔理沙（集中・高速）</button>
-            </div>
-            <div style={selLabel}>難易度</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" style={selBtn(diff === 'easy')} onClick={() => { setDiff('easy'); touchTitle() }}>Easy（5面まで）</button>
-              <button type="button" style={selBtn(diff === 'normal')} onClick={() => { setDiff('normal'); touchTitle() }}>Normal</button>
-              <button type="button" style={selBtn(diff === 'hard')} onClick={() => { setDiff('hard'); touchTitle() }}>Hard</button>
-            </div>
-            <div style={selLabel}>モード</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button type="button" style={selBtn(!challenge)} onClick={() => { setChallenge(false); touchTitle() }}>通常</button>
-              <button type="button" style={selBtn(challenge)} onClick={() => { setChallenge(true); touchTitle() }}>チャレンジ（残機無限）</button>
-            </div>
-            <div style={{ fontSize: 11.5, color: '#b39ddb' }}>
-              ハイスコア {hiscoreUi.toLocaleString()}
-              {challengeBest.score > 0 && (
-                <span>　／　チャレンジベスト {challengeBest.score.toLocaleString()}（ミス {challengeBest.misses}回）</span>
-              )}
-            </div>
-            <button type="button" className="kouma-btn" style={{ ...btnStyle, marginTop: 8 }} onClick={() => { getBgm(); startRef.current('story') }}>
-              ゲームスタート
-            </button>
-            {exUnlocked && (
+        {screen === 'playing' && dlgUi && (() => {
+          const line = dlgUi.lines[dlgUi.idx]
+          const speakingPlayer = line.w === 'p'
+          const playerName = chara === 'reimu' ? '博麗霊夢' : '霧雨魔理沙'
+          const bossName = BOSS_META[dlgUi.boss].name
+          const faceStyle = (active: boolean): React.CSSProperties => ({
+            height: 188, width: 138, borderRadius: 10,
+            border: active ? '2px solid rgba(255,150,150,0.95)' : '2px solid rgba(255,255,255,0.25)',
+            opacity: active ? 1 : 0.55,
+            filter: active ? 'none' : 'brightness(0.55) saturate(0.75)',
+            transform: active ? 'scale(1.03)' : 'scale(1)',
+            transition: 'opacity 0.15s, filter 0.15s, transform 0.15s',
+            boxShadow: '0 6px 18px rgba(0,0,0,0.55)',
+          })
+          return (
+            <div
+              onClick={advanceDlg}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 6, cursor: 'pointer',
+                display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
+                background: 'linear-gradient(to bottom, rgba(5,2,12,0.18) 0%, rgba(5,2,12,0.42) 62%, rgba(5,2,12,0.66) 100%)',
+                borderRadius: 8,
+              }}
+            >
               <button
                 type="button"
-                className="kouma-btn"
-                style={{ ...btnStyle, background: '#6a1b9a', border: '1px solid #ce93d8' }}
-                onClick={() => { getBgm(); startRef.current('extra') }}
+                onClick={(e) => { e.stopPropagation(); skipDlg() }}
+                style={{
+                  position: 'absolute', top: 10, right: 10, zIndex: 2,
+                  background: 'rgba(20,8,26,0.75)', color: '#ffb3b3',
+                  border: '1px solid rgba(255,150,150,0.55)', borderRadius: 999,
+                  padding: '5px 14px', fontSize: 12, cursor: 'pointer',
+                }}
               >
-                EXTRA STAGE（フランドール）
+                スキップ ≫
               </button>
-            )}
-            <div style={{ fontSize: 11.5, lineHeight: 1.8, color: '#cfc4e8' }}>
-              移動：矢印/WASD（タッチはドラッグ）　ショット：Z　ボム：X　低速：Shift　BGM：M<br />
-              Normal以上でSTAGE 6をクリアするとEXが解放されます
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '0 12px', pointerEvents: 'none' }}>
+                {portraitEl(chara, playerName, faceStyle(speakingPlayer))}
+                {portraitEl(dlgUi.boss, bossName, faceStyle(!speakingPlayer))}
+              </div>
+              <div
+                style={{
+                  position: 'relative', margin: '10px 10px 12px',
+                  background: 'rgba(12,4,22,0.9)', border: '1px solid rgba(255,120,120,0.65)',
+                  borderRadius: 10, padding: '14px 16px 16px', minHeight: 92,
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.6)', textAlign: 'left',
+                }}
+              >
+                <div
+                  style={{
+                    position: 'absolute', top: -13, left: 14, padding: '2px 14px',
+                    background: speakingPlayer ? '#7b1fa2' : '#b71c1c', color: '#fff',
+                    borderRadius: 999, fontSize: 12.5, fontWeight: 'bold', letterSpacing: 1,
+                    border: '1px solid rgba(255,255,255,0.5)',
+                  }}
+                >
+                  {speakingPlayer ? playerName : bossName}
+                </div>
+                <div style={{ fontSize: 15, lineHeight: 1.8, color: '#fff', marginTop: 2 }}>{line.t}</div>
+                <div style={{ position: 'absolute', right: 14, bottom: 8, fontSize: 11, color: '#ff9e9e' }}>
+                  {dlgUi.idx + 1}/{dlgUi.lines.length}　▼ タップ / Z
+                </div>
+              </div>
             </div>
-          </div>
-        )}
+          )
+        })()}
+        {screen === 'title' && (() => {
+          // タイトル画面：紅い霧の背景＋キービジュアル＋縦並びメニュー（原作の画面構成に寄せた多段選択）
+          const menuItem = (label: string, caption: string, onClick: () => void) => (
+            <button
+              key={label}
+              type="button"
+              className="kouma-menu"
+              onClick={onClick}
+              style={{
+                display: 'flex', alignItems: 'baseline', gap: 10, width: '100%',
+                background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,150,150,0.16)',
+                color: '#f5e9f7', padding: '9px 10px', fontSize: 17, fontWeight: 'bold',
+                letterSpacing: 2, cursor: 'pointer', textAlign: 'left',
+                textShadow: '0 2px 8px rgba(0,0,0,0.8)',
+              }}
+            >
+              <span className="kouma-caret" style={{ color: '#ff6b6b', fontSize: 13 }}>▶</span>
+              <span>{label}</span>
+              <span style={{ fontSize: 11, fontWeight: 'normal', color: '#d8a7c3', letterSpacing: 0 }}>{caption}</span>
+            </button>
+          )
+          const stepHeader = (title: string, backTo: 'menu' | 'chara', backLabel: string) => (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+              <button
+                type="button"
+                onClick={() => { setTitleStep(backTo); touchTitle() }}
+                style={{
+                  background: 'rgba(20,8,26,0.7)', color: '#ffb3b3', border: '1px solid rgba(255,150,150,0.5)',
+                  borderRadius: 999, padding: '5px 14px', fontSize: 12, cursor: 'pointer',
+                }}
+              >
+                ← {backLabel}
+              </button>
+              <div style={{ fontSize: 19, fontWeight: 'bold', color: '#ffb3b3', letterSpacing: 3 }}>{title}</div>
+            </div>
+          )
+          const runCaption = pendingRun === 'extra' ? 'EXTRA STAGE' : challenge ? 'チャレンジモード（残機無限）' : '全6面'
+          return (
+            <div
+              style={{
+                position: 'absolute', inset: 0, zIndex: 3, borderRadius: 8, overflow: 'hidden',
+                background: 'linear-gradient(155deg, #20060f 0%, #3d0a24 46%, #1a0b31 100%)',
+                color: '#fff',
+              }}
+            >
+              {/* 紅い霧のモヤ */}
+              <div aria-hidden style={{ position: 'absolute', inset: 0, pointerEvents: 'none', background: 'radial-gradient(ellipse 75% 46% at 80% 26%, rgba(255,64,80,0.30), transparent 70%), radial-gradient(ellipse 62% 42% at 12% 78%, rgba(150,30,60,0.28), transparent 70%), radial-gradient(ellipse 90% 30% at 50% 108%, rgba(90,10,40,0.5), transparent 70%)' }} />
+              {/* キービジュアル（メニュー画面のみ、右側に大きく） */}
+              {titleStep === 'menu' && !imgErr.has('remilia') && (
+                <img
+                  src={portraitUrl('remilia')}
+                  alt=""
+                  draggable={false}
+                  onError={() => markImgErr('remilia')}
+                  style={{
+                    position: 'absolute', right: 0, top: 0, height: '100%', width: '47%',
+                    objectFit: 'cover', objectPosition: 'top center', opacity: 0.95, pointerEvents: 'none',
+                    WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
+                    maskImage: 'linear-gradient(to right, transparent 0%, black 42%)',
+                  }}
+                />
+              )}
+              <div style={{ position: 'relative', height: '100%', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', padding: '16px 18px', overflowY: 'auto' }}>
+                {titleStep === 'menu' && (
+                  <>
+                    <div style={{ fontSize: 11, letterSpacing: 5, color: '#ff9e9e', textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>ファンメイド弾幕STG</div>
+                    <div style={{ fontSize: 44, fontWeight: 'bold', color: '#ff5f6b', letterSpacing: 3, lineHeight: 1.15, textShadow: '0 0 18px rgba(255,50,70,0.75), 0 3px 10px rgba(0,0,0,0.9)' }}>東方紅魔郷</div>
+                    <div style={{ fontSize: 12.5, color: '#e8c9dd', letterSpacing: 2, textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>〜 紅霧異変 〜　全6面＋EXステージ</div>
+                    <div style={{ marginTop: 20, width: '64%', minWidth: 250 }}>
+                      {menuItem('ゲームスタート', '紅魔館へ出発', () => { setChallenge(false); setPendingRun('story'); setTitleStep('chara'); touchTitle() })}
+                      {menuItem('エクストラスタート', 'EXTRA STAGE', () => { setChallenge(false); setPendingRun('extra'); setTitleStep('chara'); touchTitle() })}
+                      {menuItem('チャレンジ', '残機無限で挑戦', () => { setChallenge(true); setPendingRun('story'); setTitleStep('chara'); touchTitle() })}
+                      {menuItem('記録表示', 'スコアとベスト記録', () => { setTitleStep('records'); touchTitle() })}
+                      {menuItem('遊び方', '操作とルール', () => { setTitleStep('help'); touchTitle() })}
+                    </div>
+                    <div style={{ marginTop: 'auto', paddingTop: 12, fontSize: 11.5, color: '#d8b7d9', textShadow: '0 2px 6px rgba(0,0,0,0.9)' }}>
+                      ハイスコア {hiscoreUi.toLocaleString()}
+                      {challengeBest.score > 0 && (
+                        <span>　／　チャレンジベスト {challengeBest.score.toLocaleString()}（ミス {challengeBest.misses}回）</span>
+                      )}
+                    </div>
+                  </>
+                )}
+                {titleStep === 'chara' && (
+                  <>
+                    {stepHeader('自機選択', 'menu', 'タイトル')}
+                    <div style={{ fontSize: 12, color: '#d8a7c3', marginBottom: 10 }}>{runCaption} ― 誰で異変に挑む？</div>
+                    <div style={{ display: 'flex', gap: 12 }}>
+                      {([
+                        { id: 'reimu' as CharaId, name: '博麗霊夢', trait: '誘導・広角ショット／標準速度', desc: '博麗神社の巫女。お札と御札の誘導弾で広く戦う。' },
+                        { id: 'marisa' as CharaId, name: '霧雨魔理沙', trait: '集中レーザー／高速', desc: '普通の魔法使い。正面火力と速さで押し切る。' },
+                      ]).map((c) => (
+                        <button
+                          key={c.id}
+                          type="button"
+                          className="kouma-card"
+                          onClick={() => { setChara(c.id); setTitleStep('diff'); touchTitle() }}
+                          style={{
+                            flex: 1, background: 'rgba(16,5,24,0.72)', color: '#fff', cursor: 'pointer',
+                            border: chara === c.id ? '2px solid rgba(255,150,150,0.9)' : '1px solid rgba(255,255,255,0.3)',
+                            borderRadius: 12, padding: 10, textAlign: 'left',
+                          }}
+                        >
+                          {portraitEl(c.id, c.name, { width: '100%', height: 208, borderRadius: 8, display: 'block' })}
+                          <div style={{ fontSize: 17, fontWeight: 'bold', marginTop: 8 }}>{c.name}</div>
+                          <div style={{ fontSize: 11.5, color: '#ffb3b3', marginTop: 2 }}>{c.trait}</div>
+                          <div style={{ fontSize: 11, color: '#cfc4e8', lineHeight: 1.6, marginTop: 4 }}>{c.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {titleStep === 'diff' && (
+                  <>
+                    {stepHeader('難易度選択', 'chara', '自機選択')}
+                    <div style={{ fontSize: 12, color: '#d8a7c3', marginBottom: 10 }}>
+                      {chara === 'reimu' ? '博麗霊夢' : '霧雨魔理沙'} ／ {runCaption}
+                      {pendingRun === 'extra' && '（EXは難易度で弾幕の密度・速度が変わります）'}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      {([
+                        { id: 'easy' as DiffId, name: 'Easy', desc: pendingRun === 'extra' ? '弾幕は薄め。EXのお試しに' : '5面まで。弾幕は薄めで遊びやすい' },
+                        { id: 'normal' as DiffId, name: 'Normal', desc: '標準の歯ごたえ' },
+                        { id: 'hard' as DiffId, name: 'Hard', desc: '弾幕の密度・速度アップ' },
+                      ]).map((d) => (
+                        <button
+                          key={d.id}
+                          type="button"
+                          className="kouma-card"
+                          onClick={() => { setDiff(d.id); getBgm(); startRef.current(pendingRun) }}
+                          style={{
+                            display: 'flex', alignItems: 'baseline', gap: 14, width: '100%',
+                            background: 'rgba(16,5,24,0.72)', color: '#fff', cursor: 'pointer',
+                            border: diff === d.id ? '2px solid rgba(255,150,150,0.9)' : '1px solid rgba(255,255,255,0.3)',
+                            borderRadius: 12, padding: '13px 16px', textAlign: 'left',
+                          }}
+                        >
+                          <span style={{ fontSize: 19, fontWeight: 'bold', letterSpacing: 1 }}>{d.name}</span>
+                          <span style={{ fontSize: 12, color: '#cfc4e8' }}>{d.desc}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+                {titleStep === 'records' && (
+                  <>
+                    {stepHeader('記録表示', 'menu', 'タイトル')}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 14, lineHeight: 1.9 }}>
+                      <div>
+                        <div style={selLabel}>ハイスコア（通常モード）</div>
+                        <div style={{ fontSize: 22, fontFamily: 'monospace' }}>{hiscoreUi.toLocaleString()}</div>
+                      </div>
+                      <div>
+                        <div style={selLabel}>チャレンジベスト（残機無限）</div>
+                        {challengeBest.score > 0 ? (
+                          <div style={{ fontSize: 22, fontFamily: 'monospace' }}>
+                            {challengeBest.score.toLocaleString()}
+                            <span style={{ fontSize: 13, color: '#d8a7c3' }}>　ミス {challengeBest.misses}回</span>
+                          </div>
+                        ) : (
+                          <div style={{ color: '#b39ddb' }}>まだ記録がありません</div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 12, color: '#cfc4e8' }}>
+                        EXTRA STAGE（フランドール戦）は最初からいつでも挑戦できます。<br />
+                        Normal以上で全6面をクリアすると、EX解放の記録が残ります。
+                      </div>
+                    </div>
+                  </>
+                )}
+                {titleStep === 'help' && (
+                  <>
+                    {stepHeader('遊び方', 'menu', 'タイトル')}
+                    <div style={{ fontSize: 13, lineHeight: 2.05, color: '#efe7f7' }}>
+                      紅い霧に覆われた幻想郷。湖の向こうの紅魔館を目指し、全6面＋EXステージを進もう。<br />
+                      移動：矢印キー / WASD（タッチはドラッグ）<br />
+                      ショット：Z（タッチ中は自動）　ボム：X（画面ボタンでも可）<br />
+                      低速移動：Shift（当たり判定が表示される）<br />
+                      BGMミュート：M（右上のボタンでも可）<br />
+                      会話：タップ / クリック / Z / Enter で送る。Esc か「スキップ」で省略できる。<br />
+                      敵弾に近づくとかすり（GRAZE）で得点。アイテムを集めてパワーアップ。<br />
+                      チャレンジモードは残機無限で、ミス回数が記録される。
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )
+        })()}
         {(screen === 'over' || screen === 'clear') && (
           <div style={overlayStyle}>
             <div style={{ fontSize: 30, fontWeight: 'bold', color: screen === 'clear' ? '#ffd54f' : '#ff5252' }}>
@@ -2194,7 +2942,7 @@ export default function Koumakyou() {
             </button>
             <button
               type="button"
-              onClick={() => { setScreen('title'); getBgm().play('title') }}
+              onClick={() => { setScreen('title'); setTitleStep('menu'); getBgm().play('title') }}
               style={{ background: 'transparent', color: '#b39ddb', border: 'none', fontSize: 13, cursor: 'pointer', textDecoration: 'underline' }}
             >
               タイトルに戻る
