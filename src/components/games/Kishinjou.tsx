@@ -1523,7 +1523,7 @@ const DIALOGUES: Record<BossId, Record<CharaId, DlgScript>> = {
 const portraitUrl = (id: string): string =>
   id === 'reimu' || id === 'marisa' || id === 'cirno'
     ? `${import.meta.env.BASE_URL}cdn/koumakyou/${id}.webp`
-    : `${import.meta.env.BASE_URL}cdn/kishinjou/${id}.webp`
+    : `${import.meta.env.BASE_URL}cdn/kishinjou/${id === 'wakasagi' ? 'wakasagihime' : id}.webp`
 
 // ===== 道中ザコ敵の定義（難易度ごとに射撃間隔・弾速を調整） =====
 function makeEnemyDefs(cfg: { spd: number; den: number }): { down: EnemyDef; side: EnemyDef; big: EnemyDef } {
