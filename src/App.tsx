@@ -116,6 +116,7 @@ import Go from './components/games/Go'
 // 東方系ゲーム2作は大型（専用エンジン込み）のため遅延読み込みにして初期バンドルから分離する
 const Koumakyou = lazy(() => import('./components/games/Koumakyou'))
 const Chireiden = lazy(() => import('./components/games/Chireiden'))
+const Youyoumu = lazy(() => import('./components/games/Youyoumu'))
 import Speed from './components/games/Speed'
 import Sugoroku from './components/games/Sugoroku'
 import Wordle from './components/games/Wordle'
@@ -132,7 +133,7 @@ import { notifyOs } from './lib/notify'
 import type { AppId } from './components/Backstage'
 import { detectPlatform, isMod, modLabel, platformLabel } from './lib/platform'
 
-type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'pinball' | 'bubbleshooter' | 'minigolf' | 'bowling' | 'airhockey' | 'darts' | 'pk' | 'fishing' | 'maze' | 'shooter' | 'basketball' | 'crane' | 'bingo' | 'babanuki' | 'connect4' | 'colorcard' | 'checkers' | 'poker' | 'sevens' | 'daifugo' | 'speed' | 'sugoroku' | 'wordle' | 'pool' | 'chess' | 'shogi' | 'hangman' | 'puyodrop' | 'stacktower' | 'fruitcatch' | 'domino' | 'spotdiff' | 'karuta' | 'koikoi' | 'shanghai' | 'go' | 'koumakyou' | 'chireiden' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'invader' | 'sokoban' | 'doteater' | 'solitaire' | 'yvm' | 'wme' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'discord' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro' | 'mindmap'
+type WindowApp = AppId | 'browser' | 'files' | 'settings' | 'youtube' | 'trash' | 'calculator' | 'clock' | 'paint' | 'terminal' | 'docs' | 'memodb' | 'about' | 'manual' | 'store' | 'unit' | 'pomodoro' | 'metronome' | 'whitenoise' | 'flashcards' | 'dice' | 'janken' | 'numguess' | 'omikuji' | 'passgen' | 'textcount' | 'colorpicker' | 'morse' | 'daycalc' | 'bmi' | 'splitbill' | 'currency' | 'wareki' | 'tetris' | 'suika' | 'g2048' | 'snake' | 'breakout' | 'pinball' | 'bubbleshooter' | 'minigolf' | 'bowling' | 'airhockey' | 'darts' | 'pk' | 'fishing' | 'maze' | 'shooter' | 'basketball' | 'crane' | 'bingo' | 'babanuki' | 'connect4' | 'colorcard' | 'checkers' | 'poker' | 'sevens' | 'daifugo' | 'speed' | 'sugoroku' | 'wordle' | 'pool' | 'chess' | 'shogi' | 'hangman' | 'puyodrop' | 'stacktower' | 'fruitcatch' | 'domino' | 'spotdiff' | 'karuta' | 'koikoi' | 'shanghai' | 'go' | 'koumakyou' | 'chireiden' | 'youyoumu' | 'minesweeper' | 'sudoku' | 'memory' | 'reversi' | 'gomoku' | 'match3' | 'pong' | 'flappy' | 'mole' | 'typing' | 'puzzle15' | 'hanoi' | 'blackjack' | 'slot' | 'runner' | 'invader' | 'sokoban' | 'doteater' | 'solitaire' | 'yvm' | 'wme' | 'todo' | 'diary' | 'weather' | 'gallery' | 'music' | 'qr' | 'level' | 'compass' | 'noise' | 'speedtest' | 'ymmdic' | 'updateinfo' | 'kakeibo' | 'habit' | 'shopping' | 'reaction' | 'simon' | 'counter' | 'roulette' | 'coinflip' | 'countdown' | 'agecalc' | 'sysinfo' | 'taskman' | 'clipboard' | 'widgets' | 'developer' | 'feedback' | 'discord' | 'tap10' | 'aimtrainer' | 'lightsout' | 'mastermind' | 'trivia' | 'flagquiz' | 'nummemory' | 'colormatch' | 'balloonpop' | 'samegame' | 'mathdash' | 'shiritori' | 'kuku' | 'drill' | 'engquiz' | 'prefquiz' | 'elements' | 'historyquiz' | 'kanjiquiz' | 'capitals' | 'sciencequiz' | 'baseconv' | 'percent' | 'taxcalc' | 'discount' | 'loan' | 'tip' | 'salary' | 'pace' | 'aspect' | 'gcd' | 'prime' | 'combin' | 'texttools' | 'jsonfmt' | 'base64' | 'urltool' | 'uuid' | 'hashtool' | 'passcheck' | 'flashlight' | 'ruler' | 'mirror' | 'voicerec' | 'amida' | 'teams' | 'scoreboard' | 'tournament' | 'reading' | 'movie' | 'plants' | 'inventory' | 'expiry' | 'gift' | 'savings' | 'subs' | 'sleep' | 'recipe' | 'water' | 'study' | 'mediaconv' | 'touge' | 'traingo' | 'denshaD' | 'voxel' | 'memopro' | 'officepro' | 'notepro' | 'sheetpro' | 'calcpro' | 'photopro' | 'mindmap'
 
 interface Win {
   id: WindowApp
@@ -228,6 +229,7 @@ const APP_META: Record<WindowApp, { icon: string; cls: string }> = {
   go: { icon: '⚫', cls: 'go' },
   koumakyou: { icon: '🦇', cls: 'koumakyou' },
   chireiden: { icon: '🔥', cls: 'chireiden' },
+  youyoumu: { icon: '🌸', cls: 'youyoumu' },
   mindmap: { icon: '🧠', cls: 'mindmap' },
   minesweeper: { icon: '💣', cls: 'minesweeper' },
   sudoku: { icon: '数', cls: 'sudoku' },
@@ -1322,6 +1324,7 @@ export default function App() {
       case 'go': return <Go />
       case 'koumakyou': return lazyWrap(<Koumakyou />)
       case 'chireiden': return lazyWrap(<Chireiden />)
+      case 'youyoumu': return lazyWrap(<Youyoumu />)
       case 'mindmap': return <MindMap />
       case 'minesweeper': return <Minesweeper />
       case 'sudoku': return <Sudoku />
