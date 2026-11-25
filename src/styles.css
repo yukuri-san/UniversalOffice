@@ -3065,3 +3065,95 @@ html.wx-unlock body { overflow: visible; overscroll-behavior: auto; }
 .go-win { font-size: 18px; font-weight: 800; color: #fde047; }
 .go-result button { min-height: 36px; padding: 6px 14px; border-radius: 8px; border: none; background: #f59e0b; color: #422006; font-weight: 700; cursor: pointer; margin-top: 6px; }
 .go-hint { text-align: center; font-size: 12px; opacity: 0.8; }
+
+/* ==== ダークモード表示の取りこぼし修正（v1.59.2 build 202611250851） ====
+   ダークテーマ（data-theme='dark'）でもライト前提の明るい背景が残り、
+   継承した明るい文字色と重なって読めなくなる／浮いて見える面をまとめて直す。
+   色は既存のダーク上書き（#141a26 / #1c2536 / #e6ecf5 / #9fb0c3）に合わせる。
+   ライト系テーマの見た目には一切影響しない（dark セレクタ内のみ）。 */
+/* シェルのポップアップ類（右クリックメニュー／電源メニュー／コントロールセンター／通知パネル／最近使ったアプリ） */
+.os-root[data-theme='dark'] .ctx-menu { background: rgba(17,24,39,.94); border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='dark'] .ctx-menu button { color: #e6ecf5; }
+.os-root[data-theme='dark'] .ctx-menu button:hover { background: rgba(255,255,255,.1); }
+.os-root[data-theme='dark'] .power-menu { background: rgba(17,24,39,.95); border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='dark'] .power-menu button { color: #e6ecf5; }
+.os-root[data-theme='dark'] .power-menu button:hover { background: rgba(255,255,255,.09); }
+.os-root[data-theme='dark'] .cc-panel { background: rgba(17,24,39,.93); color: #e6ecf5; border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='dark'] .cc-tile { background: rgba(255,255,255,.08); color: #e6ecf5; }
+.os-root[data-theme='dark'] .notes-panel { background: rgba(17,24,39,.94); color: #e6ecf5; border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='dark'] .notes-panel li small { color: #9fb0c3; }
+.os-root[data-theme='dark'] .mx-recents-list { background: rgba(17,24,39,.95); color: #e6ecf5; }
+.os-root[data-theme='dark'] .mx-recent-card { background: #1c2536; border-color: rgba(255,255,255,.12); }
+.os-root[data-theme='dark'] .mx-recent-close { background: rgba(255,255,255,.1); color: #e6ecf5; }
+/* 設定の選択ボタン（.settings-section は文字色が明るく反転するため白背景だと読めなかった） */
+.os-root[data-theme='dark'] .opt { background: rgba(255,255,255,.08); color: #e6ecf5; border-color: rgba(255,255,255,.18); }
+.os-root[data-theme='dark'] .opt.on { background: #2b579a; border-color: #2b579a; color: #fff; }
+/* ドキュメント／マニュアル（見出し h2/h3 がダークで明色に反転し、白背景に消えていた） */
+.os-root[data-theme='dark'] .docs-window { background: #141a26; }
+.os-root[data-theme='dark'] .docs-body { background: #1c2536; color: #e6ecf5; }
+.os-root[data-theme='dark'] .docs-body code { background: rgba(255,255,255,.09); }
+.os-root[data-theme='dark'] .docs-tabs button { background: #1c2536; color: #e6ecf5; border-color: rgba(255,255,255,.12); }
+.os-root[data-theme='dark'] .docs-license { background: #1c2536; color: #e6ecf5; }
+.os-root[data-theme='dark'] .manual-app { background: #141a26; color: #e6ecf5; }
+.os-root[data-theme='dark'] .manual-side { background: #1c2536; }
+.os-root[data-theme='dark'] .manual-body code { background: rgba(255,255,255,.09); }
+.os-root[data-theme='dark'] .manual-body th { background: #26314a; }
+.os-root[data-theme='dark'] .manual-body blockquote { color: #9fb0c3; }
+.os-root[data-theme='dark'] .manual-link:hover { background: rgba(255,255,255,.08); }
+/* 時計アプリ */
+.os-root[data-theme='dark'] .clock-app { background: #141a26; color: #e6ecf5; }
+.os-root[data-theme='dark'] .alarm-form, .os-root[data-theme='dark'] .alarm-list li, .os-root[data-theme='dark'] .world-list li { background: #1c2536; border-color: rgba(255,255,255,.12); }
+.os-root[data-theme='dark'] .alarm-list button, .os-root[data-theme='dark'] .sw-buttons button, .os-root[data-theme='dark'] .alarm-form button { background: rgba(255,255,255,.08); color: #e6ecf5; border-color: rgba(255,255,255,.14); }
+/* メモDB */
+.os-root[data-theme='dark'] .memodb-app { background: #141a26; color: #e6ecf5; }
+.os-root[data-theme='dark'] .memodb-side, .os-root[data-theme='dark'] .memodb-body { background: #1c2536; border-color: rgba(255,255,255,.12); }
+.os-root[data-theme='dark'] .memodb-new { background: #1e3a5f; }
+.os-root[data-theme='dark'] .memodb-footer button { background: rgba(255,255,255,.08); color: #e6ecf5; }
+/* ノート（.note-list/.note-editor は文字色が反転する側の子要素） */
+.os-root[data-theme='dark'] .note-new, .os-root[data-theme='dark'] .note-status button { background: rgba(255,255,255,.1); color: #e6ecf5; border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='dark'] .note-item:hover { background: rgba(255,255,255,.07); }
+/* カレンダー（.cal-side 等は文字色が反転する側の子要素） */
+.os-root[data-theme='dark'] .cal-event-list button, .os-root[data-theme='dark'] .cal-form button.cal-cancel { background: rgba(255,255,255,.08); color: #e6ecf5; border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='dark'] .cal-day-hour-label { background: #1c2536; color: #9fb0c3; }
+.os-root[data-theme='dark'] .cal-event-list li.editing, .os-root[data-theme='dark'] .cal-cell.drag-over { background: #1e3a5f; }
+.os-root[data-theme='dark'] .cal-day-hour:hover { background: rgba(255,255,255,.05); }
+/* ファイル（.files-window は文字色が反転する側の子要素） */
+.os-root[data-theme='dark'] .explorer-actions button, .os-root[data-theme='dark'] .trash-head button { background: rgba(255,255,255,.08); color: #e6ecf5; border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='dark'] .storage-bar { background: rgba(255,255,255,.12); }
+/* ワードプロセッサ（リボン配下と検索パネル／アウトライン／バックステージ） */
+.os-root[data-theme='dark'] .fmt-group { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.1); }
+.os-root[data-theme='dark'] .fmt-group button.fmt-active { background: #1e3a5f; }
+.os-root[data-theme='dark'] .find-panel { background: #1c2536; color: #e6ecf5; border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='dark'] .find-panel button { background: rgba(255,255,255,.08); color: #e6ecf5; border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='dark'] .outline { background: #1c2536; color: #e6ecf5; border-color: rgba(255,255,255,.12); }
+.os-root[data-theme='dark'] .outline h4 { color: #9fb0c3; }
+.os-root[data-theme='dark'] .outline-item:hover { background: rgba(255,255,255,.07); }
+.os-root[data-theme='dark'] .backstage { background: #141a26; color: #e6ecf5; }
+/* スプレッドシートのポップパネル */
+.os-root[data-theme='dark'] .sheet-find-panel, .os-root[data-theme='dark'] .sheet-condfmt-panel { background: #1c2536; color: #e6ecf5; border-color: rgba(255,255,255,.14); }
+.os-root[data-theme='dark'] .sheet-find-panel .find-status { color: #9fb0c3; }
+/* ストア一覧の行 */
+.os-root[data-theme='dark'] .store-row { background: #1c2536; border-color: rgba(255,255,255,.1); }
+.os-root[data-theme='dark'] .store-desc, .os-root[data-theme='dark'] .store-note { color: #9fb0c3; }
+.os-root[data-theme='dark'] .store-ver { color: #9fb0c3; }
+.os-root[data-theme='dark'] .store-state { color: #4ade80; }
+/* 音楽プレイヤーのバー */
+.os-root[data-theme='dark'] .mu-player { background: rgba(17,24,39,.88); border-color: rgba(255,255,255,.14); }
+/* ミニゲーム共通の枠（内部の盤面・カードなどゲーム固有の色はそのまま） */
+.os-root[data-theme='dark'] .game-app { background: #141a26; color: #e6ecf5; }
+.os-root[data-theme='dark'] .game-stat { background: #1c2536; color: #9fb0c3; border-color: rgba(255,255,255,.1); }
+.os-root[data-theme='dark'] .game-stat b { color: #e6ecf5; }
+/* 単位変換 */
+.os-root[data-theme='dark'] .unit-result { background: #1c2536; }
+/* ストアアプリ共通枠（.sa-app：背景も文字色も持たず、ダークでは暗い文字が暗い窓に沈んでいた） */
+.os-root[data-theme='dark'] .sa-app { color: #e6ecf5; }
+.os-root[data-theme='dark'] .sa-cardrow, .os-root[data-theme='dark'] .sa-pw, .os-root[data-theme='dark'] .sa-morse { background: #1c2536; border-color: rgba(255,255,255,.1); }
+.os-root[data-theme='dark'] .sa-progress { background: rgba(255,255,255,.12); }
+.os-root[data-theme='dark'] .sa-beat { background: #26314a; }
+.os-root[data-theme='dark'] .sa-phase.work { background: #4c1d1d; color: #fecaca; }
+.os-root[data-theme='dark'] .sa-phase.rest { background: #14532d; color: #bbf7d0; }
+.os-root[data-theme='dark'] .sa-app input[type="text"], .os-root[data-theme='dark'] .sa-app input[type="number"],
+.os-root[data-theme='dark'] .sa-app input[type="date"], .os-root[data-theme='dark'] .sa-app input[type="url"],
+.os-root[data-theme='dark'] .sa-app select, .os-root[data-theme='dark'] .sa-app textarea { background: #121a2a; color: #e6ecf5; border-color: rgba(255,255,255,.18); }
+.os-root[data-theme='dark'] .wxapp input[type="text"], .os-root[data-theme='dark'] .wxapp input[type="search"],
+.os-root[data-theme='dark'] .wxapp select, .os-root[data-theme='dark'] .wxapp textarea { background: #121a2a; color: #e6ecf5; border-color: rgba(255,255,255,.18); }
