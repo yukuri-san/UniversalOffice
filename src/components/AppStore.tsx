@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { STORE_APPS, STORE_CATEGORIES, type StoreCategory } from '../lib/storeApps'
 import { bundledGaps, catalogEntry, outdatedFromCatalog, type StoreCatalog } from '../lib/storeCheck'
 import { performUpdate } from '../lib/updateCheck'
@@ -48,9 +48,21 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
     window.addEventListener(BETA_EVENT, onBeta)
     return () => window.removeEventListener(BETA_EVENT, onBeta)
   }, [])
-  const storeApps = visibleStoreApps(betaUnlocked)
-  const outdatedApps = outdatedFromCatalog(catalog, installed, versions)
-  const gaps = bundledGaps(catalog)
+  // カタログ由来の算出と一覧の絞り込みは、再描画のたびに全件走査しないようメモ化する
+  const storeApps = useMemo(() => visibleStoreApps(betaUnlocked), [betaUnlocked])
+  const outdatedApps = useMemo(() => outdatedFromCatalog(catalog, installed, versions), [catalog, installed, versions])
+  const gaps = useMemo(() => bundledGaps(catalog), [catalog])
+  const q = query.trim().toLowerCase()
+  const visibleApps = useMemo(
+    () => storeApps
+      .filter((a) => category === 'all' || (category === 'updates' ? outdatedApps.some((o) => o.id === a.id) : a.category === category))
+      .filter((a) => !q || (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(q)),
+    [storeApps, category, outdatedApps, q],
+  )
+  const queryCount = useMemo(
+    () => (q ? storeApps.filter((a) => (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(q)).length : 0),
+    [storeApps, q],
+  )
   const webxOutdated = latest !== '' && compareVersions(latest, APP_VERSION) > 0
 
   // OS 本体の更新確認（version.json のみを見る）
@@ -187,10 +199,10 @@ export default function AppStore({ installed, versions, coreApps, onInstall, onU
         <p className="store-note">{t('stAllLatest')}</p>
       )}
       {query.trim() && (
-        <p className="store-note">「{query.trim()}」の検索結果：{storeApps.filter((a) => (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(query.trim().toLowerCase())).length}件</p>
+        <p className="store-note">「{query.trim()}」の検索結果：{queryCount}件</p>
       )}
       <div className="store-list">
-        {storeApps.filter((a) => category === 'all' || (category === 'updates' ? outdatedApps.some((o) => o.id === a.id) : a.category === category)).filter((a) => !query.trim() || (a.name + ' ' + a.desc + ' ' + a.id).toLowerCase().includes(query.trim().toLowerCase())).map((app) => {
+        {visibleApps.map((app) => {
           const isIn = installed.includes(app.id)
           const cur = versions[app.id]
           const latestVer = catalogEntry(catalog, app.id)?.version ?? app.version

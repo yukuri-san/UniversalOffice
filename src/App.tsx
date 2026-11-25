@@ -113,8 +113,9 @@ import SpotDiff from './components/games/SpotDiff'
 import Karuta from './components/games/Karuta'
 import Shanghai from './components/games/Shanghai'
 import Go from './components/games/Go'
-import Koumakyou from './components/games/Koumakyou'
-import Chireiden from './components/games/Chireiden'
+// 東方系ゲーム2作は大型（専用エンジン込み）のため遅延読み込みにして初期バンドルから分離する
+const Koumakyou = lazy(() => import('./components/games/Koumakyou'))
+const Chireiden = lazy(() => import('./components/games/Chireiden'))
 import Speed from './components/games/Speed'
 import Sugoroku from './components/games/Sugoroku'
 import Wordle from './components/games/Wordle'
@@ -1319,8 +1320,8 @@ export default function App() {
       case 'koikoi': return <KoiKoi />
       case 'shanghai': return <Shanghai />
       case 'go': return <Go />
-      case 'koumakyou': return <Koumakyou />
-      case 'chireiden': return <Chireiden />
+      case 'koumakyou': return lazyWrap(<Koumakyou />)
+      case 'chireiden': return lazyWrap(<Chireiden />)
       case 'mindmap': return <MindMap />
       case 'minesweeper': return <Minesweeper />
       case 'sudoku': return <Sudoku />
