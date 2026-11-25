@@ -836,6 +836,8 @@ export interface BossContext {
   world: DanmakuWorld
   bossX: () => number
   bossY: () => number
+  /** ボス本体の位置を直接指定する（move:'still' のフェイズで本体移動を脚本化する用。フィールド内にクランプされる） */
+  setBossPos: (x: number, y: number) => void
   player: { x: number; y: number }
   diff: DiffScale
   /** フェイズ経過秒 */
@@ -1194,6 +1196,10 @@ export class BossController {
       world: this.world as DanmakuWorld,
       bossX: () => self.x,
       bossY: () => self.y,
+      setBossPos: (x, y) => {
+        self.x = Math.max(18, Math.min(self.width - 18, x))
+        self.y = Math.max(20, Math.min(self.height - 20, y))
+      },
       player: this.playerRef,
       diff: this.diff,
       phaseTime: () => self.phaseTime,

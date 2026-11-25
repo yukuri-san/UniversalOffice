@@ -3,6 +3,11 @@
 // 原作の素材（画像・音楽・データ）は一切使わず、描画はすべて Canvas の図形、
 // BGM は WebAudio で合成する完全オリジナル曲（ZUN風アレンジの文法で作曲）。
 // 進行は全6面＋EXステージ（原作の構成を踏襲したファンメイド再現）。
+// v1.1.0：面構成を原作準拠に全面再構成した（1面 中キスメ／ボス ヤマメ、2面 パルスィ、
+// 3面 勇儀、4面 中 燐（猫形態）／ボス さとり、5面 燐、6面 中 燐（猫形態）／ボス 空、
+// EX 中 早苗／ボス こいし）。さとりの想起は「自機の相棒・過去作ボスの技を、自機ごとに
+// 変えて再演する」形に再設計し、這い寄る残響弾（テリブルスーヴニール相当）を追加。
+// 空の最終スペルは「地獄『サブタレイニアンサン』」（巨大な太陽＋引力＋核警告）に差し替えた。
 // ボス戦前／撃破後には会話シーン（台詞は自作文、ポートレートは自前生成イラストを
 // public/cdn/chireiden/ から配信）があり、タイトル／選択画面も原作の構成に寄せている。
 //
@@ -20,6 +25,7 @@ import {
   DanmakuWorld,
   FixedLoop,
   SpiralEmitter,
+  type Bullet,
 } from '../../lib/danmaku-engine'
 import {
   GameState,
@@ -63,17 +69,21 @@ const DIFF_CFG: Record<DiffId, { spd: number; den: number; label: string }> = {
   hard: { spd: 1.14, den: 1.4, label: 'Hard' },
 }
 
-type BossId = 'kisume' | 'yamame' | 'parsee' | 'yuugi' | 'satori' | 'utsuho' | 'koishi'
+type BossId = 'kisume' | 'yamame' | 'parsee' | 'yuugi' | 'satori' | 'orin' | 'utsuho' | 'koishi' | 'sanae'
+/** 会話シーンを持つボス（早苗はEX中ボス専任のため会話なし） */
+type DlgBossId = 'yamame' | 'parsee' | 'yuugi' | 'satori' | 'orin' | 'utsuho' | 'koishi'
 type MidId = BossId
-type StageDef = { title: string; road: number; mid: MidId; midName: string; boss: BossId; hue: number }
+type StageDef = { title: string; road: number; mid: MidId; midName: string; boss: DlgBossId; hue: number }
+// 面構成は原作（東方地霊殿）準拠：中ボスは各面のボス本人が務める面が多く、
+// 燐は猫形態で4・6面の中ボス、人型で5面の中ボス＋ボスを務める
 const STAGES: StageDef[] = [
-  { title: '地底への縦穴', road: 32, mid: 'yamame', midName: '黒谷ヤマメ', boss: 'kisume', hue: 0 },
-  { title: '蜘蛛の巣窟', road: 32, mid: 'parsee', midName: '水橋パルスィ', boss: 'yamame', hue: 1 },
-  { title: '旧都へ続く橋', road: 34, mid: 'yuugi', midName: '星熊勇儀', boss: 'parsee', hue: 2 },
-  { title: '旧都温泉街', road: 34, mid: 'satori', midName: '古明地さとり', boss: 'yuugi', hue: 3 },
-  { title: '地霊殿の広間', road: 34, mid: 'utsuho', midName: '霊烏路空', boss: 'satori', hue: 4 },
-  { title: '灼熱地獄跡', road: 36, mid: 'koishi', midName: '古明地こいし', boss: 'utsuho', hue: 5 },
-  { title: '無意識の薔薇園', road: 34, mid: 'satori', midName: '古明地さとり', boss: 'koishi', hue: 6 },
+  { title: '地底への縦穴', road: 32, mid: 'kisume', midName: 'キスメ', boss: 'yamame', hue: 0 },
+  { title: '旧都へ続く橋', road: 32, mid: 'parsee', midName: '水橋パルスィ', boss: 'parsee', hue: 2 },
+  { title: '旧都温泉街', road: 34, mid: 'yuugi', midName: '星熊勇儀', boss: 'yuugi', hue: 3 },
+  { title: '地霊殿の広間', road: 34, mid: 'orin', midName: '火焔猫燐（猫形態）', boss: 'satori', hue: 4 },
+  { title: '地霊殿の回廊', road: 34, mid: 'orin', midName: '火焔猫燐', boss: 'orin', hue: 1 },
+  { title: '灼熱地獄跡', road: 36, mid: 'orin', midName: '火焔猫燐（猫形態）', boss: 'utsuho', hue: 5 },
+  { title: '無意識の薔薇園', road: 34, mid: 'sanae', midName: '東風谷早苗', boss: 'koishi', hue: 6 },
 ]
 // ステージごとの背景グラデーション [上, 中, 下]（地底の色調）
 const BG_PALS: [string, string, string][] = [
@@ -137,16 +147,45 @@ const KOISHI_FIG: FigureDef = {
   },
   hairStyle: 'short', accessory: 'none', wings: 'none',
 }
+const ORIN_FIG: FigureDef = {
+  palette: {
+    ...SKIN, hair: '#cf3a30', hairShade: '#8c2418', eye: '#c22f3d',
+    dress: '#3a4a42', dressShade: '#24312b', sub: '#f3e9d2', accent: '#1c1c22',
+  },
+  hairStyle: 'twin', accessory: 'ribbon', wings: 'none',
+}
+// 猫形態のお燐：色調を変えて猫っぽさを出す（フィギュアに猫耳の部品は無いため色と名前で表現）
+const ORIN_CAT_FIG: FigureDef = {
+  palette: {
+    ...SKIN, hair: '#d8542e', hairShade: '#9c3517', eye: '#3f9e4d',
+    dress: '#57443a', dressShade: '#38291f', sub: '#f7e8d2', accent: '#1c1c22',
+  },
+  hairStyle: 'twin', accessory: 'ribbon', wings: 'none',
+}
+const SANAE_FIG: FigureDef = {
+  palette: {
+    ...SKIN, hair: '#5da85e', hairShade: '#3c7a40', eye: '#3a6bc2',
+    dress: '#3f5f9e', dressShade: '#2c4472', sub: '#f7f3ea', accent: '#e8c33a',
+  },
+  hairStyle: 'long', accessory: 'ribbon', wings: 'none',
+}
 const BOSS_FIGURES: Record<BossId, FigureDef> = {
   kisume: KISUME_FIG,
   yamame: YAMAME_FIG,
   parsee: PARSEE_FIG,
   yuugi: YUUGI_FIG,
   satori: SATORI_FIG,
+  orin: ORIN_FIG,
   utsuho: UTSUHO_FIG,
   koishi: KOISHI_FIG,
+  sanae: SANAE_FIG,
 }
 const MID_FIGURES: Record<MidId, FigureDef> = { ...BOSS_FIGURES }
+/** 中ボスの姿：お燐は5面（stageIdx 4）だけ人型、それ以外は猫形態 */
+function midFigOf(id: MidId, stageIdx: number): FigureDef {
+  if (id === 'orin' && stageIdx !== 4) return ORIN_CAT_FIG
+  return MID_FIGURES[id]
+}
 
 // ===== 難易度ヘルパー（BossContext の diff を現行の rn/iv 相当に読み替える） =====
 const cntOf = (ctx: BossContext, n: number) => Math.max(3, Math.round(n * ctx.diff.den))
@@ -269,70 +308,20 @@ function bigFan(ctx: BossContext, n: number, spread: number, speed: number, r: n
 }
 
 // ===== ボス定義（BossDef への変換） =====
+// ===== 太陽の引力（お空の最終スペル専用） =====
+// フェイズの setup/update が書き込み、コンポーネント側の stepGame が自機へ適用し、
+// draw が太陽と WARNING の staging を描く。teardown／ステージ開始で必ず null に戻す。
+let gravityWell: { x: number; y: number; pull: number; warn: number } | null = null
+
 const BONUS = { bonusBase: 1_000_000, bonusPerSec: 20_000 }
 
-function buildBossDef(id: BossId): BossDef {
+function buildBossDef(id: DlgBossId, chara: CharaId): BossDef {
   switch (id) {
-    case 'kisume': return {
-      id, name: 'キスメ', epithet: '恐ろしい釣瓶落とし', radius: 22, figure: BOSS_FIGURES.kisume,
-      phases: [
-        {
-          name: null, hp: 520, timeLimit: 40, move: 'sine', moveRange: 100, moveSpeed: 0.6,
-          update: (ctx, dt) => {
-            const s = phaseState(ctx)
-            s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) { s.a1 = ivOf(ctx, 1.15); ctx.aimed(3, 0.18, { speed: 122, r: 4, color: 5 }) }
-            if (s.a2 <= 0) {
-              s.a2 = ivOf(ctx, 2.6)
-              // 釣瓶（大玉）がゆっくり落ちてくる。出現はまばらで、間隔は十分に空く
-              ctx.spawn({ x: ctx.bossX(), y: ctx.bossY() + 8, angle: DOWN, speed: spdOf(ctx, 62), r: 7, color: 5, kind: 'big', ay: 30 })
-              for (const off of [-0.5, 0.5]) {
-                ctx.spawn({ x: ctx.bossX(), y: ctx.bossY() + 4, angle: DOWN + off, speed: spdOf(ctx, 96), r: 4, color: 5, kind: 'orb' })
-              }
-            }
-          },
-        },
-        {
-          name: '怪奇「釣瓶落とし」', hp: 900, timeLimit: 50, move: 'hover', moveRange: 34, moveSpeed: 0.5, ...BONUS,
-          update: (ctx, dt) => {
-            const s = phaseState(ctx)
-            s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 1.05)
-              // 波ごとに抜ける列が変わる。波の縦間隔は 150×1.05≒157px を確保
-              bucketRain(ctx, s.n)
-              s.n += 1
-            }
-            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.9); ctx.aimed(2, 0.14, { speed: 118, r: 4, color: 5 }) }
-          },
-        },
-        {
-          name: '恐怖「真夜中の釣瓶」', hp: 1080, timeLimit: 55, move: 'sine', moveRange: 100, moveSpeed: 0.6, ...BONUS,
-          update: (ctx, dt) => {
-            const s = phaseState(ctx)
-            s.ang += dt * 1.15
-            s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 0.8)
-              // 8スロットをずらしながら落とすため、同時落下中の釣瓶同士は横48px以上離れる
-              const slot = (s.n * 3 + 1) % 8
-              s.n += 1
-              ctx.spawn({ x: 24 + slot * 48, y: -16, angle: DOWN, speed: spdOf(ctx, 120), r: 6.5, color: 5, kind: 'big' })
-            }
-            if (s.a2 <= 0) {
-              // 単腕の渦：弾間隔 84×0.2=16.8px ＞ 当たり判定直径9px
-              s.a2 = ivOf(ctx, 0.2)
-              ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang, speed: spdOf(ctx, 84), r: 4.5, color: 7, kind: 'orb' })
-            }
-          },
-        },
-      ],
-    }
     case 'yamame': return {
       id, name: '黒谷ヤマメ', epithet: '暗い洞窟の明るい土蜘蛛', radius: 22, figure: BOSS_FIGURES.yamame,
       phases: [
         {
-          name: null, hp: 560, timeLimit: 40, move: 'sine', moveRange: 110, moveSpeed: 0.7,
+          name: null, hp: 520, timeLimit: 40, move: 'sine', moveRange: 110, moveSpeed: 0.7,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
             s.a1 -= dt; s.a2 -= dt
@@ -346,27 +335,34 @@ function buildBossDef(id: BossId): BossDef {
           },
         },
         {
-          name: '罠符「キャプチャーウェブ」', hp: 1000, timeLimit: 55, move: 'hover', moveRange: 40, moveSpeed: 0.45, ...BONUS,
-          setup: (ctx) => {
-            const sp = new SpiralEmitter()
-            // 網の縦糸：弾間隔 92×0.22=20.2px（Hardでも約16.5px）＞ 当たり判定直径
-            sp.arms = 4; sp.angleVel = 0.7; sp.interval = ivOf(ctx, 0.22)
-            sp.bullet = { speed: spdOf(ctx, 92), r: 4.5, color: 3, kind: 'orb' }
-            ctx.addEmitter(sp)
-          },
+          name: '罠符「キャプチャーウェブ」', hp: 920, timeLimit: 55, move: 'hover', moveRange: 40, moveSpeed: 0.45, ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.a1 -= dt
+            s.a1 -= dt; s.a2 -= dt; s.a3 -= dt
             if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 1.6)
-              // 網の横糸：対向2か所に大きな欠け（各約0.92rad）を持つリング
-              webRing(ctx, s.ang)
-              s.ang += 0.35
+              // 網の縦糸：8方向へ「糸の結び目」を打ち出し、放射状の糸＋同心リングで
+              // 実際の蜘蛛の巣（格子）を作る。糸に沿った間隔は 60×0.28=16.8px ＞
+              // 当たり判定直径9px で、結び目の間を縫って格子を抜けられる
+              s.a1 = ivOf(ctx, 0.28)
+              s.ang += 0.045
+              for (let k = 0; k < 8; k++) {
+                const a = s.ang + (k / 8) * Math.PI * 2
+                ctx.spawn({
+                  x: ctx.bossX() + Math.cos(a) * 24, y: ctx.bossY() + Math.sin(a) * 24,
+                  angle: a, speed: spdOf(ctx, 60), r: 4.5, color: 3, kind: 'orb',
+                })
+              }
             }
+            if (s.a2 <= 0) {
+              // 網の横糸：対向2か所に大きな欠け（各約0.92rad）を持つリング
+              s.a2 = ivOf(ctx, 2.3)
+              webRing(ctx, s.ang * 2 + 0.4)
+            }
+            if (s.a3 <= 0) { s.a3 = ivOf(ctx, 1.7); ctx.aimed(1, 0, { speed: 118, r: 4, color: 3 }) }
           },
         },
         {
-          name: '瘴符「淀んだ瘴気」', hp: 1150, timeLimit: 55, move: 'sine', moveRange: 110, moveSpeed: 0.7, ...BONUS,
+          name: '瘴符「淀んだ瘴気」', hp: 1050, timeLimit: 55, move: 'sine', moveRange: 110, moveSpeed: 0.7, ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
             s.a1 -= dt; s.a2 -= dt
@@ -394,7 +390,7 @@ function buildBossDef(id: BossId): BossDef {
       id, name: '水橋パルスィ', epithet: '地底の橋姫', radius: 22, figure: BOSS_FIGURES.parsee,
       phases: [
         {
-          name: null, hp: 600, timeLimit: 40, move: 'sine', moveRange: 115, moveSpeed: 0.85,
+          name: null, hp: 580, timeLimit: 40, move: 'sine', moveRange: 115, moveSpeed: 0.85,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
             s.a1 -= dt; s.a2 -= dt
@@ -407,22 +403,65 @@ function buildBossDef(id: BossId): BossDef {
           },
         },
         {
-          name: '嫉妬「グリーンアイドモンスター」', hp: 1050, timeLimit: 55, move: 'sine', moveRange: 115, moveSpeed: 0.85, ...BONUS,
+          name: '嫉妬「グリーンアイドモンスター」', hp: 1000, timeLimit: 55, move: 'sine', moveRange: 115, moveSpeed: 0.85, ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.ang += dt * 1.35
-            s.a1 -= dt; s.a2 -= dt
+            s.ang += dt * 1.3
+            s.a1 -= dt; s.a2 -= dt; s.a3 -= dt
             if (s.a1 <= 0) {
-              // 二重渦：弾間隔 94×0.16=15.0px（Hardでも約12.3px）＞ 当たり判定直径9px
-              s.a1 = ivOf(ctx, 0.16)
+              // 二重渦（基礎弾幕）：弾間隔 94×0.17≒16.0px（Hardでも約13px）＞ 当たり判定直径9px
+              s.a1 = ivOf(ctx, 0.17)
               ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang, speed: spdOf(ctx, 94), r: 4.5, color: 3, kind: 'orb' })
               ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: -s.ang + 0.8, speed: spdOf(ctx, 94), r: 4.5, color: 3, kind: 'orb' })
             }
-            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 2.0); ctx.aimed(3, 0.18, { speed: 124, r: 4, color: 3 }) }
+            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 2.2); ctx.aimed(3, 0.18, { speed: 124, r: 4, color: 3 }) }
+            // ===== 嫉妬ゲージ：自機の行動に反応して溜まり、溢れると苛烈化する =====
+            // グレイズ（かすり）した弾を数える：world.collide が立てた grazed フラグを読む
+            for (const b of ctx.world.pool.bullets) {
+              if (b.active && b.grazed && !s.seen.has(b)) {
+                s.seen.add(b)
+                if (s.gauge < 14) s.gauge += 1
+              }
+            }
+            if (s.seen.size > 500) s.seen.clear()
+            if (s.a3 <= 0) {
+              // 近づかれるのも、上（橋の向こう）まで来られるのも妬ましい
+              s.a3 = 0.25
+              const dx = ctx.player.x - ctx.bossX(), dy = ctx.player.y - ctx.bossY()
+              if (Math.hypot(dx, dy) < 120) s.gauge += 2
+              else if (ctx.player.y < 150) s.gauge += 1
+            }
+            if (s.cool > 0) s.cool -= dt
+            if (s.gauge >= 7 && s.cool <= 0 && s.burstT <= 0) {
+              // 妬みが溢れた：その瞬間の自機位置を覚え、0.5秒後に収縮リングでぶつける
+              s.snapX = ctx.player.x; s.snapY = ctx.player.y
+              s.burstT = 0.5
+              s.gauge = 2
+              s.cool = 3.2
+            }
+            if (s.burstT > 0) {
+              s.burstT -= dt
+              if (s.burstT <= 0) {
+                // 収縮リング：R=118・14発（弧間隔は約53px）。リングが現れる位置が予告を兼ね、
+                // ボス方向に約2発分の欠けを残して逃げ道を保証する
+                const cx = s.snapX, cy = s.snapY
+                const n = 14, R = 118
+                const gapC = Math.atan2(ctx.bossY() - cy, ctx.bossX() - cx)
+                for (let i = 0; i < n; i++) {
+                  const a = (i / n) * Math.PI * 2
+                  const d = Math.abs(((a - gapC) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI)
+                  if (d < (Math.PI * 2 / n) * 1.1) continue
+                  ctx.spawn({
+                    x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R,
+                    angle: a + Math.PI, speed: spdOf(ctx, 46), r: 4.5, color: 6, kind: 'orb',
+                  })
+                }
+              }
+            }
           },
         },
         {
-          name: '嫉符「連鎖ジェラシー」', hp: 1250, timeLimit: 55, move: 'hover', moveRange: 60, moveSpeed: 0.5, ...BONUS,
+          name: '嫉符「連鎖ジェラシー」', hp: 1200, timeLimit: 55, move: 'hover', moveRange: 60, moveSpeed: 0.5, ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
             s.a1 -= dt; s.a2 -= dt
@@ -496,7 +535,7 @@ function buildBossDef(id: BossId): BossDef {
       id, name: '古明地さとり', epithet: '心を読む地霊殿の主', radius: 22, figure: BOSS_FIGURES.satori,
       phases: [
         {
-          name: null, hp: 680, timeLimit: 45, move: 'sine', moveRange: 30, moveSpeed: 0.34,
+          name: null, hp: 660, timeLimit: 45, move: 'sine', moveRange: 30, moveSpeed: 0.34,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
             s.a1 -= dt; s.a2 -= dt
@@ -518,55 +557,191 @@ function buildBossDef(id: BossId): BossDef {
           },
         },
         {
-          name: '想起「キャプチャーウェブ」', hp: 1050, timeLimit: 55, move: 'hover', moveRange: 40, moveSpeed: 0.45, ...BONUS,
+          // テリブルスーヴニール相当（自作解釈）：自機の移動軌跡を読み取り、
+          // 少し遅れて軌跡上に「残響弾」を置く。這い寄るように過去の位置が蘇る
+          name: '想起「テリブルスーヴニール」', hp: 1100, timeLimit: 60, move: 'hover', moveRange: 40, moveSpeed: 0.45, ...BONUS,
+          update: (ctx, dt) => {
+            const s = phaseState(ctx)
+            s.a1 -= dt; s.a2 -= dt
+            // 自機の移動軌跡を 0.12 秒ごとに記録する（最大50点＝6秒分）
+            s.trailT -= dt
+            if (s.trailT <= 0) {
+              s.trailT = 0.12
+              s.trail.push({ x: ctx.player.x, y: ctx.player.y })
+              if (s.trail.length > 50) s.trail.shift()
+            }
+            if (s.a1 <= 0) { s.a1 = ivOf(ctx, 1.5); ctx.aimed(2, 0.14, { speed: 138, r: 4, color: 5 }) }
+            if (s.a2 <= 0) {
+              // 残響弾：軌跡を3点おきに間引いて置く。連続配置の間隔は26px以上、
+              // 現在の自機位置から40px以内には置かない（壁化と理不尽な密着を防ぐ）。
+              // 置かれた弾はゆっくり沈むだけで、追尾はしない
+              s.a2 = ivOf(ctx, 2.1)
+              let lx = -999, ly = -999, placed = 0
+              for (let i = 0; i < s.trail.length; i += 3) {
+                const p = s.trail[i]
+                if (Math.hypot(p.x - lx, p.y - ly) < 26) continue
+                if (Math.hypot(p.x - ctx.player.x, p.y - ctx.player.y) < 40) continue
+                lx = p.x; ly = p.y
+                placed += 1
+                if (placed > 10) break
+                ctx.spawn({
+                  x: p.x, y: p.y, angle: DOWN, speed: spdOf(ctx, 34),
+                  r: 4, color: 5, kind: 'orb', swayAmp: 6, swayFreq: 1.4, swayPhase: i * 0.7,
+                })
+              }
+            }
+          },
+        },
+        // 想起その1：自機の相棒・過去作の相手の技を再演する（原作の想起の構造）
+        ...(chara === 'reimu'
+          ? [{
+              // 霊夢の相棒（紫）ゆかり：幽々子の蝶の二重渦（妖々夢）
+              name: '想起「二重黒死蝶」', hp: 1150, timeLimit: 55, move: 'sine' as const, moveRange: 90, moveSpeed: 0.5, ...BONUS,
+              update: (ctx: BossContext, dt: number) => {
+                const s = phaseState(ctx)
+                s.ang += dt * 1.5
+                s.a1 -= dt; s.a2 -= dt
+                if (s.a1 <= 0) {
+                  // 蝶の二重渦：弾間隔 88×0.19≒16.7px（Hardでも約13.6px）＞ 当たり判定直径9px
+                  s.a1 = ivOf(ctx, 0.19)
+                  ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang, speed: spdOf(ctx, 88), r: 4.5, color: 6, kind: 'ellipse' })
+                  ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: -s.ang + 1.2, speed: spdOf(ctx, 88), r: 4.5, color: 0, kind: 'ellipse' })
+                }
+                if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.8); ctx.aimed(1, 0, { speed: 132, r: 4, color: 6 }) }
+              },
+            }]
+          : [{
+              // 魔理沙の相棒：アリスの人形砲台（妖々夢）
+              name: '想起「上海人形」', hp: 1150, timeLimit: 55, move: 'hover' as const, moveRange: 50, moveSpeed: 0.45, ...BONUS,
+              update: (ctx: BossContext, dt: number) => {
+                const s = phaseState(ctx)
+                s.a1 -= dt; s.a2 -= dt
+                if (s.a1 <= 0) {
+                  // 左右の人形（ボス±56px）が交互に3方向の扇を撃つ
+                  s.a1 = ivOf(ctx, 1.15)
+                  s.n += 1
+                  const ox = ctx.bossX() + (s.n % 2 === 0 ? -56 : 56), oy = ctx.bossY() + 10
+                  const base = Math.atan2(ctx.player.y - oy, ctx.player.x - ox)
+                  for (let k = -1; k <= 1; k++) {
+                    ctx.spawn({ x: ox, y: oy, angle: base + k * 0.2, speed: spdOf(ctx, 118), r: 4, color: 4, kind: 'orb' })
+                  }
+                }
+                if (s.a2 <= 0) {
+                  s.a2 = ivOf(ctx, 2.8)
+                  ringGapArc(ctx, cntOf(ctx, 12), s.ang, 0.55, { speed: 64, r: 4.5, color: 5 })
+                  s.ang += 0.7
+                }
+              },
+            }]),
+        // 想起その2：もう一人の過去作ボス
+        ...(chara === 'reimu'
+          ? [{
+              // 霊夢が紅魔郷で戦ったレミリアの霧
+              name: '想起「スカーレットミスト」', hp: 1250, timeLimit: 60, move: 'sine' as const, moveRange: 100, moveSpeed: 0.55, ...BONUS,
+              update: (ctx: BossContext, dt: number) => {
+                const s = phaseState(ctx)
+                s.a1 -= dt; s.a2 -= dt; s.a3 -= dt
+                if (s.a1 <= 0) {
+                  // 紅い霧：滞留する泡弾がゆっくり沈む。発生2発/1.3s・寿命約8秒で同時約12発
+                  s.a1 = ivOf(ctx, 1.3)
+                  for (let i = 0; i < 2; i++) {
+                    ctx.spawn({
+                      x: ctx.bossX() + (Math.random() - 0.5) * 70, y: ctx.bossY() + 6,
+                      angle: DOWN + (Math.random() - 0.5) * 0.5, speed: spdOf(ctx, 46),
+                      r: 6, color: 0, kind: 'bubble', swayAmp: 12, swayFreq: 0.9, swayPhase: Math.random() * 6.28,
+                    })
+                  }
+                }
+                if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.6); ctx.aimed(3, 0.16, { speed: 126, r: 4, color: 0 }) }
+                if (s.a3 <= 0) {
+                  s.a3 = ivOf(ctx, 3.6)
+                  ringGapArc(ctx, cntOf(ctx, 12), s.ang, 0.55, { speed: 62, r: 4.5, color: 0 })
+                  s.ang += 0.6
+                }
+              },
+            }]
+          : [{
+              // 魔理沙の相棒：パチュリーの炎の渦（紅魔郷）
+              name: '想起「アグニシャイン」', hp: 1250, timeLimit: 60, move: 'hover' as const, moveRange: 50, moveSpeed: 0.45, ...BONUS,
+              update: (ctx: BossContext, dt: number) => {
+                const s = phaseState(ctx)
+                s.ang += dt * 2.2
+                s.a1 -= dt; s.a2 -= dt
+                if (s.a1 <= 0) {
+                  // 炎の渦：弾間隔 96×0.13≒12.5px（Hardでも約10.2px）＞ 当たり判定直径9px
+                  s.a1 = ivOf(ctx, 0.13)
+                  ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang, speed: spdOf(ctx, 96), r: 4.5, color: 0, kind: 'orb' })
+                  ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang + Math.PI, speed: spdOf(ctx, 96), r: 4.5, color: 1, kind: 'orb' })
+                }
+                if (s.a2 <= 0) {
+                  s.a2 = ivOf(ctx, 2.4)
+                  ringGapArc(ctx, cntOf(ctx, 14), s.ang, 0.5, { speed: 64, r: 4.5, color: 0 })
+                }
+              },
+            }]),
+      ],
+    }
+    case 'orin': return {
+      id, name: '火焔猫燐', epithet: '地獄の輪禍', radius: 22, figure: BOSS_FIGURES.orin,
+      phases: [
+        {
+          name: null, hp: 700, timeLimit: 45, move: 'sine', moveRange: 100, moveSpeed: 0.6,
+          update: (ctx, dt) => {
+            const s = phaseState(ctx)
+            s.a1 -= dt; s.a2 -= dt
+            if (s.a1 <= 0) {
+              // 猫車が運ぶ亡霊：泡状の霊弾が漂いながら沈む
+              s.a1 = ivOf(ctx, 1.4)
+              for (let i = 0; i < 3; i++) {
+                ctx.spawn({
+                  x: ctx.bossX() + (i - 1) * 22, y: ctx.bossY() + 8,
+                  angle: DOWN + (i - 1) * 0.3, speed: spdOf(ctx, 56),
+                  r: 5.5, color: 6, kind: 'bubble', swayAmp: 9, swayFreq: 1.3, swayPhase: Math.random() * 6.28,
+                })
+              }
+            }
+            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.2); ctx.aimed(2, 0.15, { speed: 124, r: 4, color: 0 }) }
+          },
+        },
+        {
+          name: '猫符「キャッツサーカス」', hp: 1200, timeLimit: 55, move: 'hover', moveRange: 46, moveSpeed: 0.5, ...BONUS,
           setup: (ctx) => {
             const sp = new SpiralEmitter()
-            // ヤマメの網を再演：弾間隔 92×0.22=20.2px ＞ 当たり判定直径
-            sp.arms = 4; sp.angleVel = 0.7; sp.interval = ivOf(ctx, 0.22)
-            sp.bullet = { speed: spdOf(ctx, 92), r: 4.5, color: 5, kind: 'orb' }
+            // 猫の輪舞：弾間隔 88×0.24=21.1px（Hardでも約17px）＞ 当たり判定直径9px
+            sp.arms = 5; sp.angleVel = -0.9; sp.interval = ivOf(ctx, 0.24)
+            sp.bullet = { speed: spdOf(ctx, 88), r: 4.5, color: 0, kind: 'orb' }
             ctx.addEmitter(sp)
           },
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.a1 -= dt
+            s.a1 -= dt; s.a2 -= dt
             if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 1.6)
-              webRing(ctx, s.ang, 5)
-              s.ang += 0.35
+              s.a1 = ivOf(ctx, 3.1)
+              ringGapArc(ctx, cntOf(ctx, 12), s.ang, 0.55, { speed: 62, r: 4.5, color: 0 })
+              s.ang += 0.7
             }
+            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.8); ctx.aimed(2, 0.15, { speed: 126, r: 4, color: 6 }) }
           },
         },
         {
-          name: '想起「怪力乱神」', hp: 1150, timeLimit: 55, move: 'hover', moveRange: 50, moveSpeed: 0.45, ...BONUS,
+          name: '恨霊「ゾンビフェアリー」', hp: 1400, timeLimit: 60, move: 'sine', moveRange: 100, moveSpeed: 0.6, ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) { s.a1 = ivOf(ctx, 1.5); bigFan(ctx, 5, 0.24, 72, 8.5, 5) }
-            if (s.a2 <= 0) {
-              s.a2 = ivOf(ctx, 3.2)
-              ringGapArc(ctx, cntOf(ctx, 16), s.ang, 0.5, { speed: 60, r: 4.5, color: 5 })
+            s.a1 -= dt; s.a2 -= dt; s.a3 -= dt
+            if (s.a1 <= 0) {
+              // 画面下から湧き上がる怨霊：縦間隔は 74×0.55≒41px で、横の列もランダムに散る
+              s.a1 = ivOf(ctx, 0.55)
+              ctx.spawn({
+                x: 20 + Math.random() * (FW - 40), y: FH + 12,
+                angle: -DOWN + (Math.random() - 0.5) * 0.24, speed: spdOf(ctx, 74),
+                r: 4, color: 7, kind: 'star',
+              })
+            }
+            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.6); ctx.aimed(3, 0.18, { speed: 122, r: 4, color: 6 }) }
+            if (s.a3 <= 0) {
+              s.a3 = ivOf(ctx, 3.4)
+              ringGapArc(ctx, cntOf(ctx, 12), s.ang, 0.55, { speed: 60, r: 4.5, color: 6 })
               s.ang += 0.6
-            }
-          },
-        },
-        {
-          name: '想起「釣瓶落とし」', hp: 1300, timeLimit: 60, move: 'sine', moveRange: 60, moveSpeed: 0.4, ...BONUS,
-          update: (ctx, dt) => {
-            const s = phaseState(ctx)
-            s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 1.15)
-              bucketRain(ctx, s.n)
-              s.n += 1
-            }
-            if (s.a2 <= 0) {
-              s.a2 = ivOf(ctx, 2.2)
-              ctx.aimed(1, 0, { speed: 148, r: 4, color: 5 })
-              s.a3 = 0.35
-            }
-            if (s.a3 > 0) {
-              s.a3 -= dt
-              if (s.a3 <= 0) ctx.aimed(1, 0, { speed: 158, r: 4, color: 5 })
             }
           },
         },
@@ -591,59 +766,117 @@ function buildBossDef(id: BossId): BossDef {
             s.a1 -= dt; s.a2 -= dt
             if (s.a1 <= 0) {
               // 核弾の扇：R=130 での隣接間隔は約34px ＞ 大玉の当たり判定直径16px
-              s.a1 = ivOf(ctx, 1.15)
+              s.a1 = ivOf(ctx, 1.5)
               bigFan(ctx, 5, 0.26, 80, 8, 1)
             }
             if (s.a2 <= 0) {
-              s.a2 = ivOf(ctx, 2.6)
-              // 弧間隔は R=90 で約40px あり、リングを横切る余地が常にある
-              ringSkip(ctx, cntOf(ctx, 14), new Set(), { speed: 66, r: 4.5, color: 1, angle: Math.random() * Math.PI * 2 })
+              // 核分裂する巨大弾：自機方向へ進み、1.5秒後に破裂してリングに分裂する
+              s.a2 = ivOf(ctx, 1.9)
+              const base = Math.atan2(ctx.player.y - ctx.bossY(), ctx.player.x - ctx.bossX())
+              const b = ctx.spawn({
+                x: ctx.bossX(), y: ctx.bossY() + 6, angle: base, speed: spdOf(ctx, 58),
+                r: 13, color: 1, kind: 'big',
+              })
+              if (b) s.fus.push({ b, t: 0 })
+            }
+            // 分裂処理：寿命を迎えた核弾を、その場で欠けつきリングに変える
+            for (let i = s.fus.length - 1; i >= 0; i--) {
+              const f = s.fus[i]
+              f.t += dt
+              if (!f.b.active) { s.fus.splice(i, 1); continue }
+              if (f.t >= 1.5) {
+                const bx = f.b.x, by = f.b.y
+                f.b.active = false
+                s.fus.splice(i, 1)
+                // 分裂リング：10発・連続2発分の欠け。弧間隔は R=60 で約38px
+                const n = 10
+                const skipAt = Math.floor(Math.random() * n)
+                for (let k = 0; k < n; k++) {
+                  if (k === skipAt || k === (skipAt + 1) % n) continue
+                  ctx.spawn({
+                    x: bx, y: by, angle: (k / n) * Math.PI * 2 + Math.random() * 0.2,
+                    speed: spdOf(ctx, 78), r: 4, color: 1, kind: 'orb',
+                  })
+                }
+              }
             }
           },
         },
         {
           name: '制御不能「セルフトカマク」', hp: 1500, timeLimit: 65, move: 'hover', moveRange: 46, moveSpeed: 0.5, ...BONUS,
-          setup: (ctx) => { phaseState(ctx).a2 = 1.7 },
+          setup: (ctx) => { phaseState(ctx).a2 = 1.5 },
           update: (ctx, dt) => {
             const s = phaseState(ctx)
             s.a1 -= dt; s.a2 -= dt; s.a3 -= dt
             if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 3.4)
-              // 収縮リング：自機中心 R=150、20発 → 弧間隔は約47px で檻にならない
-              const cx = ctx.player.x, cy = ctx.player.y
-              const n = cntOf(ctx, 20)
-              const R = 150
-              for (let i = 0; i < n; i++) {
-                const a = (i / n) * Math.PI * 2
-                ctx.spawn({
-                  x: cx + Math.cos(a) * R, y: cy + Math.sin(a) * R,
-                  angle: a + Math.PI, speed: spdOf(ctx, 50), r: 4.5, color: 1, kind: 'orb',
-                })
-              }
-            }
-            if (s.a2 <= 0) {
-              // 膨張リングは収縮リングと 1.7 秒ずらして撃ち、壁の重なりを避ける
-              s.a2 = ivOf(ctx, 3.4)
+              // 膨張リング（空中心・欠けつき）
+              s.a1 = ivOf(ctx, 3.0)
               ringGapArc(ctx, cntOf(ctx, 16), s.ang, 0.5, { speed: 62, r: 4.5, color: 1 })
               s.ang += 0.6
             }
-            if (s.a3 <= 0) { s.a3 = ivOf(ctx, 2.2); bigFan(ctx, 1, 0, 70, 8.5, 1) }
+            if (s.a2 <= 0) {
+              // 収縮リング：空の周囲 R=100 から中心へ向かう（原作どおり中心は空）。
+              // 自機方向に欠けを持ち、中心を横切った弾はそのまま外へ抜けるため壁として残らない
+              s.a2 = ivOf(ctx, 3.0)
+              const bx = ctx.bossX(), by = ctx.bossY()
+              const n = cntOf(ctx, 16), R = 100
+              const gapC = Math.atan2(ctx.player.y - by, ctx.player.x - bx)
+              for (let i = 0; i < n; i++) {
+                const a = (i / n) * Math.PI * 2 + s.ang
+                const d = Math.abs(((a - gapC) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI)
+                if (d < 0.5) continue
+                ctx.spawn({
+                  x: bx + Math.cos(a) * R, y: by + Math.sin(a) * R,
+                  angle: a + Math.PI, speed: spdOf(ctx, 55), r: 4.5, color: 1, kind: 'orb',
+                })
+              }
+            }
+            if (s.a3 <= 0) { s.a3 = ivOf(ctx, 2.4); bigFan(ctx, 1, 0, 70, 8.5, 1) }
           },
         },
         {
-          name: '熱符「灼熱の渦」', hp: 1750, timeLimit: 65, move: 'drift', moveRange: 120, moveSpeed: 1.0, ...BONUS,
+          // 最終スペル：画面上空に巨大な太陽が居座り、自機を弱く引き寄せる。
+          // 引力は「圧」なので弾密度は他の最終スペルより落として両立させる
+          name: '地獄「サブタレイニアンサン」', hp: 1750, timeLimit: 70, move: 'drift', moveRange: 120, moveSpeed: 1.0, ...BONUS,
+          setup: (ctx) => {
+            const s = phaseState(ctx)
+            s.sunX = FW / 2; s.sunY = 96
+            gravityWell = { x: s.sunX, y: s.sunY, pull: 54, warn: 3.2 }
+          },
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.ang += dt * 1.25
-            s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) {
-              // 二方向渦：弾間隔 102×0.15=15.3px（Hardでも約12.5px）＞ 当たり判定直径9px
-              s.a1 = ivOf(ctx, 0.15)
-              ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang, speed: spdOf(ctx, 102), r: 4.5, color: 1, kind: 'orb' })
-              ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang + Math.PI, speed: spdOf(ctx, 102), r: 4.5, color: 0, kind: 'orb' })
+            const t = ctx.phaseTime()
+            // 太陽は上空をゆっくり漂う。引力の中心＝太陽の位置
+            s.sunX = FW / 2 + Math.sin(t * 0.23) * 72
+            s.sunY = 96 + Math.sin(t * 0.31) * 14
+            if (gravityWell) {
+              gravityWell.x = s.sunX
+              gravityWell.y = s.sunY
+              if (gravityWell.warn > 0) gravityWell.warn = Math.max(0, gravityWell.warn - dt)
             }
-            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 2.4); bigFan(ctx, 1, 0, 70, 8.5, 1) }
+            s.a1 -= dt; s.a2 -= dt; s.a3 -= dt
+            if (s.a1 <= 0) {
+              // 太陽からの渦弾：弾間隔 48×0.34≒16.3px ＞ 当たり判定直径9px
+              s.a1 = ivOf(ctx, 0.34)
+              s.ang += 0.62
+              ctx.spawn({ x: s.sunX, y: s.sunY, angle: s.ang, speed: spdOf(ctx, 48), r: 4.5, color: 1, kind: 'orb' })
+              ctx.spawn({ x: s.sunX, y: s.sunY, angle: s.ang + Math.PI, speed: spdOf(ctx, 48), r: 4.5, color: 0, kind: 'orb' })
+            }
+            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 2.8); bigFan(ctx, 1, 0, 72, 8.5, 1) }
+            if (s.a3 <= 0) {
+              s.a3 = ivOf(ctx, 5.2)
+              // 太陽のコロナ：遅い欠けリング（欠けは自機方向＝逃げ道）
+              const n = cntOf(ctx, 12)
+              const gapC = Math.atan2(ctx.player.y - s.sunY, ctx.player.x - s.sunX)
+              for (let i = 0; i < n; i++) {
+                const a = (i / n) * Math.PI * 2
+                const d = Math.abs(((a - gapC) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI)
+                if (d < 0.5) continue
+                ctx.spawn({ x: s.sunX, y: s.sunY, angle: a, speed: spdOf(ctx, 44), r: 4.5, color: 1, kind: 'orb' })
+              }
+            }
           },
+          teardown: () => { gravityWell = null },
         },
       ],
     }
@@ -740,18 +973,42 @@ function buildBossDef(id: BossId): BossDef {
 }
 
 // フェイズごとの作業変数（acc/angle/カウンタ）の置き場。紅魔郷と同じ共有方式。
-type PhaseState = { a1: number; a2: number; a3: number; ang: number; n: number }
-let activePhaseState: PhaseState = { a1: 0, a2: 0, a3: 0, ang: 0, n: 0 }
+type PhaseState = {
+  a1: number; a2: number; a3: number; ang: number; n: number
+  /** さとり「テリブルスーヴニール」用：自機の移動軌跡 */
+  trail: { x: number; y: number }[]
+  trailT: number
+  /** お空「ニュークリアフュージョン」用：分裂待ちの核弾 */
+  fus: { b: Bullet; t: number }[]
+  /** パルスィの嫉妬用：グレイズ済みとして数えた弾 */
+  seen: Set<Bullet>
+  gauge: number
+  cool: number
+  burstT: number
+  snapX: number
+  snapY: number
+  /** お空「サブタレイニアンサン」用：太陽の位置 */
+  sunX: number
+  sunY: number
+}
+function freshPhaseState(): PhaseState {
+  return {
+    a1: 0, a2: 0, a3: 0, ang: 0, n: 0,
+    trail: [], trailT: 0, fus: [], seen: new Set(), gauge: 0, cool: 0,
+    burstT: 0, snapX: 0, snapY: 0, sunX: FW / 2, sunY: 96,
+  }
+}
+let activePhaseState: PhaseState = freshPhaseState()
 function phaseState(_ctx: BossContext): PhaseState {
   return activePhaseState
 }
 /** フェイズごとに独立した作業変数を持たせ、開始時にリセットする */
 function finBoss(def: BossDef): BossDef {
   for (const ph of def.phases) {
-    const st: PhaseState = { a1: 0, a2: 0, a3: 0, ang: 0, n: 0 }
+    const st: PhaseState = freshPhaseState()
     const origSetup = ph.setup
     ph.setup = (ctx) => {
-      st.a1 = 0; st.a2 = 0; st.a3 = 0; st.ang = 0; st.n = 0
+      Object.assign(st, freshPhaseState())
       activePhaseState = st
       if (origSetup) origSetup(ctx)
     }
@@ -765,8 +1022,8 @@ function finBoss(def: BossDef): BossDef {
   }
   return def
 }
-function makeBossDef(id: BossId): BossDef {
-  return finBoss(buildBossDef(id))
+function makeBossDef(id: DlgBossId, chara: CharaId): BossDef {
+  return finBoss(buildBossDef(id, chara))
 }
 
 // ===== 中ボス定義（単一フェイズの BossDef として表現） =====
@@ -857,16 +1114,45 @@ function makeMidDef(id: MidId, name: string, stageIdx: number): BossDef {
         if (s.a1 <= 0) { s.a1 = ivOf(ctx, 1.0); ctx.aimed(3, 0.14, { speed: 134, r: 4, color: 6 }) }
       }, 'teleport', { interval: 3.4 })],
     })
+    case 'orin': return finBoss({
+      ...base,
+      // 4・6面は猫形態、5面は人型（ボス戦と同じ姿）で出る
+      figure: stageIdx === 4 ? ORIN_FIG : ORIN_CAT_FIG,
+      phases: [phase((ctx, dt) => {
+        const s = phaseState(ctx)
+        s.a1 -= dt; s.a2 -= dt
+        if (s.a1 <= 0) {
+          s.a1 = ivOf(ctx, 1.9)
+          ringGapArc(ctx, cntOf(ctx, 10), s.ang, 0.6, { speed: 66, r: 4.5, color: 0 })
+          s.ang += 0.7
+        }
+        if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.1); ctx.aimed(2, 0.15, { speed: 122, r: 4, color: 6 }) }
+      })],
+    })
+    case 'sanae': return finBoss({
+      ...base,
+      phases: [phase((ctx, dt) => {
+        const s = phaseState(ctx)
+        s.a1 -= dt; s.a2 -= dt
+        if (s.a1 <= 0) {
+          s.a1 = ivOf(ctx, 2.1)
+          // 星の欠けリング（風祝の星弾）
+          ringGapArc(ctx, cntOf(ctx, 14), s.ang, 0.55, { speed: 72, r: 4.5, color: 3, kind: 'star' })
+          s.ang += 0.6
+        }
+        if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.15); ctx.aimed(3, 0.16, { speed: 126, r: 4, color: 3 }) }
+      })],
+    })
   }
 }
 
 // ボスの表示名（ステージカード／情報パネル用）
-const BOSS_META: Record<BossId, { name: string; epithet: string }> = {
-  kisume: { name: 'キスメ', epithet: '恐ろしい釣瓶落とし' },
+const BOSS_META: Record<DlgBossId, { name: string; epithet: string }> = {
   yamame: { name: '黒谷ヤマメ', epithet: '暗い洞窟の明るい土蜘蛛' },
   parsee: { name: '水橋パルスィ', epithet: '地底の橋姫' },
   yuugi: { name: '星熊勇儀', epithet: '語られる怪力乱神' },
   satori: { name: '古明地さとり', epithet: '心を読む地霊殿の主' },
+  orin: { name: '火焔猫燐', epithet: '地獄の輪禍' },
   utsuho: { name: '霊烏路空', epithet: '核熱の地獄鴉' },
   koishi: { name: '古明地こいし', epithet: '無意識の少女' },
 }
@@ -878,57 +1164,7 @@ const BOSS_META: Record<BossId, { name: string; epithet: string }> = {
 type DLine = { w: 'p' | 'b'; t: string }
 type DlgScript = { pre: DLine[]; post: DLine[] }
 const dl = (w: 'p' | 'b', t: string): DLine => ({ w, t })
-const DIALOGUES: Record<BossId, Record<CharaId, DlgScript>> = {
-  kisume: {
-    reimu: {
-      pre: [
-        dl('b', 'あっ、人間だ！ こんな深いところまで、どうやって降りてきたの？'),
-        dl('p', '地上で間欠泉が吹いて、怨霊まで湧いてるの。原因を調べに来たわ。'),
-        dl('b', 'ふーん。ここは縦穴。落ちたら最後、あたしみたいに釣瓶で暮らすしかないよ？'),
-        dl('p', '生憎と、落ちる気はないわ。……それより、その釣瓶で何をしてるの？'),
-        dl('b', '見ての通り、落ちてくるものを待ってるの。今日は大きな獲物が落ちてきたなーって。'),
-        dl('p', '獲物って、私のこと？'),
-        dl('b', 'えへへ。だって人間だもん。地底じゃ珍しいんだよ。'),
-        dl('p', '珍しいからって、釣瓶を落とさないでよね。'),
-        dl('b', '当たったら痛いよ？ でも、あたしと遊んでくれるなら歓迎するけど。'),
-        dl('p', '遊びに来たんじゃないって言ってるのに。'),
-        dl('b', 'つれないなー。じゃあ、通してほしかったらあたしを落としてみせて？'),
-        dl('p', '釣瓶落としの相手が釣瓶落としとはね。……いいわ、受けて立つ。'),
-      ],
-      post: [
-        dl('b', 'あいたたた……釣瓶ごと落とされちゃった。'),
-        dl('p', '言ったでしょう、落ちる気はないって。'),
-        dl('b', '強いんだね。じゃあ約束通り、通してあげる。下は旧都だよ。'),
-        dl('p', '怨霊の出どころに心当たりは？'),
-        dl('b', 'んー、灼熱地獄跡の方が怪しいんじゃない？ 最近やたら熱いし。'),
-        dl('p', '灼熱地獄跡ね。ありがとう、気をつけて行くわ。'),
-      ],
-    },
-    marisa: {
-      pre: [
-        dl('b', 'わ、人間！ 縦穴を降りてくるなんて、酔狂だねー。'),
-        dl('p', '間欠泉の異変を調べに来たんだ。地底は初めてだが、なかなか面白そうだぜ。'),
-        dl('b', '面白いのはあたしも同じ。ここで落ちてくるものを拾って暮らしてるの。'),
-        dl('p', '拾うって……今、その釣瓶を私の頭に落とそうとしてなかったか？'),
-        dl('b', 'ばれた？ だって、落ちてくる人間なんて滅多にないんだもん。'),
-        dl('p', '私は落ちてきたんじゃない、降りてきたんだ。違いが分かるか？'),
-        dl('b', 'うーん、結果は同じじゃない？ ほら、もう一回落としてみるね。'),
-        dl('p', 'こら、人の話を聞け。……まあいい、避けるのは得意だぜ。'),
-        dl('b', 'じゃあ勝負！ あたしの釣瓶を全部避けられたら、通してあげる。'),
-        dl('p', '望むところだ。地底の洗礼、受けて立つぜ！'),
-        dl('b', 'わーい！ いくよー、釣瓶落とし！'),
-        dl('p', '来いよ、キスメ！'),
-      ],
-      post: [
-        dl('b', 'うぅ、全部避けられちゃった……。あたしの釣瓶、壊れてないかな。'),
-        dl('p', '丈夫そうだな、その釣瓶。で、通してくれるんだろ？'),
-        dl('b', '約束だからね。この下は旧都。鬼とか妖怪とか、いっぱいいるよ。'),
-        dl('p', '鬼か。面白くなってきたぜ。怨霊の件は知ってるか？'),
-        dl('b', '怨霊なら、奥の灼熱地獄跡から来てる気がする。熱くて眠れないもん。'),
-        dl('p', '灼熱地獄跡か。情報感謝するぜ、キスメ。'),
-      ],
-    },
-  },
+const DIALOGUES: Record<DlgBossId, Record<CharaId, DlgScript>> = {
   yamame: {
     reimu: {
       pre: [
@@ -1090,8 +1326,8 @@ const DIALOGUES: Record<BossId, Record<CharaId, DlgScript>> = {
         dl('p', '持て余す、で済む話じゃないの。地上まで影響が出てる。'),
         dl('b', '分かっているわ。だから、あなたに頼みたいのだけど……その前に。'),
         dl('p', 'その前に？'),
-        dl('b', 'あなたの心と腕前を、確かめさせて。私の想起の弾幕、あなたがこれまで会った者たちの記憶よ。'),
-        dl('p', '他人の技を再現する、ね。面白いけど、手加減はしないわよ。'),
+        dl('b', 'あなたの心と腕前を、確かめさせて。私の想起の弾幕は、あなたの相棒や、かつて戦った者たちの記憶を読むものよ。'),
+        dl('p', '幽々子の蝶にレミリアの霧まで読むのね。面白いけど、手加減はしないわよ。'),
         dl('b', 'ええ、そう来なくては。……あなたの心、思ったより真っ直ぐね。'),
         dl('p', '褒め言葉として受け取っておくわ。行くわよ、さとり。'),
       ],
@@ -1099,7 +1335,8 @@ const DIALOGUES: Record<BossId, Record<CharaId, DlgScript>> = {
         dl('b', '見事だったわ。心の読み通り、真っ直ぐで強い。'),
         dl('p', 'あんたの想起も見事だったわよ。で、頼みというのは？'),
         dl('b', 'お空を止めてほしいの。灼熱地獄跡で、力が暴走しているわ。'),
-        dl('p', '飼い主の責任は重いわね。……いいわ、行ってくる。'),
+        dl('b', 'この先の回廊では、お燐が待っているはず。あの子は私の自慢のペットよ。'),
+        dl('p', '飼い主の責任は重いわね。……いいわ、行ってくる。猫にも挨拶していくわ。'),
         dl('b', 'ありがとう。あの子は悪くないの。ただ、新しい力が嬉しくて、加減を知らないだけ。'),
         dl('p', '分かってる。優しく止めてあげるわ。……たぶんね。'),
       ],
@@ -1112,9 +1349,9 @@ const DIALOGUES: Record<BossId, Record<CharaId, DlgScript>> = {
         dl('p', '人の心のぞき見はほどほどにしろよ。で、怨霊の元はあんたの鴉だって？'),
         dl('b', 'お空ね。核融合の力を得た地獄鴉。制御が利かなくなってきているわ。'),
         dl('p', '核融合か。そりゃあ間欠泉も吹くわけだ。止めに行くぜ。'),
-        dl('b', 'その前に、あなたの実力を確かめさせて。想起の弾幕で、あなたの記憶を辿るわ。'),
-        dl('p', '私の記憶？ ここまで来る間に戦った奴らの技、ってことか。'),
-        dl('b', 'ええ。心を読む者の特権。……さあ、あなたの旅を再演しましょう。'),
+        dl('b', 'その前に、あなたの実力を確かめさせて。想起の弾幕で、あなたの相棒たちの記憶を辿るわ。'),
+        dl('p', '私の記憶？ アリスやパチュリーの技ってことか。懐かしいな。'),
+        dl('b', 'ええ。心を読む者の特権。……さあ、あなたの記憶を再演しましょう。'),
         dl('p', '面白いじゃないか。二度目の相手も、全力で倒すだけだぜ。'),
         dl('b', 'ふふ、その自信も本物ね。では、始めましょうか。'),
         dl('p', '来いよ、さとり。心読みの腕前、見せてもらう！'),
@@ -1123,9 +1360,60 @@ const DIALOGUES: Record<BossId, Record<CharaId, DlgScript>> = {
         dl('b', '読み通り、いえ、読み以上に強かったわ。お見事。'),
         dl('p', '想起の弾幕、懐かしくて手強かったぜ。で、お空の件だな。'),
         dl('b', 'お願いできる？ 灼熱地獄跡で暴走しているの。止めてあげて。'),
+        dl('b', '回廊ではお燐が様子を見ているはずよ。猫車に轢かれないようにね。'),
         dl('p', '任せろ。暴走鴉の一匹や二匹、なんとかするぜ。'),
         dl('b', 'あの子は単純なの。力を褒められたいだけ。……どうか、傷つけすぎないで。'),
         dl('p', '分かってる。加減して止めてやるさ。'),
+      ],
+    },
+  },
+  orin: {
+    reimu: {
+      pre: [
+        dl('b', 'あら、地上の人間？ こんな所まで死体を運ぶ用事もないのに。'),
+        dl('p', '古明地さとりの飼い猫ね。火焔猫燐、だったかしら。'),
+        dl('b', 'お、知ってるんだ。あたいはお燐。死体運びが仕事の火車だよ。'),
+        dl('p', 'さっきの猫はあんただったのね。姿が変わるの？'),
+        dl('b', 'あれは猫の姿。こっちが本気の姿だよ。……で、何の用？'),
+        dl('p', 'お空の暴走を止めに来たの。通してちょうだい。'),
+        dl('b', 'お空のことは心配だけどさ。さとり様の館を荒らす奴は通せないなあ。'),
+        dl('p', '荒らす気はないわ。止めに行くだけ。'),
+        dl('b', '言葉じゃ信用できないね。猫車の轢き逃げに気をつけて、勝ってから通るんだね。'),
+        dl('p', '轢き逃げは物騒ね。……いいわ、相手になる。'),
+        dl('b', 'へへ、いい返事。死体にならないよう頑張るんだよ？'),
+        dl('p', '縁起でもない。行くわよ、お燐！'),
+      ],
+      post: [
+        dl('b', 'いてて……やるねえ、巫女さん。'),
+        dl('p', '猫車の腕前、見せてもらったわ。通してくれる？'),
+        dl('b', '約束だもんね。お空はこの先の灼熱地獄跡だよ。'),
+        dl('p', 'あんたも心配なんでしょう、お空のこと。'),
+        dl('b', '……うん。あの子、力が嬉しくて止まれないだけなんだ。優しく止めてあげて。'),
+        dl('p', '分かってるわ。任せてちょうだい。'),
+      ],
+    },
+    marisa: {
+      pre: [
+        dl('b', 'おっ、人間だ。人間の死体は重いんだよなあ。'),
+        dl('p', '死体扱いするな。私は魔理沙、生きてるぜ。'),
+        dl('b', 'あたいはお燐。地霊殿のペットで、死体運びの火車だよ。'),
+        dl('p', 'さっきの猫もあんたか。変身できるのか、便利だな。'),
+        dl('b', '猫の姿は散歩用さ。こっちが仕事の姿だよ。'),
+        dl('p', '仕事熱心だな。私はお空を止めに来た。通してくれ。'),
+        dl('b', 'お空のことは気になるけど、館の用心棒も仕事でね。'),
+        dl('p', '用心棒か。じゃあ、実力で通るしかないな。'),
+        dl('b', 'そうこなくっちゃ。あたいの猫車、避けられるかな？'),
+        dl('p', '死体運びの車に轢かれる趣味はないぜ。全力で避ける。'),
+        dl('b', 'へへ、楽しみだ。いくよ、魔理沙！'),
+        dl('p', '来い、お燐！'),
+      ],
+      post: [
+        dl('b', 'あいたた……負けたー。車輪、曲がってないかな。'),
+        dl('p', '丈夫な車だな。で、通してくれるんだろ？'),
+        dl('b', 'もちろん。お空は灼熱地獄跡。あの熱さ、近頃おかしいんだ。'),
+        dl('p', 'あんたも心配してるんだな、お空を。'),
+        dl('b', '友達だもん。……力を褒められたいだけの子なんだ。ひどいことはしないでね。'),
+        dl('p', '任せろ。優しく止めてやるさ。'),
       ],
     },
   },
@@ -1232,7 +1520,7 @@ const DIALOGUES: Record<BossId, Record<CharaId, DlgScript>> = {
 }
 
 // ===== ポートレート画像（自前生成イラスト） =====
-// 自機2人は public/cdn/koumakyou/、ボス7人は public/cdn/chireiden/ の webp を
+// 自機2人は public/cdn/koumakyou/、ボス8人は public/cdn/chireiden/ の webp を
 // 自オリジン相対（BASE_URL基準）で参照し、SW の cdn/ キャッシュに乗せる。
 // 読み込み失敗時は呼び出し側が図形／文字のフォールバック表示に切り替えるため、
 // 画像が無くてもゲームは動作する。
@@ -1618,7 +1906,7 @@ type GState = {
   bossWait: number
   respawnT: number
   focusNow: boolean
-  bossId: BossId | null
+  bossId: DlgBossId | null
   midId: MidId | null
   msg: string
   msgT: number
@@ -1654,12 +1942,37 @@ export default function Chireiden() {
   selRef.current = { chara, diff, challenge }
   // ===== 会話シーンの橋渡し（ゲームループ ⇔ React UI） =====
   const dlgRef = useRef<{ active: boolean; done: (() => void) | null }>({ active: false, done: null })
-  const [dlgUi, setDlgUi] = useState<{ boss: BossId; lines: DLine[]; idx: number } | null>(null)
+  const [dlgUi, setDlgUi] = useState<{ boss: DlgBossId; lines: DLine[]; idx: number } | null>(null)
   // ===== タイトル画面のステップ（原作のメニュー構成に寄せた多段選択） =====
   const [titleStep, setTitleStep] = useState<'menu' | 'chara' | 'diff' | 'records' | 'help'>('menu')
   const [pendingRun, setPendingRun] = useState<'story' | 'extra'>('story')
   // ポートレート画像の読み込み失敗を記録し、フォールバック表示に切り替える
   const [imgErr, setImgErr] = useState<ReadonlySet<string>>(new Set())
+  // 狭い／低いウィンドウ（スマホ等）でも画面全体が隠れず見えるよう、ステージ表示サイズを実測でフィットさせる
+  const [stageBox, setStageBox] = useState<{ w: number; h: number } | null>(null)
+  const [narrow, setNarrow] = useState(false)
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const update = () => {
+      const cw = el.clientWidth
+      const ch = el.clientHeight
+      if (cw <= 0 || ch <= 0) return
+      const isNarrow = cw < 480
+      setNarrow((prev) => (prev === isNarrow ? prev : isNarrow))
+      const foot = isNarrow ? 46 : 40 // 下部の注記行（narrow時はミュートボタン付き）の高さぶんを差し引く
+      const availW = Math.min(cw, 560)
+      const availH = Math.max(120, ch - foot)
+      const scale = Math.min(availW / SW, availH / SH)
+      const w = Math.floor(SW * scale)
+      const h = Math.floor(SH * scale)
+      setStageBox((prev) => (prev && prev.w === w && prev.h === h ? prev : { w, h }))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const markImgErr = (id: string) =>
     setImgErr((prev) => {
       if (prev.has(id)) return prev
@@ -1781,6 +2094,7 @@ export default function Chireiden() {
 
     function finish(clear: boolean) {
       running = false
+      gravityWell = null
       if (G.challenge) {
         // チャレンジ専用ベストを通常モードとは分けて保存（通常ハイスコアには触れない）
         setFinalMisses(G.misses)
@@ -1833,6 +2147,7 @@ export default function Chireiden() {
       pbullets.clear()
       world.clearBullets()
       world.clearLasers()
+      gravityWell = null
       if (bossCtl.active) bossCtl.abort()
       bgmPlay(G.stageIdx === 6 ? 'exstage' : 'stage')
     }
@@ -1871,7 +2186,7 @@ export default function Chireiden() {
       G.msg = `中ボス ${sd.midName}`
       G.msgT = 1.8
       // 入場演出：画面外から飛来してから戦闘開始
-      enter = { t: 1.0, max: 1.0, fig: MID_FIGURES[sd.mid], homeY: 80, kind: 'mid' }
+      enter = { t: 1.0, max: 1.0, fig: midFigOf(sd.mid, G.stageIdx), homeY: 80, kind: 'mid' }
     }
     function launchMidboss() {
       const sd = STAGES[G.stageIdx]
@@ -1895,12 +2210,12 @@ export default function Chireiden() {
     function launchBoss() {
       const sd = STAGES[G.stageIdx]
       bgmPlay(G.stageIdx === 6 ? 'exboss' : 'boss')
-      bossCtl.start(makeBossDef(sd.boss), world, playerRef, FW / 2, 88)
+      bossCtl.start(makeBossDef(sd.boss, G.chara), world, playerRef, FW / 2, 88)
       burst(FW / 2, 88, 16, '#ffcdd2', 90)
     }
 
     // ===== 会話シーンの開始（ゲームループを止め、終了時に done へ接続） =====
-    function openDialogue(boss: BossId, kind: 'pre' | 'post', done: () => void) {
+    function openDialogue(boss: DlgBossId, kind: 'pre' | 'post', done: () => void) {
       const script = DIALOGUES[boss][G.chara]
       const lines = kind === 'pre' ? script.pre : script.post
       if (lines.length === 0) { done(); return }
@@ -1911,7 +2226,7 @@ export default function Chireiden() {
     // ===== ボス／中ボスのフェイズ終了処理 =====
     bossCtl.onPhaseEnd = (res: PhaseEndResult) => {
       if (ctlIsMid) {
-        const midFig = G.midId ? MID_FIGURES[G.midId] : null
+        const midFig = G.midId ? midFigOf(G.midId, G.stageIdx) : null
         if (res.timeout) {
           G.msg = '逃げられた…'
           G.msgT = 1.4
@@ -2152,6 +2467,17 @@ export default function Chireiden() {
           (shots) => { for (const s of shots) pbullets.spawn(player.x, player.y, s) },
         )
       }
+      // 太陽の引力（お空の最終スペル）：中心近くでは弱め、入力で十分抗える強さ
+      if (gravityWell && !player.dead && bossCtl.active) {
+        const dx = gravityWell.x - player.x
+        const dy = gravityWell.y - player.y
+        const d = Math.hypot(dx, dy)
+        if (d > 12) {
+          const p = gravityWell.pull * dt * (d < 60 ? 0.45 : 1)
+          player.x = clamp(player.x + (dx / d) * p, 8, FW - 8)
+          player.y = clamp(player.y + (dy / d) * p, 16, FH - 10)
+        }
+      }
       playerRef.x = player.x
       playerRef.y = player.y
       world.target.x = player.x
@@ -2260,6 +2586,20 @@ export default function Chireiden() {
       if (G.shake > 0) ctx.translate((Math.random() - 0.5) * G.shake, (Math.random() - 0.5) * G.shake)
       drawBackground()
 
+      // 太陽（お空の最終スペル）：引力の中心を巨大な太陽として描く（実弾は太陽位置から出る）
+      if (gravityWell && running) {
+        const sx0 = gravityWell.x, sy0 = gravityWell.y
+        const sg = ctx.createRadialGradient(sx0, sy0, 4, sx0, sy0, 46)
+        sg.addColorStop(0, 'rgba(255,236,160,0.95)')
+        sg.addColorStop(0.45, 'rgba(255,160,60,0.75)')
+        sg.addColorStop(1, 'rgba(255,80,20,0)')
+        ctx.fillStyle = sg
+        ctx.beginPath(); ctx.arc(sx0, sy0, 46, 0, Math.PI * 2); ctx.fill()
+        ctx.fillStyle = '#ffca28'
+        ctx.beginPath(); ctx.arc(sx0, sy0, 25 + Math.sin(G.time * 3.1) * 1.6, 0, Math.PI * 2); ctx.fill()
+        ctx.strokeStyle = 'rgba(255,112,67,0.9)'; ctx.lineWidth = 2.5
+        ctx.beginPath(); ctx.arc(sx0, sy0, 31, 0, Math.PI * 2); ctx.stroke()
+      }
       // アイテム
       items.render(ctx)
       // 敵
@@ -2267,7 +2607,7 @@ export default function Chireiden() {
       // 中ボス／ボス（こいしは無意識の演出として半透明で描く）
       if (bossCtl.active) {
         const curId = ctlIsMid ? G.midId : G.bossId
-        const fig = ctlIsMid && G.midId ? MID_FIGURES[G.midId] : G.bossId ? BOSS_FIGURES[G.bossId] : null
+        const fig = ctlIsMid && G.midId ? midFigOf(G.midId, G.stageIdx) : G.bossId ? BOSS_FIGURES[G.bossId] : null
         const alpha = curId === 'koishi' ? 0.62 : 1
         if (fig) {
           drawFigure(ctx, fig, bossCtl.x, bossCtl.y, { t: G.time, alpha })
@@ -2323,6 +2663,21 @@ export default function Chireiden() {
         }
       }
       ctx.restore()
+
+      // ===== 核警告の staging（最終スペル開始直後のみ） =====
+      if (gravityWell && running && gravityWell.warn > 0) {
+        const wy = 48
+        ctx.fillStyle = 'rgba(120,0,0,0.72)'; ctx.fillRect(0, wy, FW, 20)
+        ctx.save()
+        ctx.beginPath(); ctx.rect(0, wy, FW, 20); ctx.clip()
+        ctx.fillStyle = '#ffeb3b'
+        for (let x = -20 + ((G.time * 60) % 40) - 40; x < FW + 20; x += 40) {
+          ctx.beginPath(); ctx.moveTo(x, wy + 20); ctx.lineTo(x + 12, wy); ctx.lineTo(x + 24, wy + 20); ctx.closePath(); ctx.fill()
+        }
+        ctx.restore()
+        ctx.fillStyle = '#ffffff'; ctx.font = 'bold 13px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'
+        ctx.fillText('☢ WARNING ☢', FW / 2, wy + 10.5)
+      }
 
       // ===== ボス位置マーカー（画面下部） =====
       const marker = (x: number, color: string) => {
@@ -2560,7 +2915,7 @@ export default function Chireiden() {
   }
 
   return (
-    <div ref={wrapRef} style={{ width: '100%', maxWidth: 560, margin: '0 auto', userSelect: 'none' }}>
+    <div ref={wrapRef} style={{ width: '100%', maxWidth: 560, margin: '0 auto', userSelect: 'none', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <style>{`
         .chirei-btn:active { transform: scale(0.96); }
         .chirei-menu { transition: background 0.12s, color 0.12s; }
@@ -2570,13 +2925,14 @@ export default function Chireiden() {
         .chirei-card { transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s; }
         .chirei-card:hover, .chirei-card:active { transform: translateY(-2px); border-color: rgba(255,170,120,0.95) !important; box-shadow: 0 10px 26px rgba(0,0,0,0.55); }
       `}</style>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', flexShrink: 0, ...(stageBox ? { width: stageBox.w, height: stageBox.h } : {}) }}>
         <canvas
           ref={canvasRef}
           width={SW}
           height={SH}
-          style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8, background: '#0a0610', touchAction: 'none' }}
+          style={{ width: '100%', height: stageBox ? '100%' : 'auto', display: 'block', borderRadius: 8, background: '#0a0610', touchAction: 'none' }}
         />
+        {!narrow && (
         <button
           type="button"
           className="chirei-btn"
@@ -2592,14 +2948,15 @@ export default function Chireiden() {
         >
           {mutedUi ? '🔇' : '🔊'}
         </button>
+        )}
         {screen === 'playing' && (
           <button
             type="button"
             className="chirei-btn"
             onPointerDown={(e) => { e.preventDefault(); pressBomb() }}
             style={{
-              position: 'absolute', right: 10, bottom: 10, zIndex: 2,
-              width: 64, height: 64, borderRadius: '50%',
+              position: 'absolute', right: narrow ? 8 : 10, bottom: narrow ? 8 : 10, zIndex: 2,
+              width: narrow ? 54 : 64, height: narrow ? 54 : 64, borderRadius: '50%',
               background: 'rgba(191,54,12,0.78)', color: '#fff',
               border: '2px solid rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 'bold',
             }}
@@ -2613,7 +2970,7 @@ export default function Chireiden() {
           const playerName = chara === 'reimu' ? '博麗霊夢' : '霧雨魔理沙'
           const bossName = BOSS_META[dlgUi.boss].name
           const faceStyle = (active: boolean): React.CSSProperties => ({
-            height: 188, width: 138, borderRadius: 10,
+            height: narrow ? 150 : 188, width: narrow ? 110 : 138, borderRadius: 10,
             border: active ? '2px solid rgba(255,170,120,0.95)' : '2px solid rgba(255,255,255,0.25)',
             opacity: active ? 1 : 0.55,
             filter: active ? 'none' : 'brightness(0.55) saturate(0.75)',
@@ -2651,7 +3008,7 @@ export default function Chireiden() {
                 style={{
                   position: 'relative', margin: '10px 10px 12px',
                   background: 'rgba(18,7,3,0.92)', border: '1px solid rgba(255,140,80,0.65)',
-                  borderRadius: 10, padding: '14px 16px 16px', minHeight: 92,
+                  borderRadius: 10, padding: narrow ? '12px 14px 14px' : '14px 16px 16px', minHeight: narrow ? 84 : 92,
                   boxShadow: '0 8px 24px rgba(0,0,0,0.6)', textAlign: 'left',
                 }}
               >
@@ -2665,7 +3022,7 @@ export default function Chireiden() {
                 >
                   {speakingPlayer ? playerName : bossName}
                 </div>
-                <div style={{ fontSize: 15, lineHeight: 1.8, color: '#fff', marginTop: 2 }}>{line.t}</div>
+                <div style={{ fontSize: narrow ? 14 : 15, lineHeight: narrow ? 1.7 : 1.8, color: '#fff', marginTop: 2 }}>{line.t}</div>
                 <div style={{ position: 'absolute', right: 14, bottom: 8, fontSize: 11, color: '#ffb27d' }}>
                   {dlgUi.idx + 1}/{dlgUi.lines.length}　▼ タップ / Z
                 </div>
@@ -2682,9 +3039,9 @@ export default function Chireiden() {
               className="chirei-menu"
               onClick={onClick}
               style={{
-                display: 'flex', alignItems: 'baseline', gap: 10, width: '100%',
+                display: 'flex', alignItems: 'baseline', gap: 10, width: '100%', flexWrap: narrow ? 'wrap' : 'nowrap',
                 background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,170,120,0.16)',
-                color: '#fdf1e7', padding: '9px 10px', fontSize: 17, fontWeight: 'bold',
+                color: '#fdf1e7', padding: narrow ? '8px 10px' : '9px 10px', fontSize: narrow ? 16 : 17, fontWeight: 'bold',
                 letterSpacing: 2, cursor: 'pointer', textAlign: 'left',
                 textShadow: '0 2px 8px rgba(0,0,0,0.85)',
               }}
@@ -2739,9 +3096,9 @@ export default function Chireiden() {
                 {titleStep === 'menu' && (
                   <>
                     <div style={{ fontSize: 11, letterSpacing: 5, color: '#ffb27d', textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>ファンメイド弾幕STG</div>
-                    <div style={{ fontSize: 44, fontWeight: 'bold', color: '#ff7043', letterSpacing: 3, lineHeight: 1.15, textShadow: '0 0 18px rgba(255,90,30,0.75), 0 3px 10px rgba(0,0,0,0.9)' }}>東方地霊殿</div>
+                    <div style={{ fontSize: narrow ? 36 : 44, fontWeight: 'bold', color: '#ff7043', letterSpacing: 3, lineHeight: 1.15, textShadow: '0 0 18px rgba(255,90,30,0.75), 0 3px 10px rgba(0,0,0,0.9)' }}>東方地霊殿</div>
                     <div style={{ fontSize: 12.5, color: '#f3d3bd', letterSpacing: 2, textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>〜 地霊の異変 〜　全6面＋EXステージ</div>
-                    <div style={{ marginTop: 20, width: '64%', minWidth: 250 }}>
+                    <div style={{ marginTop: narrow ? 14 : 20, width: narrow ? '84%' : '64%', minWidth: narrow ? 0 : 250 }}>
                       {menuItem('ゲームスタート', '地底へ降りる', () => { setChallenge(false); setPendingRun('story'); setTitleStep('chara'); touchTitle() })}
                       {menuItem('エクストラスタート', 'EXTRA STAGE', () => { setChallenge(false); setPendingRun('extra'); setTitleStep('chara'); touchTitle() })}
                       {menuItem('チャレンジ', '残機無限で挑戦', () => { setChallenge(true); setPendingRun('story'); setTitleStep('chara'); touchTitle() })}
@@ -2776,7 +3133,7 @@ export default function Chireiden() {
                             borderRadius: 12, padding: 10, textAlign: 'left',
                           }}
                         >
-                          {portraitEl(c.id, c.name, { width: '100%', height: 208, borderRadius: 8, display: 'block' })}
+                          {portraitEl(c.id, c.name, { width: '100%', height: narrow ? 136 : 208, borderRadius: 8, display: 'block' })}
                           <div style={{ fontSize: 17, fontWeight: 'bold', marginTop: 8 }}>{c.name}</div>
                           <div style={{ fontSize: 11.5, color: '#ffccb3', marginTop: 2 }}>{c.trait}</div>
                           <div style={{ fontSize: 11, color: '#e6d5c8', lineHeight: 1.6, marginTop: 4 }}>{c.desc}</div>
@@ -2889,8 +3246,25 @@ export default function Chireiden() {
           </div>
         )}
       </div>
-      <div style={{ fontSize: 11, color: '#999', textAlign: 'center', marginTop: 6 }}>
-        ※ 本作品は東方Projectにインスパイアされた非公式ファンメイドです。原作の素材・楽曲は使用していません（BGMはオリジナル曲をWebAudioで合成）。
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, width: stageBox ? stageBox.w : '100%', maxWidth: '100%' }}>
+        <div style={{ flex: 1, fontSize: 11, color: '#999', textAlign: narrow ? 'left' : 'center', lineHeight: 1.5 }}>
+          ※ 本作品は東方Projectにインスパイアされた非公式ファンメイドです。原作の素材・楽曲は使用していません（BGMはオリジナル曲をWebAudioで合成）。
+        </div>
+        {narrow && (
+          <button
+            type="button"
+            className="chirei-btn"
+            onClick={toggleMute}
+            aria-label="BGMミュート切替"
+            style={{
+              flexShrink: 0, width: 38, height: 38, borderRadius: '50%',
+              background: 'rgba(30,14,6,0.7)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.5)', fontSize: 16, cursor: 'pointer',
+            }}
+          >
+            {mutedUi ? '🔇' : '🔊'}
+          </button>
+        )}
       </div>
     </div>
   )

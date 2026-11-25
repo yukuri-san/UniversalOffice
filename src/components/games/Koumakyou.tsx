@@ -15,6 +15,7 @@ import {
   FixedLoop,
   AimedEmitter,
   SpiralEmitter,
+  type Bullet,
   type Laser,
 } from '../../lib/danmaku-engine'
 import {
@@ -304,19 +305,24 @@ function buildBossDef(id: BossId): BossDef {
           name: '氷符「アイシクルフォール」', hp: 980, timeLimit: 50, move: 'sine', moveRange: 120, moveSpeed: 1.0, ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.a1 -= dt; s.a2 -= dt
+            s.a1 -= dt
             if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 0.55)
-              // 氷柱が波になって画面全体へ降り注ぐ（原作の氷柱雨）
-              for (let i = 0; i < 5; i++) {
+              s.a1 = ivOf(ctx, 0.5)
+              // 氷柱が波になって画面全体へ降り注ぐ（原作の氷柱雨）。
+              // 原作の代名詞として、チルノの真下（幅112pxの帯）には氷柱を落とさない
+              // 安全地帯を作る。横流れは最大でも帯の内側に届かない範囲に抑え、
+              // 狙撃は廃して「氷柱の波のリズム」だけで構成する。
+              const bx = ctx.bossX()
+              for (let i = 0; i < 6; i++) {
+                const x = 14 + ((i + Math.random() * 0.7) / 6) * (FW - 28)
+                if (Math.abs(x - bx) < 56) continue // 安全地帯
                 ctx.spawn({
-                  x: 14 + ((i + Math.random() * 0.7) / 5) * (FW - 28), y: -12 - Math.random() * 18,
-                  vx: (Math.random() - 0.5) * 22 * ctx.diff.spd, vy: spdOf(ctx, 150 + Math.random() * 60),
+                  x, y: -12 - Math.random() * 18,
+                  vx: (Math.random() - 0.5) * 16 * ctx.diff.spd, vy: spdOf(ctx, 155 + Math.random() * 55),
                   r: 4.5, color: 4, kind: 'knife', customColor: '#a5e8ff',
                 })
               }
             }
-            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.8); ctx.aimed(3, 0.16, { speed: 122, r: 4, color: 4 }) }
           },
         },
         {
@@ -363,19 +369,29 @@ function buildBossDef(id: BossId): BossDef {
           },
         },
         {
-          name: '彩符「彩雨」', hp: 1280, timeLimit: 55, move: 'sine', moveRange: 90, moveSpeed: 0.5, ...BONUS,
+          // 原作の「極彩颱風」相当：虹色の二重渦（嵐）。回転方向が周期で反転する。
+          // 旧「彩雨」（ランダムな雨）はセラギネラ9と差別化できていなかったため作り替えた。
+          name: '彩符「極彩颱風」', hp: 1280, timeLimit: 55, move: 'sine', moveRange: 90, moveSpeed: 0.5, ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
+            s.cyc += dt
+            // 3.6秒ごとに回転方向が反転する。角速度は滑らかに反転させ「嵐のうねり」にする
+            const target = Math.floor(s.cyc / 3.6) % 2 === 0 ? 1.5 : -1.5
+            s.avel += Math.max(-2.2 * dt, Math.min(2.2 * dt, target - s.avel))
+            s.ang += s.avel * dt
             s.a1 -= dt; s.a2 -= dt
             if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 0.09)
-              ctx.spawn({
-                x: 10 + Math.random() * (FW - 20), y: -10,
-                vx: (Math.random() - 0.5) * 36 * ctx.diff.spd, vy: spdOf(ctx, 132 + Math.random() * 68),
-                r: 4.5, color: Math.floor(Math.random() * 8), kind: 'orb',
-              })
+              // 弾間隔（速度×間隔）が判定直径＋弾直径を上回るよう間隔を確保（90×0.19≒17px）
+              s.a1 = ivOf(ctx, 0.19)
+              const bx = ctx.bossX(), by = ctx.bossY()
+              const c = s.placed % 8 // 虹色に順に変わる
+              s.placed += 1
+              ctx.spawn({ x: bx, y: by, angle: s.ang, speed: spdOf(ctx, 90), r: 4.5, color: c, kind: 'orb' })
+              ctx.spawn({ x: bx, y: by, angle: s.ang + Math.PI, speed: spdOf(ctx, 90), r: 4.5, color: (c + 4) % 8, kind: 'orb' })
+              // 逆回転の腕を1本重ねて渦の交差を作る
+              ctx.spawn({ x: bx, y: by, angle: -s.ang * 0.85 + 2.0, speed: spdOf(ctx, 82), r: 4.5, color: (c + 2) % 8, kind: 'orb' })
             }
-            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.5); ctx.aimed(5, 0.16, { speed: 120, r: 4, color: 2 }) }
+            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 2.4); ctx.aimed(3, 0.18, { speed: 120, r: 4, color: 2 }) }
           },
         },
       ],
@@ -452,33 +468,140 @@ function buildBossDef(id: BossId): BossDef {
       id, name: '十六夜咲夜', epithet: '紅魔館のメイド', radius: 22, figure: BOSS_FIGURES.sakuya,
       phases: [
         {
+          // 通常攻撃にも時間停止の staging を入れる：短く時を止め、その間に
+          // 自機方向へ扇状のナイフを「配置」し、再開と同時に一斉に飛ばす。
           name: null, hp: 680, timeLimit: 45, move: 'teleport', moveRange: 85, moveSpeed: 0.56, params: { interval: 3.9 },
           update: (ctx, dt) => {
             const s = phaseState(ctx)
+            if (s.a3 === 0) { s.a3 = 1; s.cyc = 2.6 } // 停止サイクルの初期化
+            if (s.mode === 1) {
+              // 時間停止中（配置済みナイフが凍結している間は通常射撃を止める）
+              setTimeStop(true)
+              s.cyc -= dt
+              if (s.cyc <= 0) { s.mode = 0; s.cyc = ivOf(ctx, 3.4) }
+              return
+            }
+            setTimeStop(false)
+            s.cyc -= dt
             s.a1 -= dt; s.a2 -= dt
             if (s.a1 <= 0) { s.a1 = ivOf(ctx, 0.85); ctx.aimed(5, 0.14, { speed: 165, r: 4, color: 7, kind: 'knife' }) }
             if (s.a2 <= 0) { s.a2 = ivOf(ctx, 2.4); ctx.ring(10, { speed: 95, r: 4, color: 5, kind: 'knife', angle: Math.random() * Math.PI * 2 }) }
+            if (s.cyc <= 0) {
+              // 停止開始：咲夜の前方にナイフ6本を扇状に配置する（凍結して静止表示）
+              s.mode = 1
+              s.cyc = 0.85
+              const bx = ctx.bossX(), by = ctx.bossY()
+              const base = Math.atan2(ctx.player.y - by, ctx.player.x - bx)
+              const cxp = bx + Math.cos(base) * 74, cyp = by + Math.sin(base) * 74
+              const perp = base + Math.PI / 2
+              for (let i = 0; i < 6; i++) {
+                const off = (i - 2.5) * 14
+                ctx.spawn({
+                  x: cxp + Math.cos(perp) * off, y: cyp + Math.sin(perp) * off,
+                  angle: base + (i - 2.5) * 0.12, speed: spdOf(ctx, 150), r: 4, color: 7, kind: 'knife',
+                  freezeAt: 0.02, freezeTime: 0.83, resume: 'keep',
+                })
+              }
+            }
           },
         },
         {
+          // キリングドール（原作再現）：時間を止め、その間に自機の周囲へナイフを
+          // 円陣配置し、時間再開と同時に全ナイフが中心へ一斉に飛ぶ。
+          // 円陣にはボスと反対方向へ開口（半角0.55rad）を残し、抜け道を保証する。
           name: '幻符「キリングドール」', hp: 1150, timeLimit: 55, move: 'teleport', moveRange: 85, moveSpeed: 0.56, params: { interval: 3.9 }, ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) { s.a1 = ivOf(ctx, 1.5); ctx.ring(16, { speed: 100, r: 4, color: 7, kind: 'knife', angle: Math.random() * Math.PI * 2 }) }
-            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 0.85); ctx.aimed(3, 0.12, { speed: 176, r: 4, color: 7, kind: 'knife' }) }
+            if (s.mode === 0) {
+              // 襲撃フェイズ：通常のナイフ扇で圧をかける
+              setTimeStop(false)
+              if (s.a3 === 0) { s.a3 = 1; s.cyc = 1.5 }
+              s.cyc -= dt
+              s.a1 -= dt
+              if (s.a1 <= 0) { s.a1 = ivOf(ctx, 0.55); ctx.aimed(3, 0.14, { speed: 172, r: 4, color: 7, kind: 'knife' }) }
+              if (s.cyc <= 0) {
+                // 時間停止：この瞬間の自機位置を中心に円陣を組む
+                s.mode = 1
+                s.cyc = 1.5 // 停止時間（配置 約0.8秒＋静止 約0.7秒）
+                s.cx = ctx.player.x; s.cy = ctx.player.y
+                s.gap = Math.atan2(s.cy - ctx.bossY(), s.cx - ctx.bossX()) // ボスから遠ざかる方向に開口
+                s.n = cntOf(ctx, 18)
+                s.placed = 0
+                s.placeT = 0
+                s.ang = Math.random() * Math.PI * 2
+              }
+            } else if (s.mode === 1) {
+              // 時間停止中：ナイフを1本ずつ円陣に「配置」していく（静止表示）
+              setTimeStop(true)
+              s.cyc -= dt
+              s.placeT -= dt
+              if (s.placed < s.n && s.placeT <= 0 && s.cyc > 0.3) {
+                s.placeT = 0.07
+                for (let k = 0; k < 2 && s.placed < s.n; k++) {
+                  const slot = s.placed++
+                  const a = s.ang + (slot / s.n) * Math.PI * 2
+                  let d = (a - s.gap) % (Math.PI * 2)
+                  if (d > Math.PI) d -= Math.PI * 2
+                  if (d < -Math.PI) d += Math.PI * 2
+                  if (Math.abs(d) < 0.55) continue // 開口部には配置しない
+                  const R = 112
+                  ctx.spawn({
+                    x: s.cx + Math.cos(a) * R, y: s.cy + Math.sin(a) * R,
+                    angle: a + Math.PI, speed: spdOf(ctx, 124), r: 4, color: 7, kind: 'knife',
+                    freezeAt: 0.02, freezeTime: Math.max(0.05, s.cyc - 0.02), resume: 'keep',
+                  })
+                }
+              }
+              if (s.cyc <= 0) { s.mode = 2; s.cyc = 1.6 }
+            } else {
+              // 再開後：円陣が中心へ一斉に飛ぶ。軽い狙撃で追い打ちする
+              setTimeStop(false)
+              s.cyc -= dt
+              s.a2 -= dt
+              if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.0); ctx.aimed(1, 0, { speed: 168, r: 4, color: 7, kind: 'knife' }) }
+              if (s.cyc <= 0) { s.mode = 0; s.cyc = 1.5 }
+            }
           },
         },
         {
+          // ルナクロック：ナイフの輪を放ち、飛翔の途中で時間を止める（staging 連動）。
+          // 停止中は咲夜の周囲に追加のナイフを配置し、再開で輪は自機へ向き直って
+          // 一斉に迫り、配置ナイフは扇として飛ぶ。
           name: '時符「ルナクロック」', hp: 1450, timeLimit: 60, move: 'sine', moveRange: 85, moveSpeed: 0.56, ...BONUS,
-          template: 'timestop',
-          // 波の間隔が短すぎると凍結ナイフが同心円の壁になり、再加速も絶え間なく追尾して
-          // 抜け道が消えるため、原作のリズム（溜めて→止めて→一斉再加速）に寄せて間隔を空ける
-          params: { interval: 1.5, count: 14, speed: 122, travel: 0.6, freeze: 1.2, resumeSpeed: 128, color: 5 },
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.a2 -= dt
-            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 2.2); ctx.aimed(3, 0.1, { speed: 168, r: 4, color: 7, kind: 'knife' }) }
+            s.a1 -= dt
+            s.cyc += dt
+            if (s.a1 <= 0) {
+              s.a1 = ivOf(ctx, 3.1)
+              s.cyc = 0
+              s.mode = 0
+              s.ang += 0.23
+              ctx.ring(13, {
+                speed: 128, r: 4, color: 5, kind: 'knife', angle: s.ang,
+                freezeAt: 0.62, freezeTime: 1.15, resume: 'aim', resumeSpeed: 118,
+              })
+              ctx.aimed(3, 0.12, {
+                speed: 150, r: 4, color: 7, kind: 'knife',
+                freezeAt: 0.78, freezeTime: 1.15, resume: 'aim', resumeSpeed: 132,
+              })
+            }
+            const inStop = s.cyc >= 0.62 && s.cyc <= 1.77
+            setTimeStop(inStop)
+            if (inStop && s.mode === 0) {
+              // 停止した時間の中で、咲夜の周囲にナイフ8本を配置する
+              s.mode = 1
+              const bx = ctx.bossX(), by = ctx.bossY()
+              const base = Math.atan2(ctx.player.y - by, ctx.player.x - bx)
+              for (let i = 0; i < 8; i++) {
+                const pa = (i / 8) * Math.PI * 2 + s.ang
+                ctx.spawn({
+                  x: bx + Math.cos(pa) * 66, y: by + Math.sin(pa) * 66,
+                  angle: base + (i - 3.5) * 0.16, speed: spdOf(ctx, 140), r: 4, color: 7, kind: 'knife',
+                  freezeAt: 0.02, freezeTime: Math.max(0.05, 1.77 - s.cyc - 0.02), resume: 'keep',
+                })
+              }
+            }
           },
         },
       ],
@@ -503,21 +626,53 @@ function buildBossDef(id: BossId): BossDef {
           name: '紅符「スカーレットシュート」', hp: 1250, timeLimit: 55, move: 'sine', moveRange: 130, moveSpeed: 0.67, ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.a1 -= dt; s.a2 -= dt
+            s.a1 -= dt; s.a2 -= dt; s.placeT -= dt
             if (s.a1 <= 0) {
-              s.a1 = ivOf(ctx, 0.32)
+              // 高速ストリームは間引いて補助に回し、核は巨大弾に移す
+              s.a1 = ivOf(ctx, 0.5)
               s.a3 += 1
               if (s.a3 % 5 === 0) ctx.aimed(3, 0.15, { speed: 182, r: 4.5, color: 0 })
               else ctx.aimed(1, 0.05, { speed: 188, r: 4.5, color: 0 })
             }
             if (s.a2 <= 0) { s.a2 = ivOf(ctx, 2.4); ctx.ring(14, { speed: 78, r: 4, color: 0, angle: Math.random() * Math.PI * 2 }) }
+            // 巨大弾（原作の核）：低速で自機へ迫り、一定時間か画面下部への到達で
+            // 「破裂」して破片弾のリング（自機側に開口つき）に分裂する
+            if (!s.big && s.placeT <= 0) {
+              s.placeT = ivOf(ctx, 2.6)
+              const bx = ctx.bossX(), by = ctx.bossY()
+              const a = Math.atan2(ctx.player.y - by, ctx.player.x - bx)
+              s.big = ctx.spawn({ x: bx, y: by + 6, angle: a, speed: spdOf(ctx, 64), r: 16, color: 0, kind: 'big' })
+              s.bigT = 0
+            }
+            if (s.big) {
+              if (!s.big.active) {
+                s.big = null // ボム等で消去された
+              } else {
+                s.bigT += dt
+                if (s.bigT >= 2.3 || s.big.y > FH - 110) {
+                  const bx = s.big.x, by = s.big.y
+                  ctx.world.pool.kill(s.big)
+                  s.big = null
+                  const n = 10
+                  const off = Math.random() * Math.PI * 2
+                  for (let i = 0; i < n; i++) {
+                    const a = off + (i / n) * Math.PI * 2
+                    // 真下方向の1発を抜き、自機側へ開口を作る（境界ケースでも開口が消えないよう余裕を持たせる）
+                    const dd = Math.atan2(Math.sin(a - DOWN), Math.cos(a - DOWN))
+                    if (Math.abs(dd) <= Math.PI / n + 0.02) continue
+                    ctx.spawn({ x: bx, y: by, angle: a, speed: spdOf(ctx, 102), r: 4, color: 0, kind: 'orb' })
+                  }
+                }
+              }
+            }
           },
         },
         {
-          name: '夜符「スカーレットミスト」', hp: 1400, timeLimit: 60, move: 'sine', moveRange: 130, moveSpeed: 0.67, ...BONUS,
-          // 霧弾はテンプレート（減衰で失速し画面に滞留）だと膨らんだ泡が幕になって
-          // 隙間が消えるため、自前実装にする：常に下へ流れ続ける扇状の霧＋帯の休止で
-          // 「常時どこかに抜け道がある」状態を保つ
+          name: '夜符「スカーレットミスト」', hp: 1400, timeLimit: 60, move: 'teleport', moveRange: 130, moveSpeed: 0.67, params: { interval: 4.6 }, ...BONUS,
+          // 紅い霧：弱い下向きドリフトで漂う霧弾が画面上部に滞留帯を作り、
+          // 約4.2秒で晴れる（寿命）ため画面下部は常に薄く保たれる。
+          // レミリア自身は霧化して移動する（teleport 移動＋描画側の残像・半透明化）。
+          // 帯の休止（4回に1回）で横の抜け道も作る。
           update: (ctx, dt) => {
             const s = phaseState(ctx)
             s.a1 -= dt; s.a2 -= dt
@@ -530,13 +685,20 @@ function buildBossDef(id: BossId): BossDef {
                   const off = (i - 2) * 0.42 + (Math.random() - 0.5) * 0.14
                   ctx.spawn({
                     x: bx + (Math.random() - 0.5) * 26, y: by,
-                    angle: DOWN + off, speed: spdOf(ctx, 56 + Math.random() * 18),
-                    r: 6, color: 0, kind: 'bubble', grow: 3.2, maxR: 11, ay: 10,
+                    angle: DOWN + off, speed: spdOf(ctx, 44 + Math.random() * 14),
+                    r: 6, color: 0, kind: 'bubble', grow: 2.4, maxR: 12, ay: 6,
+                    swayAmp: 10, swayFreq: 0.8, swayPhase: Math.random() * Math.PI * 2,
                   })
                 }
               }
             }
             if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.9); ctx.aimed(5, 0.16, { speed: 128, r: 4, color: 0 }) }
+            // 霧の寿命：漂い続けた泡は晴らす（滞留が幕化して隙間が消えるのを防ぐ）
+            const act = ctx.world.pool.active
+            for (let i = act.length - 1; i >= 0; i--) {
+              const b = act[i]
+              if (b.kind === 'bubble' && b.age > 4.2) ctx.world.pool.kill(b)
+            }
           },
         },
         {
@@ -657,18 +819,75 @@ function buildBossDef(id: BossId): BossDef {
 // BossContext からは現在のフェイズ定義を辿れないため、 finBoss が各フェイズの
 // setup/update をラップし、実行中のフェイズの state を activePhaseState に差し替える。
 // ボスと中ボスは同時には存在しないので、この共有方式で衝突しない。
-type PhaseState = { a1: number; a2: number; a3: number; ang: number }
-let activePhaseState: PhaseState = { a1: 0, a2: 0, a3: 0, ang: 0 }
+type PhaseState = {
+  a1: number; a2: number; a3: number; ang: number
+  /** 汎用モード／サイクルタイマー（時間停止サイクル等で使用） */
+  mode: number; cyc: number
+  /** 渦の角速度（極彩颱風の反転用） */
+  avel: number
+  /** 円陣の中心・開口方向・配置カウンタ（キリングドール等で使用） */
+  cx: number; cy: number; gap: number; placed: number; placeT: number; n: number
+  /** 追跡中の巨大弾（スカーレットシュート用） */
+  big: Bullet | null; bigT: number
+}
+let activePhaseState: PhaseState = {
+  a1: 0, a2: 0, a3: 0, ang: 0, mode: 0, cyc: 0, avel: 0,
+  cx: 0, cy: 0, gap: 0, placed: 0, placeT: 0, n: 0, big: null, bigT: 0,
+}
 function phaseState(_ctx: BossContext): PhaseState {
   return activePhaseState
+}
+
+// ===== 時間停止の演出状態（咲夜専用） =====
+// フェイズ更新が毎フレーム setTimeStop で目標を設定し、描画側は tsLevel を
+// 滑らかに追随させて「色調が抜けて時が止まる」 staging を行う。
+let tsTarget = 0
+let tsLevel = 0
+function setTimeStop(on: boolean) {
+  tsTarget = on ? 1 : 0
+}
+/** 止まった時計のモチーフ（画面端に描く視覚的な「時計の音」の表現） */
+function drawClockMotif(c: CanvasRenderingContext2D, x: number, y: number, r: number, alpha: number) {
+  c.save()
+  c.globalAlpha = Math.max(0, Math.min(1, alpha))
+  c.strokeStyle = '#cfd9ec'
+  c.fillStyle = '#cfd9ec'
+  c.lineWidth = 1.6
+  c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke()
+  c.lineWidth = 1
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2
+    const r0 = r - (i % 3 === 0 ? 6.5 : 4.5)
+    const r1 = r - 2.5
+    c.beginPath()
+    c.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0)
+    c.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1)
+    c.stroke()
+  }
+  // 針は 11時59分で止まっている（長針＝59分、短針＝11時）
+  const minA = -Math.PI / 2 + (59 / 60) * Math.PI * 2
+  const hrA = -Math.PI / 2 + (11 / 12) * Math.PI * 2
+  c.lineWidth = 2
+  c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(hrA) * r * 0.52, y + Math.sin(hrA) * r * 0.52); c.stroke()
+  c.lineWidth = 1.4
+  c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(minA) * r * 0.8, y + Math.sin(minA) * r * 0.8); c.stroke()
+  c.beginPath(); c.arc(x, y, 1.8, 0, Math.PI * 2); c.fill()
+  c.restore()
 }
 /** フェイズごとに独立した作業変数を持たせ、開始時にリセットする */
 function finBoss(def: BossDef): BossDef {
   for (const ph of def.phases) {
-    const st: PhaseState = { a1: 0, a2: 0, a3: 0, ang: 0 }
+    const st: PhaseState = {
+      a1: 0, a2: 0, a3: 0, ang: 0, mode: 0, cyc: 0, avel: 0,
+      cx: 0, cy: 0, gap: 0, placed: 0, placeT: 0, n: 0, big: null, bigT: 0,
+    }
     const origSetup = ph.setup
     ph.setup = (ctx) => {
       st.a1 = 0; st.a2 = 0; st.a3 = 0; st.ang = 0
+      st.mode = 0; st.cyc = 0; st.avel = 0
+      st.cx = 0; st.cy = 0; st.gap = 0; st.placed = 0; st.placeT = 0; st.n = 0
+      st.big = null; st.bigT = 0
+      tsTarget = 0 // フェイズが変わったら時間停止の演出は必ず解除する
       activePhaseState = st
       if (origSetup) origSetup(ctx)
     }
@@ -1851,6 +2070,31 @@ export default function Koumakyou() {
   const [pendingRun, setPendingRun] = useState<'story' | 'extra'>('story')
   // ポートレート画像の読み込み失敗を記録し、フォールバック表示に切り替える
   const [imgErr, setImgErr] = useState<ReadonlySet<string>>(new Set())
+  // 狭い／低いウィンドウ（スマホ等）でも画面全体が隠れず見えるよう、ステージ表示サイズを実測でフィットさせる
+  const [stageBox, setStageBox] = useState<{ w: number; h: number } | null>(null)
+  const [narrow, setNarrow] = useState(false)
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const update = () => {
+      const cw = el.clientWidth
+      const ch = el.clientHeight
+      if (cw <= 0 || ch <= 0) return
+      const isNarrow = cw < 480
+      setNarrow((prev) => (prev === isNarrow ? prev : isNarrow))
+      const foot = isNarrow ? 46 : 40 // 下部の注記行（narrow時はミュートボタン付き）の高さぶんを差し引く
+      const availW = Math.min(cw, 560)
+      const availH = Math.max(120, ch - foot)
+      const scale = Math.min(availW / SW, availH / SH)
+      const w = Math.floor(SW * scale)
+      const h = Math.floor(SH * scale)
+      setStageBox((prev) => (prev && prev.w === w && prev.h === h ? prev : { w, h }))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const markImgErr = (id: string) =>
     setImgErr((prev) => {
       if (prev.has(id)) return prev
@@ -1883,6 +2127,8 @@ export default function Koumakyou() {
     const items = new ItemPool(128)
     const bossCtl = new BossController({ width: FW, height: FH, clearBulletsOnPhaseEnd: false })
     let parts: Particle[] = []
+    // スカーレットミスト中の霧化移動の残像用：ボスの直近位置の履歴
+    let mistTrail: { x: number; y: number; t: number }[] = []
     let hiscore = 0
     try { hiscore = Number(localStorage.getItem(HISCORE_KEY) || 0) || 0 } catch { hiscore = 0 }
     state.hiScore = hiscore
@@ -2106,6 +2352,14 @@ export default function Koumakyou() {
       setDlgUi({ boss, lines, idx: 0 })
     }
 
+    // ===== ボス／中ボスのフェイズ開始処理 =====
+    bossCtl.onPhaseStart = (_index, phase) => {
+      // 美鈴のスペル開始時：体術系の「気迫」演出（画面の軽い揺れ＋衝撃波、実弾なし）
+      if (bossCtl.def && (bossCtl.def.id === 'meiling' || bossCtl.def.id === 'mid-meiling') && phase.name) {
+        G.shake = Math.max(G.shake, 3.5)
+        burst(bossCtl.x, bossCtl.y, 16, '#ffd54f', 150)
+      }
+    }
     // ===== ボス／中ボスのフェイズ終了処理 =====
     bossCtl.onPhaseEnd = (res: PhaseEndResult) => {
       if (ctlIsMid) {
@@ -2264,6 +2518,9 @@ export default function Koumakyou() {
       G.phaseT += dt
       if (G.msgT > 0) G.msgT -= dt
       if (G.shake > 0) G.shake = Math.max(0, G.shake - dt * 14)
+      // 時間停止の演出レベルを目標へ滑らかに追随させる（ボス不在時は必ず解除）
+      if (!bossCtl.active) tsTarget = 0
+      tsLevel += clamp(tsTarget - tsLevel, -dt * 2.8, dt * 2.8)
 
       // --- 退場演出の進行（爆発を散らしながらフェード） ---
       if (exitFx) {
@@ -2460,6 +2717,19 @@ export default function Koumakyou() {
             for (const b of bossCtl.bodies) {
               if (b.visible) drawFigure(ctx, fig, b.x, b.y, { t: G.time, alpha: b.real ? 1 : 0.85 })
             }
+          } else if (!ctlIsMid && G.bossId === 'remilia' && bossCtl.phase?.name === '夜符「スカーレットミスト」') {
+            // 霧化移動：残像を残しながら半透明に漂う（霧に溶けて移動する表現）
+            const last = mistTrail[mistTrail.length - 1]
+            if (!last || G.time - last.t > 0.07) {
+              mistTrail.push({ x: bossCtl.x, y: bossCtl.y, t: G.time })
+              if (mistTrail.length > 7) mistTrail.shift()
+            }
+            mistTrail = mistTrail.filter(p => G.time - p.t < 0.5)
+            for (let i = 0; i < mistTrail.length - 1; i++) {
+              const p = mistTrail[i]
+              drawFigure(ctx, fig, p.x, p.y, { t: G.time, alpha: 0.08 + 0.05 * i })
+            }
+            drawFigure(ctx, fig, bossCtl.x, bossCtl.y, { t: G.time, alpha: 0.8 + 0.16 * Math.sin(G.time * 6.5) })
           } else {
             drawFigure(ctx, fig, bossCtl.x, bossCtl.y, { t: G.time })
           }
@@ -2482,6 +2752,15 @@ export default function Koumakyou() {
       if (exitFx) {
         const p = clamp(exitFx.t / exitFx.max, 0, 1)
         drawFigure(ctx, exitFx.fig, exitFx.x, exitFx.y - (1 - p) * 34, { t: G.time, alpha: p })
+      }
+      // ルーミアの闇：ボスの周囲だけを残して画面を暗くする（弾と自機は闇の上に描く）
+      if (bossCtl.active && ((ctlIsMid && G.midId === 'rumia') || (!ctlIsMid && G.bossId === 'rumia'))) {
+        const dark = bossCtl.phase?.name === '闇符「ディマーケイション」' ? 0.6 : 0.48
+        const dg = ctx.createRadialGradient(bossCtl.x, bossCtl.y, 30, bossCtl.x, bossCtl.y, 150)
+        dg.addColorStop(0, 'rgba(3,1,10,0)')
+        dg.addColorStop(1, `rgba(3,1,10,${dark})`)
+        ctx.fillStyle = dg
+        ctx.fillRect(0, 0, FW, FH)
       }
       // 自機弾
       pbullets.render(ctx)
@@ -2513,6 +2792,24 @@ export default function Koumakyou() {
           ctx.beginPath(); ctx.arc(player.x, player.y, 8, 0, Math.PI * 2)
           ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 1; ctx.stroke()
         }
+      }
+      // ===== 時間停止の演出（咲夜）：色調が抜け、周囲が暗転し、止まった時計が浮かぶ =====
+      if (tsLevel > 0.01) {
+        ctx.save()
+        ctx.beginPath(); ctx.rect(0, 0, FW, FH); ctx.clip()
+        ctx.globalCompositeOperation = 'saturation'
+        ctx.fillStyle = `rgba(150,158,175,${0.88 * tsLevel})`
+        ctx.fillRect(0, 0, FW, FH)
+        ctx.globalCompositeOperation = 'source-over'
+        ctx.fillStyle = `rgba(36,50,86,${0.2 * tsLevel})`
+        ctx.fillRect(0, 0, FW, FH)
+        const vg = ctx.createRadialGradient(FW / 2, FH / 2, FH * 0.3, FW / 2, FH / 2, FH * 0.72)
+        vg.addColorStop(0, 'rgba(5,7,18,0)')
+        vg.addColorStop(1, `rgba(5,7,18,${0.5 * tsLevel})`)
+        ctx.fillStyle = vg
+        ctx.fillRect(0, 0, FW, FH)
+        drawClockMotif(ctx, FW - 38, 76, 22, tsLevel)
+        ctx.restore()
       }
       ctx.restore()
 
@@ -2652,6 +2949,9 @@ export default function Koumakyou() {
       items.clear()
       pbullets.clear()
       parts = []
+      mistTrail = []
+      tsTarget = 0
+      tsLevel = 0
       enter = null
       exitFx = null
       if (bossCtl.active) bossCtl.abort()
@@ -2759,7 +3059,7 @@ export default function Koumakyou() {
   }
 
   return (
-    <div ref={wrapRef} style={{ width: '100%', maxWidth: 560, margin: '0 auto', userSelect: 'none' }}>
+    <div ref={wrapRef} style={{ width: '100%', maxWidth: 560, margin: '0 auto', userSelect: 'none', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <style>{`
         .kouma-btn:active { transform: scale(0.96); }
         .kouma-menu { transition: background 0.12s, color 0.12s; }
@@ -2769,13 +3069,14 @@ export default function Koumakyou() {
         .kouma-card { transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s; }
         .kouma-card:hover, .kouma-card:active { transform: translateY(-2px); border-color: rgba(255,150,150,0.95) !important; box-shadow: 0 10px 26px rgba(0,0,0,0.55); }
       `}</style>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', flexShrink: 0, ...(stageBox ? { width: stageBox.w, height: stageBox.h } : {}) }}>
         <canvas
           ref={canvasRef}
           width={SW}
           height={SH}
-          style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8, background: '#0b0620', touchAction: 'none' }}
+          style={{ width: '100%', height: stageBox ? '100%' : 'auto', display: 'block', borderRadius: 8, background: '#0b0620', touchAction: 'none' }}
         />
+        {!narrow && (
         <button
           type="button"
           className="kouma-btn"
@@ -2791,14 +3092,15 @@ export default function Koumakyou() {
         >
           {mutedUi ? '🔇' : '🔊'}
         </button>
+        )}
         {screen === 'playing' && (
           <button
             type="button"
             className="kouma-btn"
             onPointerDown={(e) => { e.preventDefault(); pressBomb() }}
             style={{
-              position: 'absolute', right: 10, bottom: 10, zIndex: 2,
-              width: 64, height: 64, borderRadius: '50%',
+              position: 'absolute', right: narrow ? 8 : 10, bottom: narrow ? 8 : 10, zIndex: 2,
+              width: narrow ? 54 : 64, height: narrow ? 54 : 64, borderRadius: '50%',
               background: 'rgba(198,40,40,0.75)', color: '#fff',
               border: '2px solid rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 'bold',
             }}
@@ -2812,7 +3114,7 @@ export default function Koumakyou() {
           const playerName = chara === 'reimu' ? '博麗霊夢' : '霧雨魔理沙'
           const bossName = BOSS_META[dlgUi.boss].name
           const faceStyle = (active: boolean): React.CSSProperties => ({
-            height: 188, width: 138, borderRadius: 10,
+            height: narrow ? 150 : 188, width: narrow ? 110 : 138, borderRadius: 10,
             border: active ? '2px solid rgba(255,150,150,0.95)' : '2px solid rgba(255,255,255,0.25)',
             opacity: active ? 1 : 0.55,
             filter: active ? 'none' : 'brightness(0.55) saturate(0.75)',
@@ -2850,7 +3152,7 @@ export default function Koumakyou() {
                 style={{
                   position: 'relative', margin: '10px 10px 12px',
                   background: 'rgba(12,4,22,0.9)', border: '1px solid rgba(255,120,120,0.65)',
-                  borderRadius: 10, padding: '14px 16px 16px', minHeight: 92,
+                  borderRadius: 10, padding: narrow ? '12px 14px 14px' : '14px 16px 16px', minHeight: narrow ? 84 : 92,
                   boxShadow: '0 8px 24px rgba(0,0,0,0.6)', textAlign: 'left',
                 }}
               >
@@ -2864,7 +3166,7 @@ export default function Koumakyou() {
                 >
                   {speakingPlayer ? playerName : bossName}
                 </div>
-                <div style={{ fontSize: 15, lineHeight: 1.8, color: '#fff', marginTop: 2 }}>{line.t}</div>
+                <div style={{ fontSize: narrow ? 14 : 15, lineHeight: narrow ? 1.7 : 1.8, color: '#fff', marginTop: 2 }}>{line.t}</div>
                 <div style={{ position: 'absolute', right: 14, bottom: 8, fontSize: 11, color: '#ff9e9e' }}>
                   {dlgUi.idx + 1}/{dlgUi.lines.length}　▼ タップ / Z
                 </div>
@@ -2881,9 +3183,9 @@ export default function Koumakyou() {
               className="kouma-menu"
               onClick={onClick}
               style={{
-                display: 'flex', alignItems: 'baseline', gap: 10, width: '100%',
+                display: 'flex', alignItems: 'baseline', gap: 10, width: '100%', flexWrap: narrow ? 'wrap' : 'nowrap',
                 background: 'transparent', border: 'none', borderBottom: '1px solid rgba(255,150,150,0.16)',
-                color: '#f5e9f7', padding: '9px 10px', fontSize: 17, fontWeight: 'bold',
+                color: '#f5e9f7', padding: narrow ? '8px 10px' : '9px 10px', fontSize: narrow ? 16 : 17, fontWeight: 'bold',
                 letterSpacing: 2, cursor: 'pointer', textAlign: 'left',
                 textShadow: '0 2px 8px rgba(0,0,0,0.8)',
               }}
@@ -2938,9 +3240,9 @@ export default function Koumakyou() {
                 {titleStep === 'menu' && (
                   <>
                     <div style={{ fontSize: 11, letterSpacing: 5, color: '#ff9e9e', textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>ファンメイド弾幕STG</div>
-                    <div style={{ fontSize: 44, fontWeight: 'bold', color: '#ff5f6b', letterSpacing: 3, lineHeight: 1.15, textShadow: '0 0 18px rgba(255,50,70,0.75), 0 3px 10px rgba(0,0,0,0.9)' }}>東方紅魔郷</div>
+                    <div style={{ fontSize: narrow ? 36 : 44, fontWeight: 'bold', color: '#ff5f6b', letterSpacing: 3, lineHeight: 1.15, textShadow: '0 0 18px rgba(255,50,70,0.75), 0 3px 10px rgba(0,0,0,0.9)' }}>東方紅魔郷</div>
                     <div style={{ fontSize: 12.5, color: '#e8c9dd', letterSpacing: 2, textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>〜 紅霧異変 〜　全6面＋EXステージ</div>
-                    <div style={{ marginTop: 20, width: '64%', minWidth: 250 }}>
+                    <div style={{ marginTop: narrow ? 14 : 20, width: narrow ? '84%' : '64%', minWidth: narrow ? 0 : 250 }}>
                       {menuItem('ゲームスタート', '紅魔館へ出発', () => { setChallenge(false); setPendingRun('story'); setTitleStep('chara'); touchTitle() })}
                       {menuItem('エクストラスタート', 'EXTRA STAGE', () => { setChallenge(false); setPendingRun('extra'); setTitleStep('chara'); touchTitle() })}
                       {menuItem('チャレンジ', '残機無限で挑戦', () => { setChallenge(true); setPendingRun('story'); setTitleStep('chara'); touchTitle() })}
@@ -2975,7 +3277,7 @@ export default function Koumakyou() {
                             borderRadius: 12, padding: 10, textAlign: 'left',
                           }}
                         >
-                          {portraitEl(c.id, c.name, { width: '100%', height: 208, borderRadius: 8, display: 'block' })}
+                          {portraitEl(c.id, c.name, { width: '100%', height: narrow ? 136 : 208, borderRadius: 8, display: 'block' })}
                           <div style={{ fontSize: 17, fontWeight: 'bold', marginTop: 8 }}>{c.name}</div>
                           <div style={{ fontSize: 11.5, color: '#ffb3b3', marginTop: 2 }}>{c.trait}</div>
                           <div style={{ fontSize: 11, color: '#cfc4e8', lineHeight: 1.6, marginTop: 4 }}>{c.desc}</div>
@@ -3089,8 +3391,25 @@ export default function Koumakyou() {
           </div>
         )}
       </div>
-      <div style={{ fontSize: 11, color: '#999', textAlign: 'center', marginTop: 6 }}>
-        ※ 本作品は東方Projectにインスパイアされた非公式ファンメイドです。原作の素材・楽曲は使用していません（BGMはオリジナル曲をWebAudioで合成）。
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, width: stageBox ? stageBox.w : '100%', maxWidth: '100%' }}>
+        <div style={{ flex: 1, fontSize: 11, color: '#999', textAlign: narrow ? 'left' : 'center', lineHeight: 1.5 }}>
+          ※ 本作品は東方Projectにインスパイアされた非公式ファンメイドです。原作の素材・楽曲は使用していません（BGMはオリジナル曲をWebAudioで合成）。
+        </div>
+        {narrow && (
+          <button
+            type="button"
+            className="kouma-btn"
+            onClick={toggleMute}
+            aria-label="BGMミュート切替"
+            style={{
+              flexShrink: 0, width: 38, height: 38, borderRadius: '50%',
+              background: 'rgba(20,10,40,0.7)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.5)', fontSize: 16, cursor: 'pointer',
+            }}
+          >
+            {mutedUi ? '🔇' : '🔊'}
+          </button>
+        )}
       </div>
     </div>
   )

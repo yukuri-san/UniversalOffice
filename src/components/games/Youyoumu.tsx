@@ -20,6 +20,7 @@ import {
   DanmakuWorld,
   FixedLoop,
   SpiralEmitter,
+  type Bullet,
 } from '../../lib/danmaku-engine'
 import {
   GameState,
@@ -64,10 +65,10 @@ const DIFF_CFG: Record<DiffId, { spd: number; den: number; label: string }> = {
 }
 
 type BossId = 'letty' | 'chen' | 'alice' | 'prism' | 'youmu' | 'yuyuko' | 'ran' | 'yukari'
-type MidId = BossId
+type MidId = BossId | 'cirno'
 type StageDef = { title: string; road: number; mid: MidId; midName: string; boss: BossId; hue: number }
 const STAGES: StageDef[] = [
-  { title: '桜の舞う冬の森', road: 32, mid: 'letty', midName: 'レティ・ホワイトロック', boss: 'letty', hue: 0 },
+  { title: '桜の舞う冬の森', road: 32, mid: 'cirno', midName: 'チルノ', boss: 'letty', hue: 0 },
   { title: '魔法の森の猫屋敷', road: 32, mid: 'chen', midName: '橙', boss: 'chen', hue: 1 },
   { title: '人形の棲む洋館', road: 34, mid: 'alice', midName: 'アリス・マーガトロイド', boss: 'alice', hue: 2 },
   { title: '騒霊たちの演奏会', road: 34, mid: 'prism', midName: 'プリズムリバー三姉妹', boss: 'prism', hue: 3 },
@@ -146,6 +147,13 @@ const YUKARI_FIG: FigureDef = {
   },
   hairStyle: 'long', accessory: 'ribbon', wings: 'none',
 }
+const CIRNO_FIG: FigureDef = {
+  palette: {
+    ...SKIN, hair: '#7ab5e8', hairShade: '#4d84c4', eye: '#3b6fd4',
+    dress: '#4d7cc4', dressShade: '#35588f', sub: '#eef6ff', accent: '#e0455a',
+  },
+  hairStyle: 'medium', accessory: 'ribbon', wings: 'ice',
+}
 const BOSS_FIGURES: Record<BossId, FigureDef> = {
   letty: LETTY_FIG,
   chen: CHEN_FIG,
@@ -156,7 +164,7 @@ const BOSS_FIGURES: Record<BossId, FigureDef> = {
   ran: RAN_FIG,
   yukari: YUKARI_FIG,
 }
-const MID_FIGURES: Record<MidId, FigureDef> = { ...BOSS_FIGURES }
+const MID_FIGURES: Record<MidId, FigureDef> = { ...BOSS_FIGURES, cirno: CIRNO_FIG }
 // ===== 難易度ヘルパー（BossContext の diff を現行の rn/iv 相当に読み替える） =====
 const cntOf = (ctx: BossContext, n: number) => Math.max(3, Math.round(n * ctx.diff.den))
 const ivOf = (ctx: BossContext, base: number) => base / ctx.diff.den
@@ -328,17 +336,48 @@ function buildBossDef(id: BossId): BossDef {
           },
         },
         {
-          name: '冬符「ホワイトアウト・ノクターン」', hp: 1080, timeLimit: 55, move: 'sine', moveRange: 100, moveSpeed: 0.6, ...BONUS,
+          // フラワーウィザラウェイ：5弁の花形に組んだ花弁弾がゆっくり漂い、
+          // 1.6秒で「枯れて」放射状に散る二段構成。花弁の隣接間隔は半径16pxの円周上で
+          // 2×16×sin(36°)≒18.8px ＞ 花弁直径9＋判定直径5=14px。花同士は発生間隔1.5秒×
+          // 漂い速度44px/s=66px 離れ、壁にならない
+          name: '冬符「フラワーウィザラウェイ」', hp: 1080, timeLimit: 55, move: 'sine', moveRange: 100, moveSpeed: 0.6, ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
             s.a1 -= dt; s.a2 -= dt
             if (s.a1 <= 0) {
-              // 雪の柱：縦間隔 138×1.15≒159px、横は抜け列2列（128px幅）を確保
-              s.a1 = ivOf(ctx, 1.15)
-              snowColumns(ctx, s.n)
-              s.n += 1
+              s.a1 = ivOf(ctx, 1.5)
+              const cx = ctx.bossX(), cy = ctx.bossY() + 6
+              const drift = spdOf(ctx, 44)
+              const petals: (Bullet | null)[] = []
+              for (let i = 0; i < 5; i++) {
+                const a = (i / 5) * Math.PI * 2 + s.ang
+                petals.push(ctx.spawn({
+                  x: cx + Math.cos(a) * 16, y: cy + Math.sin(a) * 16,
+                  vx: 0, vy: drift, r: 4.5, color: 6, kind: 'ellipse',
+                }))
+              }
+              petals.push(ctx.spawn({ x: cx, y: cy, vx: 0, vy: drift, r: 3, color: 2, kind: 'orb' }))
+              s.flowers.push({ x: cx, y: cy, age: 0, withered: false, petals })
+              s.ang += 0.5
             }
-            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.8); ctx.aimed(1, 0, { speed: 124, r: 4, color: 7 }) }
+            // 花の進行管理：漂い→枯れて散る→掃除
+            const drift = spdOf(ctx, 44)
+            for (const f of s.flowers) {
+              f.age += dt
+              f.y += drift * dt
+              if (!f.withered && f.age >= 1.6) {
+                f.withered = true
+                for (const b of f.petals) {
+                  if (!b || !b.active) continue
+                  const dx = b.x - f.x, dy = b.y - f.y
+                  const d = Math.hypot(dx, dy)
+                  if (d < 1) { b.vx = 0; b.vy = spdOf(ctx, 66) }
+                  else { b.vx = (dx / d) * spdOf(ctx, 58); b.vy = (dy / d) * spdOf(ctx, 58) + spdOf(ctx, 20) }
+                }
+              }
+            }
+            s.flowers = s.flowers.filter((f) => f.age < 7 && f.petals.some((b) => b && b.active))
+            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 2.2); ctx.aimed(1, 0, { speed: 122, r: 4, color: 7 }) }
           },
         },
       ],
@@ -347,12 +386,15 @@ function buildBossDef(id: BossId): BossDef {
       id, name: '橙', epithet: '凶兆の黒猫', radius: 20, figure: BOSS_FIGURES.chen,
       phases: [
         {
-          name: null, hp: 560, timeLimit: 40, move: 'sine', moveRange: 110, moveSpeed: 0.7,
+          // 通常攻撃も本体が転がり回る（chenBody）。リングと狙撃は離散発射なので
+          // 発生源が動いても間隔は潰れない。突進中は発射を止め、軌跡弾だけにする
+          name: null, hp: 560, timeLimit: 40, move: 'still',
           update: (ctx, dt) => {
             const s = phaseState(ctx)
+            chenBody(ctx, s, dt, 105)
             s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) { s.a1 = ivOf(ctx, 1.1); ctx.aimed(3, 0.17, { speed: 126, r: 4, color: 1 }) }
-            if (s.a2 <= 0) {
+            if (s.m !== 2 && s.a1 <= 0) { s.a1 = ivOf(ctx, 1.1); ctx.aimed(3, 0.17, { speed: 126, r: 4, color: 1 }) }
+            if (s.m !== 2 && s.a2 <= 0) {
               // 欠けリング：開口±0.55rad、輪の縦間隔 66×1.5=99px
               s.a2 = ivOf(ctx, 1.5)
               ringGapArc(ctx, cntOf(ctx, 14), s.ang, 0.55, { speed: 66, r: 4.5, color: 3 })
@@ -361,33 +403,38 @@ function buildBossDef(id: BossId): BossDef {
           },
         },
         {
-          name: '仙符「回転式神」', hp: 980, timeLimit: 50, move: 'teleport', moveRange: 110, moveSpeed: 0.6, params: { interval: 3.6 }, ...BONUS,
+          // 回転式神：テレポートを廃し、本体の回転・突進に置換。渦は徘徊速度を落として撃つ：
+          // 発生源が動くストリームの最悪間隔は (弾速−徘徊速度)×間隔 = (132−55)×0.2=15.4px ＞ 14px
+          name: '仙符「回転式神」', hp: 980, timeLimit: 50, move: 'still', ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
+            chenBody(ctx, s, dt, 55)
             s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) {
-              // 回転渦：弾間隔 96×0.2=19.2px ＞ 14px
+            if (s.m !== 2 && s.a1 <= 0) {
+              // 回転渦：静止時の弾間隔 132×0.2=26.4px（移動時の最悪値でも 15.4px ＞ 14px）
               s.a1 = ivOf(ctx, 0.2)
               s.ang += 0.38
               for (const off of [0, Math.PI]) {
-                ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang + off, speed: spdOf(ctx, 96), r: 4.5, color: 1, kind: 'orb' })
+                ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: s.ang + off, speed: spdOf(ctx, 132), r: 4.5, color: 1, kind: 'orb' })
               }
             }
-            if (s.a2 <= 0) { s.a2 = ivOf(ctx, 1.7); ctx.aimed(2, 0.15, { speed: 122, r: 4, color: 1 }) }
+            if (s.m !== 2 && s.a2 <= 0) { s.a2 = ivOf(ctx, 1.7); ctx.aimed(2, 0.15, { speed: 122, r: 4, color: 1 }) }
           },
         },
         {
-          name: '猫符「キャットウォーク・ランページ」', hp: 1150, timeLimit: 55, move: 'sine', moveRange: 120, moveSpeed: 0.85, ...BONUS,
+          // キャットウォーク・ランページ：扇は「突進の開始瞬間」に突進方向へ撃つ
+          // （名前どおり、駆け出す勢いのまま弾を撒く）。徘徊中は欠けリングのみ
+          name: '猫符「キャットウォーク・ランページ」', hp: 1150, timeLimit: 55, move: 'still', ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) {
-              // 突進の扇：5方向・間隔0.17rad（100px先で17px間隔 ＞ 14px）、波間隔 150×2.2=330px
-              s.a1 = ivOf(ctx, 2.2)
-              const base = Math.atan2(ctx.player.y - ctx.bossY(), ctx.player.x - ctx.bossX())
+            const rush = chenBody(ctx, s, dt, 105)
+            s.a2 -= dt
+            if (rush === 1) {
+              // 突進の扇：5方向・間隔0.17rad（100px先で17px間隔 ＞ 14px）
+              const base = Math.atan2(s.ty - ctx.bossY(), s.tx - ctx.bossX())
               fanFrom(ctx, ctx.bossX(), ctx.bossY(), base, 5, 0.17, { speed: 150, r: 4.5, color: 0 })
             }
-            if (s.a2 <= 0) {
+            if (s.m !== 2 && s.a2 <= 0) {
               s.a2 = ivOf(ctx, 1.6)
               ringGapArc(ctx, cntOf(ctx, 14), s.ang + Math.PI / 2, 0.55, { speed: 62, r: 4.5, color: 3 })
               s.ang -= 0.6
@@ -584,25 +631,77 @@ function buildBossDef(id: BossId): BossDef {
           },
         },
         {
-          name: '人鬼「未来永劫斬」', hp: 1300, timeLimit: 56, move: 'teleport', moveRange: 100, moveSpeed: 0.6, params: { interval: 3.8 }, ...BONUS,
+          // 未来永劫斬：弾ではなく妖夢自身が斬り込む。
+          // サイクル＝0 助走（斬撃ラインの起点へ滑走し、起点に半霊の弾を残す）→
+          //   1 予告（ライン上に細レーザーの予告線0.7秒）→ 2 斬撃ダッシュ（1450px/sで
+          //   斬り抜け、軌跡に静止した斬撃弾を26px間隔で残す）→ 3 残心（0.85秒後に軌跡弾が一斉消散）
+          // 軌跡弾の間隔 26px−直径7px=19px の隙間 ＞ 判定直径5px で、ラインを横切って逃げられる
+          name: '人鬼「未来永劫斬」', hp: 1300, timeLimit: 56, move: 'still', ...BONUS,
           update: (ctx, dt) => {
             const s = phaseState(ctx)
-            s.a1 -= dt; s.a2 -= dt
-            if (s.a1 <= 0) {
-              // 双方向カッターストリーム：弾間隔 150×0.13=19.5px ＞ カッター直径7＋判定5=12px
-              s.a1 = ivOf(ctx, 0.13)
-              const base = Math.atan2(ctx.player.y - ctx.bossY(), ctx.player.x - ctx.bossX())
-              const wob = Math.sin(ctx.phaseTime() * 1.3) * 0.22
-              ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: base + wob, speed: spdOf(ctx, 150), r: 3.5, color: 7, kind: 'knife' })
-              if (s.n % 2 === 0) {
-                ctx.spawn({ x: ctx.bossX(), y: ctx.bossY(), angle: base - wob + 0.5, speed: spdOf(ctx, 132), r: 3.5, color: 3, kind: 'knife' })
+            s.a2 -= dt; s.t2 -= dt
+            const px = ctx.bossX(), py = ctx.bossY()
+            if (s.m === 0) {
+              // 助走：起点が未設定なら、自機を横切る斬撃ライン（ほぼ水平・交互に逆向き）を引く
+              if (s.sx === 0 && s.sy === 0) {
+                s.ang = s.n % 2 === 0 ? 0.14 : Math.PI - 0.14
+                s.sx = Math.max(30, Math.min(FW - 30, ctx.player.x - Math.cos(s.ang) * 185))
+                s.sy = Math.max(64, Math.min(FH - 130, ctx.player.y - Math.sin(s.ang) * 185))
               }
-              s.n += 1
+              const dx = s.sx - px, dy = s.sy - py
+              const d = Math.hypot(dx, dy)
+              if (d > 6) {
+                const step = Math.min(300 * dt, d)
+                ctx.setBossPos(px + (dx / d) * step, py + (dy / d) * step)
+              } else {
+                // 起点に半霊を残す（遅い狙撃2発）＋予告線を張る
+                for (let i = 0; i < 2; i++) {
+                  const a = Math.atan2(ctx.player.y - py, ctx.player.x - px) + (i === 0 ? -0.12 : 0.12)
+                  ctx.spawn({ x: px, y: py, angle: a, speed: spdOf(ctx, 92), r: 4.5, color: 7, kind: 'bubble' })
+                }
+                ctx.addLaser({
+                  x: s.sx, y: s.sy, angle: s.ang, length: 720, width: 9, color: 7,
+                  telegraph: 0.7, duration: 0.3, fade: 0.12,
+                })
+                s.m = 1; s.t2 = 0.7
+              }
+            } else if (s.m === 1) {
+              // 予告：起点で静止。終わりに斬撃の終点を確定する
+              if (s.t2 <= 0) {
+                s.tx = Math.max(24, Math.min(FW - 24, s.sx + Math.cos(s.ang) * 430))
+                s.ty = Math.max(30, Math.min(FH - 30, s.sy + Math.sin(s.ang) * 430))
+                s.m = 2; s.a3 = 0
+              }
+            } else if (s.m === 2) {
+              // 斬撃ダッシュ：軌跡に静止した斬撃弾を 26px 間隔で残す
+              const dx = s.tx - px, dy = s.ty - py
+              const d = Math.hypot(dx, dy)
+              const step = 1450 * dt
+              const nx = d > 0 ? px + (dx / d) * Math.min(step, d) : px
+              const ny = d > 0 ? py + (dy / d) * Math.min(step, d) : py
+              ctx.setBossPos(nx, ny)
+              s.a3 += step
+              while (s.a3 >= 26) {
+                s.a3 -= 26
+                const b = ctx.spawn({ x: nx, y: ny, angle: s.ang, speed: 0, r: 3.5, color: 7, kind: 'knife' })
+                if (b) s.trail.push(b)
+              }
+              if (d <= Math.max(step, 12)) { s.m = 3; s.t2 = 0.85 }
+            } else {
+              // 残心：少し漂い、拍を置いて軌跡弾を一斉に消す
+              ctx.setBossPos(px, py - 10 * dt)
+              if (s.t2 <= 0) {
+                for (const b of s.trail) b.active = false
+                s.trail = []
+                s.n += 1
+                s.sx = 0; s.sy = 0
+                s.m = 0
+              }
             }
-            if (s.a2 <= 0) {
+            // 補助の欠けリングはダッシュ中だけ止める（離散発射なので移動中でも間隔は保てる）
+            if (s.m !== 2 && s.a2 <= 0) {
               s.a2 = ivOf(ctx, 2.6)
-              ringGapArc(ctx, cntOf(ctx, 14), s.ang, 0.55, { speed: 60, r: 4.5, color: 7 })
-              s.ang -= 0.7
+              ringGapArc(ctx, cntOf(ctx, 14), s.ang + Math.PI / 2, 0.55, { speed: 60, r: 4.5, color: 7 })
             }
           },
         },
@@ -867,18 +966,31 @@ function buildBossDef(id: BossId): BossDef {
     }
   }
 }
-type PhaseState = { a1: number; a2: number; a3: number; ang: number; n: number }
-let activePhaseState: PhaseState = { a1: 0, a2: 0, a3: 0, ang: 0, n: 0 }
+/** 花弁の集まり（レティ「フラワーウィザラウェイ」用：花形に漂い、枯れて散る） */
+type FlowerGroup = { x: number; y: number; age: number; withered: boolean; petals: (Bullet | null)[] }
+type PhaseState = {
+  a1: number; a2: number; a3: number; ang: number; n: number
+  /** 本体移動の脚本用：m=モード、t2=モード内タイマ、sx/sy=起点、tx/ty=目標点 */
+  m: number; t2: number; sx: number; sy: number; tx: number; ty: number
+  /** 妖夢の斬撃の軌跡に残した弾（消散管理用） */
+  trail: Bullet[]
+  /** レティの花の管理 */
+  flowers: FlowerGroup[]
+}
+const newPhaseState = (): PhaseState => ({
+  a1: 0, a2: 0, a3: 0, ang: 0, n: 0, m: 0, t2: 0, sx: 0, sy: 0, tx: 0, ty: 0, trail: [], flowers: [],
+})
+let activePhaseState: PhaseState = newPhaseState()
 function phaseState(_ctx: BossContext): PhaseState {
   return activePhaseState
 }
 /** フェイズごとに独立した作業変数を持たせ、開始時にリセットする */
 function finBoss(def: BossDef): BossDef {
   for (const ph of def.phases) {
-    const st: PhaseState = { a1: 0, a2: 0, a3: 0, ang: 0, n: 0 }
+    const st: PhaseState = newPhaseState()
     const origSetup = ph.setup
     ph.setup = (ctx) => {
-      st.a1 = 0; st.a2 = 0; st.a3 = 0; st.ang = 0; st.n = 0
+      Object.assign(st, newPhaseState())
       activePhaseState = st
       if (origSetup) origSetup(ctx)
     }
@@ -896,6 +1008,88 @@ function makeBossDef(id: BossId): BossDef {
   return finBoss(buildBossDef(id))
 }
 
+// ===== 橙の本体運動（回転・突進） =====
+// 原作の橙の代名詞は「本体が転がり回り、自機へ突進する」体当たり。テレポートの代用を廃し、
+// move:'still' のフェイズから毎フレーム呼んで本体位置を脚本で動かす。
+// モード遷移：0 徘徊（上部を滑走）→ 1 溜め（0.45秒、小刻みに震える＝予告）→
+//   2 突進（自機のいた位置へ 335px/s、軌跡に小弾を 26px 間隔で残す）→ 3 帰還（定位置へ）→ 0…
+// 戻り値：このフレームで突進が始まったら 1、それ以外は 0（扇の発射タイミング用）。
+// prowlSpeed は徘徊速度。ストリーム系スペルでは「発生源の移動で弾間隔が潰れる」のを
+// 防ぐため低めに渡す（監査計算は各フェイズ側のコメント参照）。
+function chenBody(ctx: BossContext, s: PhaseState, dt: number, prowlSpeed: number): number {
+  const px = ctx.bossX(), py = ctx.bossY()
+  let rushStarted = 0
+  if (s.tx === 0 && s.ty === 0) { s.tx = px; s.ty = py; if (s.t2 <= 0) s.t2 = 0.7 }
+  s.t2 -= dt
+  if (s.m === 0) {
+    // 徘徊：目標点へ滑走。目標は決定的に散らす（乱数を使わず面内を広く使う）
+    const dx = s.tx - px, dy = s.ty - py
+    const d = Math.hypot(dx, dy)
+    if (d > 4) {
+      const step = Math.min(prowlSpeed * dt, d)
+      ctx.setBossPos(px + (dx / d) * step, py + (dy / d) * step)
+    }
+    if (s.t2 <= 0) {
+      s.n += 1
+      if (s.n % 2 === 0) {
+        // 突進の溜めへ
+        s.m = 1; s.t2 = 0.45
+      } else {
+        s.tx = 58 + ((s.n * 137) % 268)
+        s.ty = 62 + ((s.n * 89) % 68)
+        s.t2 = 1.25
+      }
+    }
+  } else if (s.m === 1) {
+    // 溜め：その場で小刻みに震える（突進の予告）
+    ctx.setBossPos(px + Math.sin(ctx.phaseTime() * 68) * 1.6, py)
+    if (s.t2 <= 0) {
+      // 自機の現在位置＋少し先を突進先に固定（固定後は追尾しない）
+      const a = Math.atan2(ctx.player.y - py, ctx.player.x - px)
+      s.tx = Math.max(26, Math.min(FW - 26, ctx.player.x + Math.cos(a) * 38))
+      s.ty = Math.max(40, Math.min(FH - 26, ctx.player.y + Math.sin(a) * 38))
+      s.m = 2; s.t2 = 1.4; s.a3 = 0
+      rushStarted = 1
+    }
+  } else if (s.m === 2) {
+    // 突進：軌跡に小弾を残す（間隔 26px ＞ 弾直径8＋判定直径5=13px、直交オフセット弾も 16px 離す）
+    const dx = s.tx - px, dy = s.ty - py
+    const d = Math.hypot(dx, dy)
+    const step = 335 * dt
+    const nx = d > 0 ? px + (dx / d) * Math.min(step, d) : px
+    const ny = d > 0 ? py + (dy / d) * Math.min(step, d) : py
+    ctx.setBossPos(nx, ny)
+    s.a3 += step
+    while (s.a3 >= 26) {
+      s.a3 -= 26
+      ctx.spawn({ x: nx, y: ny, angle: DOWN, speed: spdOf(ctx, 30), r: 4, color: 1, kind: 'orb' })
+      // 回転の表現：進行方向と直交に ±16px ずらした小弾を交互に置く
+      const side = Math.floor(ctx.phaseTime() * 11) % 2 === 0 ? 1 : -1
+      if (d > 0) {
+        ctx.spawn({
+          x: nx + (-dy / d) * 16 * side, y: ny + (dx / d) * 16 * side,
+          angle: DOWN, speed: spdOf(ctx, 30), r: 3.5, color: 3, kind: 'orb',
+        })
+      }
+    }
+    if (d <= Math.max(step, 10) || s.t2 <= 0) { s.m = 3; s.t2 = 0 }
+  } else {
+    // 帰還：定位置（画面上部中央）へ戻る
+    const hx = FW / 2, hy = 84
+    const dx = hx - px, dy = hy - py
+    const d = Math.hypot(dx, dy)
+    if (d > 6) {
+      const step = Math.min(175 * dt, d)
+      ctx.setBossPos(px + (dx / d) * step, py + (dy / d) * step)
+    } else {
+      s.m = 0; s.t2 = 0.9
+      s.tx = 58 + ((s.n * 137) % 268)
+      s.ty = 62 + ((s.n * 89) % 68)
+    }
+  }
+  return rushStarted
+}
+
 // ===== 中ボス定義（単一フェイズの BossDef として表現） =====
 function makeMidDef(id: MidId, name: string, stageIdx: number): BossDef {
   const hp = 650 + stageIdx * 90
@@ -904,12 +1098,28 @@ function makeMidDef(id: MidId, name: string, stageIdx: number): BossDef {
   }
   const phase = (
     update: (ctx: BossContext, dt: number) => void,
-    move: 'sine' | 'teleport' = 'sine',
+    move: 'sine' | 'teleport' | 'still' = 'sine',
     params?: Record<string, number>,
   ): BossDef['phases'][number] => ({
     name: null, hp, timeLimit: 22, move, moveRange: 95, moveSpeed: 0.78, params, update,
   })
   switch (id) {
+    case 'cirno': return finBoss({
+      ...base,
+      phases: [phase((ctx, dt) => {
+        // 1面中ボス（原作どおりチルノ）：氷の狙撃＋欠けリング＋氷柱の雨の簡易版。
+        // 雪柱は抜け列2列（128px幅）を必ず残す snowColumns を流用
+        const s = phaseState(ctx)
+        s.a1 -= dt; s.a2 -= dt; s.a3 -= dt
+        if (s.a1 <= 0) { s.a1 = ivOf(ctx, 1.35); ctx.aimed(2, 0.15, { speed: 118, r: 4, color: 4 }) }
+        if (s.a2 <= 0) {
+          s.a2 = ivOf(ctx, 1.7)
+          ringGapArc(ctx, cntOf(ctx, 12), s.ang, 0.55, { speed: 64, r: 4.5, color: 4 })
+          s.ang += 0.7
+        }
+        if (s.a3 <= 0) { s.a3 = ivOf(ctx, 2.3); snowColumns(ctx, s.n); s.n += 1 }
+      })],
+    })
     case 'letty': return finBoss({
       ...base,
       phases: [phase((ctx, dt) => {
@@ -926,15 +1136,17 @@ function makeMidDef(id: MidId, name: string, stageIdx: number): BossDef {
     case 'chen': return finBoss({
       ...base,
       phases: [phase((ctx, dt) => {
+        // 中ボスの橙も本体が転がり・突進する（ボス版と同じ chenBody、発射は狙撃＋欠けリング）
         const s = phaseState(ctx)
+        chenBody(ctx, s, dt, 100)
         s.a1 -= dt; s.a2 -= dt
-        if (s.a1 <= 0) { s.a1 = ivOf(ctx, 1.15); ctx.aimed(3, 0.17, { speed: 124, r: 4, color: 1 }) }
-        if (s.a2 <= 0) {
+        if (s.m !== 2 && s.a1 <= 0) { s.a1 = ivOf(ctx, 1.15); ctx.aimed(3, 0.17, { speed: 124, r: 4, color: 1 }) }
+        if (s.m !== 2 && s.a2 <= 0) {
           s.a2 = ivOf(ctx, 1.6)
           ringGapArc(ctx, cntOf(ctx, 12), s.ang, 0.55, { speed: 66, r: 4.5, color: 3 })
           s.ang += 0.7
         }
-      })],
+      }, 'still')],
     })
     case 'alice': return finBoss({
       ...base,
@@ -1882,6 +2094,31 @@ export default function Youyoumu() {
   const [pendingRun, setPendingRun] = useState<'story' | 'extra' | 'phantasm'>('story')
   // ポートレート画像の読み込み失敗を記録し、フォールバック表示に切り替える
   const [imgErr, setImgErr] = useState<ReadonlySet<string>>(new Set())
+  // 狭い／低いウィンドウ（スマホ等）でも画面全体が隠れず見えるよう、ステージ表示サイズを実測でフィットさせる
+  const [stageBox, setStageBox] = useState<{ w: number; h: number } | null>(null)
+  const [narrow, setNarrow] = useState(false)
+  useEffect(() => {
+    const el = wrapRef.current
+    if (!el) return
+    const update = () => {
+      const cw = el.clientWidth
+      const ch = el.clientHeight
+      if (cw <= 0 || ch <= 0) return
+      const isNarrow = cw < 480
+      setNarrow((prev) => (prev === isNarrow ? prev : isNarrow))
+      const foot = isNarrow ? 46 : 40 // 下部の注記行（narrow時はミュートボタン付き）の高さぶんを差し引く
+      const availW = Math.min(cw, 560)
+      const availH = Math.max(120, ch - foot)
+      const scale = Math.min(availW / SW, availH / SH)
+      const w = Math.floor(SW * scale)
+      const h = Math.floor(SH * scale)
+      setStageBox((prev) => (prev && prev.w === w && prev.h === h ? prev : { w, h }))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
   const markImgErr = (id: string) =>
     setImgErr((prev) => {
       if (prev.has(id)) return prev
@@ -2783,7 +3020,7 @@ export default function Youyoumu() {
   }
 
   return (
-    <div ref={wrapRef} style={{ width: '100%', maxWidth: 560, margin: '0 auto', userSelect: 'none' }}>
+    <div ref={wrapRef} style={{ width: '100%', maxWidth: 560, margin: '0 auto', userSelect: 'none', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       <style>{`
         .youyou-btn:active { transform: scale(0.96); }
         .youyou-menu { transition: background 0.12s, color 0.12s; }
@@ -2793,13 +3030,14 @@ export default function Youyoumu() {
         .youyou-card { transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s; }
         .youyou-card:hover, .youyou-card:active { transform: translateY(-2px); border-color: rgba(244,143,177,0.95) !important; box-shadow: 0 10px 26px rgba(0,0,0,0.55); }
       `}</style>
-      <div style={{ position: 'relative' }}>
+      <div style={{ position: 'relative', flexShrink: 0, ...(stageBox ? { width: stageBox.w, height: stageBox.h } : {}) }}>
         <canvas
           ref={canvasRef}
           width={SW}
           height={SH}
-          style={{ width: '100%', height: 'auto', display: 'block', borderRadius: 8, background: '#0a0610', touchAction: 'none' }}
+          style={{ width: '100%', height: stageBox ? '100%' : 'auto', display: 'block', borderRadius: 8, background: '#0a0610', touchAction: 'none' }}
         />
+        {!narrow && (
         <button
           type="button"
           className="youyou-btn"
@@ -2815,14 +3053,15 @@ export default function Youyoumu() {
         >
           {mutedUi ? '🔇' : '🔊'}
         </button>
+        )}
         {screen === 'playing' && (
           <button
             type="button"
             className="youyou-btn"
             onPointerDown={(e) => { e.preventDefault(); pressBomb() }}
             style={{
-              position: 'absolute', right: 10, bottom: 10, zIndex: 2,
-              width: 64, height: 64, borderRadius: '50%',
+              position: 'absolute', right: narrow ? 8 : 10, bottom: narrow ? 8 : 10, zIndex: 2,
+              width: narrow ? 54 : 64, height: narrow ? 54 : 64, borderRadius: '50%',
               background: 'rgba(173,20,87,0.78)', color: '#fff',
               border: '2px solid rgba(255,255,255,0.7)', fontSize: 13, fontWeight: 'bold',
             }}
@@ -2836,7 +3075,7 @@ export default function Youyoumu() {
           const playerName = chara === 'reimu' ? '博麗霊夢' : '霧雨魔理沙'
           const bossName = BOSS_META[dlgUi.boss].name
           const faceStyle = (active: boolean): React.CSSProperties => ({
-            height: 188, width: 138, borderRadius: 10,
+            height: narrow ? 150 : 188, width: narrow ? 110 : 138, borderRadius: 10,
             border: active ? '2px solid rgba(244,143,177,0.95)' : '2px solid rgba(255,255,255,0.25)',
             opacity: active ? 1 : 0.55,
             filter: active ? 'none' : 'brightness(0.55) saturate(0.75)',
@@ -2874,7 +3113,7 @@ export default function Youyoumu() {
                 style={{
                   position: 'relative', margin: '10px 10px 12px',
                   background: 'rgba(18,3,9,0.92)', border: '1px solid rgba(255,140,80,0.65)',
-                  borderRadius: 10, padding: '14px 16px 16px', minHeight: 92,
+                  borderRadius: 10, padding: narrow ? '12px 14px 14px' : '14px 16px 16px', minHeight: narrow ? 84 : 92,
                   boxShadow: '0 8px 24px rgba(0,0,0,0.6)', textAlign: 'left',
                 }}
               >
@@ -2888,7 +3127,7 @@ export default function Youyoumu() {
                 >
                   {speakingPlayer ? playerName : bossName}
                 </div>
-                <div style={{ fontSize: 15, lineHeight: 1.8, color: '#fff', marginTop: 2 }}>{line.t}</div>
+                <div style={{ fontSize: narrow ? 14 : 15, lineHeight: narrow ? 1.7 : 1.8, color: '#fff', marginTop: 2 }}>{line.t}</div>
                 <div style={{ position: 'absolute', right: 14, bottom: 8, fontSize: 11, color: '#f8bbd0' }}>
                   {dlgUi.idx + 1}/{dlgUi.lines.length}　▼ タップ / Z
                 </div>
@@ -2905,9 +3144,9 @@ export default function Youyoumu() {
               className="youyou-menu"
               onClick={onClick}
               style={{
-                display: 'flex', alignItems: 'baseline', gap: 10, width: '100%',
+                display: 'flex', alignItems: 'baseline', gap: 10, width: '100%', flexWrap: narrow ? 'wrap' : 'nowrap',
                 background: 'transparent', border: 'none', borderBottom: '1px solid rgba(244,143,177,0.16)',
-                color: '#fdf1e7', padding: '9px 10px', fontSize: 17, fontWeight: 'bold',
+                color: '#fdf1e7', padding: narrow ? '8px 10px' : '9px 10px', fontSize: narrow ? 16 : 17, fontWeight: 'bold',
                 letterSpacing: 2, cursor: 'pointer', textAlign: 'left',
                 textShadow: '0 2px 8px rgba(0,0,0,0.85)',
               }}
@@ -2962,9 +3201,9 @@ export default function Youyoumu() {
                 {titleStep === 'menu' && (
                   <>
                     <div style={{ fontSize: 11, letterSpacing: 5, color: '#f8bbd0', textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>ファンメイド弾幕STG</div>
-                    <div style={{ fontSize: 44, fontWeight: 'bold', color: '#f06292', letterSpacing: 3, lineHeight: 1.15, textShadow: '0 0 18px rgba(255,90,30,0.75), 0 3px 10px rgba(0,0,0,0.9)' }}>東方妖々夢</div>
+                    <div style={{ fontSize: narrow ? 36 : 44, fontWeight: 'bold', color: '#f06292', letterSpacing: 3, lineHeight: 1.15, textShadow: '0 0 18px rgba(255,90,30,0.75), 0 3px 10px rgba(0,0,0,0.9)' }}>東方妖々夢</div>
                     <div style={{ fontSize: 12.5, color: '#f2d3de', letterSpacing: 2, textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>〜 消えた春の異変 〜　全6面＋EX＋Phantasm</div>
-                    <div style={{ marginTop: 20, width: '64%', minWidth: 250 }}>
+                    <div style={{ marginTop: narrow ? 14 : 20, width: narrow ? '84%' : '64%', minWidth: narrow ? 0 : 250 }}>
                       {menuItem('ゲームスタート', '春を取り戻す', () => { setChallenge(false); setPendingRun('story'); setTitleStep('chara'); touchTitle() })}
                       {menuItem('エクストラスタート', 'EXTRA STAGE', () => { setChallenge(false); setPendingRun('extra'); setTitleStep('chara'); touchTitle() })}
                       {menuItem('ファンタズムスタート', 'PHANTASM STAGE', () => { setChallenge(false); setPendingRun('phantasm'); setTitleStep('chara'); touchTitle() })}
@@ -3000,7 +3239,7 @@ export default function Youyoumu() {
                             borderRadius: 12, padding: 10, textAlign: 'left',
                           }}
                         >
-                          {portraitEl(c.id, c.name, { width: '100%', height: 208, borderRadius: 8, display: 'block' })}
+                          {portraitEl(c.id, c.name, { width: '100%', height: narrow ? 136 : 208, borderRadius: 8, display: 'block' })}
                           <div style={{ fontSize: 17, fontWeight: 'bold', marginTop: 8 }}>{c.name}</div>
                           <div style={{ fontSize: 11.5, color: '#f8bbd0', marginTop: 2 }}>{c.trait}</div>
                           <div style={{ fontSize: 11, color: '#ead9e0', lineHeight: 1.6, marginTop: 4 }}>{c.desc}</div>
@@ -3113,8 +3352,25 @@ export default function Youyoumu() {
           </div>
         )}
       </div>
-      <div style={{ fontSize: 11, color: '#999', textAlign: 'center', marginTop: 6 }}>
-        ※ 本作品は東方Projectにインスパイアされた非公式ファンメイドです。原作の素材・楽曲は使用していません（BGMはオリジナル曲をWebAudioで合成）。
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6, width: stageBox ? stageBox.w : '100%', maxWidth: '100%' }}>
+        <div style={{ flex: 1, fontSize: 11, color: '#999', textAlign: narrow ? 'left' : 'center', lineHeight: 1.5 }}>
+          ※ 本作品は東方Projectにインスパイアされた非公式ファンメイドです。原作の素材・楽曲は使用していません（BGMはオリジナル曲をWebAudioで合成）。
+        </div>
+        {narrow && (
+          <button
+            type="button"
+            className="youyou-btn"
+            onClick={toggleMute}
+            aria-label="BGMミュート切替"
+            style={{
+              flexShrink: 0, width: 38, height: 38, borderRadius: '50%',
+              background: 'rgba(30,6,18,0.7)', color: '#fff',
+              border: '1px solid rgba(255,255,255,0.5)', fontSize: 16, cursor: 'pointer',
+            }}
+          >
+            {mutedUi ? '🔇' : '🔊'}
+          </button>
+        )}
       </div>
     </div>
   )
